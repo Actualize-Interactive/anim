@@ -41,6 +41,8 @@ jobs:
           pip install -r docs/sphinx/requirements.txt
       - name: Install Doxygen
         run: sudo apt-get update && sudo apt-get install -y doxygen
+      - name: Create Doxygen output directory
+        run: mkdir -p docs/doxygen
       - name: Generate Doxygen XML
         run: |
           cd docs
