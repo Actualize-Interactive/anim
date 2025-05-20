@@ -2,7 +2,7 @@
 # Minimal config for Sphinx+Breathe+Exhale integration
 
 PROJECT_NAME           = anim
-OUTPUT_DIRECTORY       = docs/doxygen
+OUTPUT_DIRECTORY       = doxygen
 GENERATE_HTML          = NO
 GENERATE_XML           = YES
 XML_OUTPUT             = xml
