@@ -3,6 +3,7 @@
 
 #include "point2d.h"
 #include "tangent_mode.h"
+#include <utility> // For std::move
 
 namespace anim {
 
