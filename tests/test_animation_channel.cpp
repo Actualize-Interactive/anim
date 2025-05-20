@@ -151,15 +151,15 @@ TEST_CASE("AnimationChannel keyframe manipulation", "[animation_channel]") {
         // Tangents should be adjusted
         REQUIRE(channel.get_keyframe(1.0)->in_tangent().value == Catch::Approx(2.5));
         REQUIRE(channel.get_keyframe(1.0)->out_tangent().value == Catch::Approx(2.5));
-    }
-      SECTION("Changing keyframe tangent mode") {
+    }    SECTION("Changing keyframe tangent mode") {
         channel.set_keyframe_tangent_mode(1.0, TangentMode::linear);
         
-        REQUIRE(channel.get_keyframe(1.0)->mode() == TangentMode::linear);
+        auto keyframe = channel.get_keyframe(1.0);
+        REQUIRE(keyframe.has_value());
+        REQUIRE(keyframe->mode() == TangentMode::linear);
         
         // Tangents should be recalculated
-        const Keyframe& kf = *channel.get_keyframe(1.0);
-        REQUIRE(kf.out_tangent().time > kf.time()); // Out tangent should point toward next keyframe
+        REQUIRE(keyframe->out_tangent().time > keyframe->time()); // Out tangent should point toward next keyframe
     }
     
     SECTION("Removing a keyframe") {

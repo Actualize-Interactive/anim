@@ -10,7 +10,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+      fail-fast: false
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
 
     steps:
     - uses: actions/checkout@v4
@@ -28,6 +30,8 @@ jobs:
         path: |
           build
           ~/.ccache
+          ~/Library/Caches/ccache # macOS
+          ~\AppData\Local\ccache  # Windows
         key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}
         restore-keys: |
           ${{ runner.os }}-cmake-
@@ -36,11 +40,11 @@ jobs:
       run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 
     - name: Build
-      run: cmake --build build --config Release
+      run: cmake --build build --config Release --parallel 2
 
     - name: Test
       working-directory: build
-      run: ctest -C Release
+      run: ctest -C Release --output-on-failure
 
     # Create platform-specific archives
     - name: Create Archive (Unix)
