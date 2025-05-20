@@ -7,12 +7,12 @@ A modern C++ header-only library for creating, managing, and evaluating animatio
 - Header-only C++ library (C++17 compatible)
 - Immutable keyframe design with efficient update patterns
 - Multiple tangent modes for animation curves:
-  - FLAT: Horizontal tangents
-  - LINEAR: Direct linear interpolation between keyframes
-  - STEPPED: Value stays constant until the next keyframe
-  - SMOOTH_AUTO: Automatically calculated smooth tangents
-  - SMOOTH_MANUAL: Manual control of one tangent with auto-adjustment of the other
-  - BROKEN: Complete manual control of both tangents
+  - flat: Horizontal tangents
+  - linear: Direct linear interpolation between keyframes
+  - stepped: Value stays constant until the next keyframe
+  - smoothAuto: Automatically calculated smooth tangents
+  - smoothManual: Manual control of one tangent with auto-adjustment of the other
+  - broken: Complete manual control of both tangents
 - Cubic Bézier curve interpolation
 - Support for multiple named animation channels
 - Comprehensive test suite
@@ -65,23 +65,23 @@ int main() {
     // Set keyframes with different tangent modes
     // Parameters: time, value, in_tangent, out_tangent, mode
     
-    // First keyframe at time 0.0 with LINEAR mode
+    // First keyframe at time 0.0 with linear mode
     channel.set_keyframe(0.0, 0.0, 
         anim::Point2D(-0.1, 0.0),  // in-tangent
         anim::Point2D(0.1, 0.0),   // out-tangent
-        anim::TangentMode::LINEAR);
+        anim::TangentMode::linear);
     
-    // Second keyframe at time 1.0 with SMOOTH_AUTO mode
+    // Second keyframe at time 1.0 with smoothAuto mode
     channel.set_keyframe(1.0, 1.0,
         anim::Point2D(0.9, 1.0),   // in-tangent
         anim::Point2D(1.1, 1.0),   // out-tangent
-        anim::TangentMode::SMOOTH_AUTO);
+        anim::TangentMode::smoothAuto);
     
-    // Third keyframe at time 2.0 with STEPPED mode
+    // Third keyframe at time 2.0 with stepped mode
     channel.set_keyframe(2.0, 0.0,
         anim::Point2D(1.9, 0.0),   // in-tangent
         anim::Point2D(2.1, 0.0),   // out-tangent
-        anim::TangentMode::STEPPED);
+        anim::TangentMode::stepped);
     
     // Evaluate the channel at different times
     std::cout << "t=0.0: " << channel.evaluate(0.0) << std::endl;
@@ -117,26 +117,26 @@ int main() {
     position_x.set_keyframe(0.0, 0.0, 
         anim::Point2D(-0.1, 0.0), 
         anim::Point2D(0.1, 0.0), 
-        anim::TangentMode::LINEAR);
+        anim::TangentMode::linear);
     position_x.set_keyframe(1.0, 10.0,
         anim::Point2D(0.9, 10.0), 
         anim::Point2D(1.1, 10.0), 
-        anim::TangentMode::LINEAR);
+        anim::TangentMode::linear);
     
     // Create position.y channel
     anim::AnimationChannel position_y;
     position_y.set_keyframe(0.0, 0.0, 
         anim::Point2D(-0.1, 0.0), 
         anim::Point2D(0.1, 0.0), 
-        anim::TangentMode::SMOOTH_AUTO);
+        anim::TangentMode::smoothAuto);
     position_y.set_keyframe(0.5, 5.0,
         anim::Point2D(0.4, 5.0), 
         anim::Point2D(0.6, 5.0), 
-        anim::TangentMode::SMOOTH_AUTO);
+        anim::TangentMode::smoothAuto);
     position_y.set_keyframe(1.0, 0.0,
         anim::Point2D(0.9, 0.0), 
         anim::Point2D(1.1, 0.0), 
-        anim::TangentMode::SMOOTH_AUTO);
+        anim::TangentMode::smoothAuto);
     
     // Add channels to animation
     animation.add_channel("position.x", position_x);
@@ -156,11 +156,3 @@ int main() {
     return 0;
 }
 ```
-
-## License
-
-MIT License
-
-## Acknowledgments
-
-Inspired by animation systems in digital content creation software and game engines.
