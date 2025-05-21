@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <anim/animation.h>
+#include <anim/animation.hpp>
 
 using namespace anim;
 
@@ -29,17 +29,17 @@ TEST_CASE("Animation empty state", "[animation]") {
 
 TEST_CASE("Animation with multiple channels", "[animation]") {
     Animation anim;
-      // Create and add channels
-    AnimationChannel channel1;
+    // Create and add channels
+    Channel channel1("position.x");
     channel1.set_keyframe(1.0, 10.0, Point2D(0.9, 10.0), Point2D(1.1, 10.0), TangentMode::linear);
     channel1.set_keyframe(3.0, 30.0, Point2D(2.9, 30.0), Point2D(3.1, 30.0), TangentMode::linear);
     
-    AnimationChannel channel2;
+    Channel channel2("position.y");
     channel2.set_keyframe(2.0, 20.0, Point2D(1.9, 20.0), Point2D(2.1, 20.0), TangentMode::linear);
     channel2.set_keyframe(4.0, 40.0, Point2D(3.9, 40.0), Point2D(4.1, 40.0), TangentMode::linear);
     
-    anim.add_channel("position.x", channel1);
-    anim.add_channel("position.y", channel2);
+    anim.add_channel(channel1);
+    anim.add_channel(channel2);
     
     SECTION("Animation is not empty") {
         REQUIRE_FALSE(anim.is_empty());
@@ -58,17 +58,34 @@ TEST_CASE("Animation with multiple channels", "[animation]") {
         REQUIRE(anim.get_end_time().value() == Catch::Approx(4.0));   // Latest keyframe
     }
     
-    SECTION("Channel retrieval") {
-        const AnimationChannel* ch1 = anim.get_channel("position.x");
+    SECTION("Channel retrieval by name") {
+        const Channel* ch1 = anim.get_channel("position.x");
         REQUIRE(ch1 != nullptr);
         REQUIRE(ch1->get_all_keyframes().size() == 2);
         
-        AnimationChannel* ch2 = anim.get_channel("position.y");
+        Channel* ch2 = anim.get_channel("position.y");
         REQUIRE(ch2 != nullptr);
         REQUIRE(ch2->get_all_keyframes().size() == 2);
         
-        const AnimationChannel* missing = anim.get_channel("nonexistent");
+        const Channel* missing = anim.get_channel("nonexistent");
         REQUIRE(missing == nullptr);
+    }
+    
+    SECTION("Channel retrieval by index") {
+        const Channel* ch1 = anim.get_channel(0);
+        REQUIRE(ch1 != nullptr);
+        REQUIRE(ch1->name() == "position.x");
+        
+        Channel* ch2 = anim.get_channel(1);
+        REQUIRE(ch2 != nullptr);
+        REQUIRE(ch2->name() == "position.y");
+        
+        const Channel* invalid = anim.get_channel(999);
+        REQUIRE(invalid == nullptr);
+    }
+    
+    SECTION("Channel count") {
+        REQUIRE(anim.get_channel_count() == 2);
     }
     
     SECTION("Evaluate all channels at specific time") {
@@ -91,10 +108,24 @@ TEST_CASE("Animation with multiple channels", "[animation]") {
         REQUIRE(results["position.y"][3] == Catch::Approx(40.0));
     }
     
-    SECTION("Remove channel") {
+    SECTION("Animation length") {
+        REQUIRE(anim.length() == Catch::Approx(3.0)); // 4.0 - 1.0
+    }
+    
+    SECTION("Number of samples") {
+        REQUIRE(anim.num_samples(10.0) == 31); // (4-1)*10 + 1
+    }
+    
+    SECTION("Remove channel by name") {
         REQUIRE(anim.remove_channel("position.x"));
         REQUIRE(anim.get_channel_names().size() == 1);
         REQUIRE_FALSE(anim.remove_channel("nonexistent"));
+    }
+    
+    SECTION("Remove channel by index") {
+        REQUIRE(anim.remove_channel(0));
+        REQUIRE(anim.get_channel_count() == 1);
+        REQUIRE_FALSE(anim.remove_channel(999));
     }
 }
 
@@ -102,12 +133,13 @@ TEST_CASE("Animation with empty channel", "[animation]") {
     Animation anim;
     
     // Add an empty channel
-    AnimationChannel empty_channel;
-    anim.add_channel("empty", empty_channel);
-      // Add a non-empty channel
-    AnimationChannel channel;
+    Channel empty_channel("empty");
+    anim.add_channel(empty_channel);
+    
+    // Add a non-empty channel
+    Channel channel("non_empty");
     channel.set_keyframe(1.0, 10.0, Point2D(0.9, 10.0), Point2D(1.1, 10.0), TangentMode::linear);
-    anim.add_channel("non_empty", channel);
+    anim.add_channel(channel);
     
     SECTION("Animation is not empty") {
         REQUIRE_FALSE(anim.is_empty());
@@ -127,5 +159,62 @@ TEST_CASE("Animation with empty channel", "[animation]") {
         REQUIRE(results.size() == 2);
         REQUIRE(results["empty"] == Catch::Approx(0.0));
         REQUIRE(results["non_empty"] == Catch::Approx(10.0));
+    }
+}
+
+// Test insertion and ordering functions
+TEST_CASE("Animation channel ordering", "[animation]") {
+    Animation anim;
+    
+    Channel channel1("channel1");
+    Channel channel2("channel2");
+    Channel channel3("channel3");
+    
+    SECTION("Append channels") {
+        anim.append_channel(channel1);
+        anim.append_channel(channel2);
+        anim.append_channel(channel3);
+        
+        REQUIRE(anim.get_channel_count() == 3);
+        REQUIRE(anim.get_channel(0)->name() == "channel1");
+        REQUIRE(anim.get_channel(1)->name() == "channel2");
+        REQUIRE(anim.get_channel(2)->name() == "channel3");
+    }
+    
+    SECTION("Insert channels") {
+        anim.append_channel(channel1);  // First channel
+        anim.append_channel(channel3);  // Second channel
+        
+        // Insert channel2 in the middle
+        anim.insert_channel(1, channel2);
+        
+        REQUIRE(anim.get_channel_count() == 3);
+        REQUIRE(anim.get_channel(0)->name() == "channel1");
+        REQUIRE(anim.get_channel(1)->name() == "channel2");
+        REQUIRE(anim.get_channel(2)->name() == "channel3");
+    }
+    
+    SECTION("Insert at beginning") {
+        anim.append_channel(channel2);
+        anim.append_channel(channel3);
+        
+        // Insert at the beginning
+        anim.insert_channel(0, channel1);
+        
+        REQUIRE(anim.get_channel_count() == 3);
+        REQUIRE(anim.get_channel(0)->name() == "channel1");
+        REQUIRE(anim.get_channel(1)->name() == "channel2");
+        REQUIRE(anim.get_channel(2)->name() == "channel3");
+    }
+    
+    SECTION("Find channel index") {
+        anim.append_channel(channel1);
+        anim.append_channel(channel2);
+        anim.append_channel(channel3);
+        
+        REQUIRE(anim.find_channel_index("channel1") == 0);
+        REQUIRE(anim.find_channel_index("channel2") == 1);
+        REQUIRE(anim.find_channel_index("channel3") == 2);
+        REQUIRE(anim.find_channel_index("nonexistent") == static_cast<size_t>(-1));
     }
 }

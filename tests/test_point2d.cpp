@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <anim/point2d.h>
+#include <anim/point2d.hpp>
 
 using namespace anim;
 

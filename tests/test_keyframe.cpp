@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <anim/keyframe.h>
+#include <anim/keyframe.hpp>
 #include <algorithm> // Added for std::sort
 
 using namespace anim;
@@ -81,5 +81,37 @@ TEST_CASE("Keyframe comparison for sorting", "[keyframe]") {
         std::sort(keyframes.begin(), keyframes.end());
         REQUIRE(keyframes[0].time() == Catch::Approx(1.0));
         REQUIRE(keyframes[1].time() == Catch::Approx(2.0));
+    }
+}
+
+TEST_CASE("Keyframe mutability", "[keyframe]") {
+    BezierHandle in_tangent(1.5, 2.5);
+    BezierHandle out_tangent(2.5, 3.5);
+    TangentMode mode = TangentMode::smoothAuto;
+    Keyframe kf(2.0, 3.0, in_tangent, out_tangent, mode);
+
+    SECTION("Set time") {
+        kf.set_time(4.0);
+        REQUIRE(kf.time() == Catch::Approx(4.0));
+    }
+    SECTION("Set value") {
+        kf.set_value(7.5);
+        REQUIRE(kf.value() == Catch::Approx(7.5));
+    }
+    SECTION("Set in_tangent") {
+        BezierHandle new_in(9.0, 8.0);
+        kf.set_in_tangent(new_in);
+        REQUIRE(kf.in_tangent().time == Catch::Approx(9.0));
+        REQUIRE(kf.in_tangent().value == Catch::Approx(8.0));
+    }
+    SECTION("Set out_tangent") {
+        BezierHandle new_out(10.0, 11.0);
+        kf.set_out_tangent(new_out);
+        REQUIRE(kf.out_tangent().time == Catch::Approx(10.0));
+        REQUIRE(kf.out_tangent().value == Catch::Approx(11.0));
+    }
+    SECTION("Set mode") {
+        kf.set_mode(TangentMode::flat);
+        REQUIRE(kf.mode() == TangentMode::flat);
     }
 }

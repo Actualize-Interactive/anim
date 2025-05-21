@@ -4,7 +4,7 @@ A modern C++ header-only library for creating, managing, and evaluating animatio
 
 ## Features
 
-- Header-only C++ library (C++17 compatible)
+- Header-only C++ library (C++20 compatible)
 - Immutable keyframe design with efficient update patterns
 - Multiple tangent modes for animation curves:
   - flat: Horizontal tangents
