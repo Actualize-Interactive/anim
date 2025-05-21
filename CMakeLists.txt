@@ -5,8 +5,17 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(ANIM_BUILD_TESTS "Build tests" ON)
-option(ANIM_BUILD_EXAMPLES "Build examples" ON)
+# Check if this project is being built as a submodule
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    # Building as a standalone project - enable tests by default
+    option(ANIM_BUILD_TESTS "Build tests" ON)
+    option(ANIM_BUILD_EXAMPLES "Build examples" ON)
+else()
+    # Building as a submodule - disable tests by default
+    option(ANIM_BUILD_TESTS "Build tests" OFF)
+    option(ANIM_BUILD_EXAMPLES "Build examples" OFF)
+endif()
+
 option(ANIM_BUILD_STATIC "Build static library" ON)
 option(ANIM_BUILD_SHARED "Build shared library" OFF)
 

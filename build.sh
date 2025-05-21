@@ -6,7 +6,8 @@ mkdir -p build
 cd build
 
 # Configure using CMake
-cmake ..
+# Explicitly enable tests and examples for CI/standalone builds
+cmake .. -DANIM_BUILD_TESTS=ON -DANIM_BUILD_EXAMPLES=ON
 
 # Build
 cmake --build .
