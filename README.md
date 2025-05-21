@@ -51,6 +51,28 @@ find_package(anim REQUIRED)
 target_link_libraries(your_target PRIVATE anim::anim)
 ```
 
+### CMake Options
+
+The following CMake options are available:
+
+```cmake
+# When building as a standalone project, tests and examples are ON by default
+# When building as a submodule, they are OFF by default
+
+# Explicitly control whether to build tests
+set(ANIM_BUILD_TESTS OFF CACHE BOOL "Build anim tests")
+
+# Explicitly control whether to build examples  
+set(ANIM_BUILD_EXAMPLES OFF CACHE BOOL "Build anim examples")
+
+# Library type options
+set(ANIM_BUILD_STATIC ON CACHE BOOL "Build static library")
+set(ANIM_BUILD_SHARED OFF CACHE BOOL "Build shared library")
+
+# Then include the subdirectory
+add_subdirectory(path/to/anim)
+```
+
 By default, `anim` is built as a static library. You can enable building a shared library by setting the `ANIM_BUILD_SHARED` option to ON:
 
 ```cmake
