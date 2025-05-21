@@ -1,11 +1,11 @@
-#include <anim.h>
+#include <anim.hpp>
 #include <iostream>
 #include <iomanip>
 #include <vector>
 #include <string>
 
 // Helper function to print an animation curve as ASCII art
-void print_curve_ascii(const anim::AnimationChannel& channel, double start_time, double end_time, int width = 80, int height = 20) {
+void print_curve_ascii(const anim::Channel& channel, double start_time, double end_time, int width = 80, int height = 20) {
     // Sample the curve
     std::vector<double> samples = channel.evaluate_range(start_time, end_time, width);
     
@@ -53,14 +53,13 @@ int main() {
     // Example 1: Comparing different tangent modes
     std::cout << "Example 1: Comparing Different Tangent Modes\n";
     std::cout << "==========================================\n\n";
-    
-    // Create channels for each tangent mode
-    anim::AnimationChannel linear_channel;
-    anim::AnimationChannel flat_channel;
-    anim::AnimationChannel smooth_auto_channel;
-    anim::AnimationChannel smooth_manual_channel;
-    anim::AnimationChannel stepped_channel;
-    anim::AnimationChannel broken_channel;
+      // Create channels for each tangent mode
+    anim::Channel linear_channel;
+    anim::Channel flat_channel;
+    anim::Channel smooth_auto_channel;
+    anim::Channel smooth_manual_channel;
+    anim::Channel stepped_channel;
+    anim::Channel broken_channel;
     
     // Set keyframes for each channel (same time/values, different modes)
     // Two keyframes at t=0.0 and t=1.0 with values 0.0 and 1.0
@@ -150,22 +149,22 @@ int main() {
     std::cout << "BROKEN mode:\n";
     print_curve_ascii(broken_channel, 0.0, 2.0);
     std::cout << "\n";
-    
-    // Example 2: Animation with multiple channels
+      // Example 2: Animation with multiple channels
     std::cout << "Example 2: Animation with Multiple Channels\n";
     std::cout << "========================================\n\n";
     
     anim::Animation animation;
-      // Create X position channel (accelerating motion)
-    anim::AnimationChannel x_channel;
+    // Create X position channel (accelerating motion)
+    anim::Channel x_channel("position.x");
     x_channel.set_keyframe(0.0, 0.0, 
         anim::Point2D(-0.3, 0.0), anim::Point2D(0.3, 0.0), 
         anim::TangentMode::smoothAuto);
     x_channel.set_keyframe(1.0, 1.0, 
         anim::Point2D(0.7, 1.0), anim::Point2D(1.3, 1.0), 
         anim::TangentMode::smoothAuto);
-      // Create Y position channel (bounce curve)
-    anim::AnimationChannel y_channel;
+    
+    // Create Y position channel (bounce curve)
+    anim::Channel y_channel("position.y");
     y_channel.set_keyframe(0.0, 0.0, 
         anim::Point2D(-0.3, 0.0), anim::Point2D(0.3, 0.0), 
         anim::TangentMode::smoothAuto);
@@ -175,8 +174,9 @@ int main() {
     y_channel.set_keyframe(1.0, 0.0, 
         anim::Point2D(0.7, 0.0), anim::Point2D(1.3, 0.0), 
         anim::TangentMode::smoothAuto);
-      // Create scale channel (starts and ends at 1.0, contracts in the middle)
-    anim::AnimationChannel scale_channel;
+    
+    // Create scale channel (starts and ends at 1.0, contracts in the middle)
+    anim::Channel scale_channel("scale");
     scale_channel.set_keyframe(0.0, 1.0, 
         anim::Point2D(-0.3, 1.0), anim::Point2D(0.3, 1.0), 
         anim::TangentMode::flat);
@@ -188,9 +188,9 @@ int main() {
         anim::TangentMode::flat);
     
     // Add channels to animation
-    animation.add_channel("position.x", x_channel);
-    animation.add_channel("position.y", y_channel);
-    animation.add_channel("scale", scale_channel);
+    animation.add_channel(x_channel);
+    animation.add_channel(y_channel);
+    animation.add_channel(scale_channel);
     
     // Display the curves
     std::cout << "Position X Channel:\n";
@@ -224,6 +224,15 @@ int main() {
     }
     
     std::cout << std::string(60, '-') << std::endl;
+      // Example 3: Demonstrating animation.length() and num_samples()
+    std::cout << "Example 3: Animation Length and Sample Count\n";
+    std::cout << "==========================================\n\n";
+    
+    std::cout << "Animation length: " << animation.length() << " time units\n";
+    std::cout << "Number of samples at 30Hz: " << animation.num_samples(30.0) << " samples\n";
+    std::cout << "Number of samples at 60Hz: " << animation.num_samples(60.0) << " samples\n\n";
     
     return 0;
 }
+
+

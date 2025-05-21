@@ -1,55 +1,92 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.25)
 project(anim VERSION 0.1.0 LANGUAGES CXX)
 
-# Set C++17 standard
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Options
 option(ANIM_BUILD_TESTS "Build tests" ON)
 option(ANIM_BUILD_EXAMPLES "Build examples" ON)
+option(ANIM_BUILD_STATIC "Build static library" ON)
+option(ANIM_BUILD_SHARED "Build shared library" OFF)
 
-# The library target (header-only)
-add_library(anim INTERFACE)
-target_include_directories(anim 
-    INTERFACE 
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
+# Source files
+set(ANIM_SOURCES
+    src/point2d.cpp
+    src/keyframe.cpp
+    src/bezier_utils.cpp
+    src/channel.cpp
+    src/animation.cpp
 )
 
-# Tests
+# Header files (for IDE organization)
+set(ANIM_HEADERS
+    include/anim.hpp
+    include/anim/point2d.hpp
+    include/anim/tangent_mode.hpp
+    include/anim/keyframe.hpp
+    include/anim/bezier_utils.hpp
+    include/anim/channel.hpp
+    include/anim/animation.hpp
+)
+
+# Static library (default)
+if(ANIM_BUILD_STATIC)
+    add_library(anim_static STATIC ${ANIM_SOURCES} ${ANIM_HEADERS})
+    target_include_directories(anim_static PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    )
+    set_target_properties(anim_static PROPERTIES
+        OUTPUT_NAME anim
+        POSITION_INDEPENDENT_CODE ON
+    )
+    
+    # Set anim as the main target that tests will link against
+    add_library(anim ALIAS anim_static)
+endif()
+
+# Shared library (optional)
+if(ANIM_BUILD_SHARED)
+    add_library(anim_shared SHARED ${ANIM_SOURCES} ${ANIM_HEADERS})
+    target_include_directories(anim_shared PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    )
+    set_target_properties(anim_shared PROPERTIES
+        OUTPUT_NAME anim
+        POSITION_INDEPENDENT_CODE ON
+        VERSION ${PROJECT_VERSION}
+        SOVERSION ${PROJECT_VERSION_MAJOR}
+    )
+    
+    # Only set anim as the main target if static library is not being built
+    if(NOT ANIM_BUILD_STATIC)
+        add_library(anim ALIAS anim_shared)
+    endif()
+endif()
+
 if(ANIM_BUILD_TESTS)
-    # Enable testing
     enable_testing()
-    
-    # Include FetchContent for getting Catch2
+
     include(FetchContent)
-    
-    # Fetch Catch2 (v3 for modern C++ testing)
     FetchContent_Declare(
         Catch2
         GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-        GIT_TAG v3.4.0 # Use a specific version for reproducibility
+        GIT_TAG v3.4.0
     )
-    FetchContent_MakeAvailable(Catch2)
-      # Add the test executable
+    FetchContent_MakeAvailable(Catch2)    
     add_executable(anim_tests 
         tests/test_main.cpp
         tests/test_point2d.cpp
         tests/test_keyframe.cpp
-        tests/test_animation_channel.cpp
+        tests/test_channel.cpp
         tests/test_animation.cpp
         tests/test_bezier_utils.cpp
     )
     
-    # Link against Catch2 and our anim library
     target_link_libraries(anim_tests PRIVATE Catch2::Catch2WithMain anim)
-    
-    # Include the Catch2 CMake scripts
     include(${Catch2_SOURCE_DIR}/extras/Catch.cmake)
-    
-    # Register tests
     catch_discover_tests(anim_tests)
 endif()
 
@@ -59,10 +96,25 @@ if(ANIM_BUILD_EXAMPLES)
 endif()
 
 # Install rules
-install(TARGETS anim
-    EXPORT anim-targets
-    INCLUDES DESTINATION include
-)
+if(ANIM_BUILD_STATIC)
+    install(TARGETS anim_static
+        EXPORT anim-targets
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+        RUNTIME DESTINATION bin
+        INCLUDES DESTINATION include
+    )
+endif()
+
+if(ANIM_BUILD_SHARED)
+    install(TARGETS anim_shared
+        EXPORT anim-targets
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+        RUNTIME DESTINATION bin
+        INCLUDES DESTINATION include
+    )
+endif()
 
 install(DIRECTORY include/ DESTINATION include)
 

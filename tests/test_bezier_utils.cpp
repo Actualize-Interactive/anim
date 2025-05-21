@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <anim/bezier_utils.h>
+#include <anim/bezier_utils.hpp>
 
 using namespace anim;
 

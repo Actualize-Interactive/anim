@@ -1,21 +1,21 @@
-#ifndef ANIM_H
-#define ANIM_H
+#ifndef ANIM_HPP
+#define ANIM_HPP
 
 /**
- * @file anim.h
- * @brief A modern C++ header-only library for creating, managing, and evaluating animation channels.
+ * @file anim.hpp
+ * @brief A modern C++ library for creating, managing, and evaluating animation channels.
  * 
  * This library provides a comprehensive set of tools for working with animation based on
  * Bézier curves and immutable keyframe objects. It supports various tangent modes, keyframe
  * manipulation, and evaluation of animation curves.
  */
 
-#include "anim/point2d.h"
-#include "anim/tangent_mode.h"
-#include "anim/keyframe.h"
-#include "anim/bezier_utils.h"
-#include "anim/animation_channel.h"
-#include "anim/animation.h"
+#include "anim/point2d.hpp"
+#include "anim/tangent_mode.hpp"
+#include "anim/keyframe.hpp"
+#include "anim/bezier_utils.hpp"
+#include "anim/channel.hpp"
+#include "anim/animation.hpp"
 
 /**
  * @namespace anim
@@ -24,4 +24,4 @@
  * All components of the anim library are contained within this namespace.
  */
 
-#endif // ANIM_H
+#endif // ANIM_HPP
