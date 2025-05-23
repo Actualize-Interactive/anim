@@ -65,63 +65,63 @@ int main() {
     // Two keyframes at t=0.0 and t=1.0 with values 0.0 and 1.0
     // Then a third keyframe at t=2.0 with value 0.0
       // LINEAR mode
-    linear_channel.set_keyframe(0.0, 0.0, 
+    linear_channel.set_keyframe_at_time(0.0, 0.0, 
         anim::Point2D(-0.3, 0.0), anim::Point2D(0.3, 0.0), 
         anim::TangentMode::linear);
-    linear_channel.set_keyframe(1.0, 1.0, 
+    linear_channel.set_keyframe_at_time(1.0, 1.0, 
         anim::Point2D(0.7, 1.0), anim::Point2D(1.3, 1.0), 
         anim::TangentMode::linear);
-    linear_channel.set_keyframe(2.0, 0.0, 
+    linear_channel.set_keyframe_at_time(2.0, 0.0, 
         anim::Point2D(1.7, 0.0), anim::Point2D(2.3, 0.0), 
         anim::TangentMode::linear);
       // FLAT mode
-    flat_channel.set_keyframe(0.0, 0.0, 
+    flat_channel.set_keyframe_at_time(0.0, 0.0, 
         anim::Point2D(-0.3, 0.0), anim::Point2D(0.3, 0.0), 
         anim::TangentMode::flat);
-    flat_channel.set_keyframe(1.0, 1.0, 
+    flat_channel.set_keyframe_at_time(1.0, 1.0, 
         anim::Point2D(0.7, 1.0), anim::Point2D(1.3, 1.0), 
         anim::TangentMode::flat);
-    flat_channel.set_keyframe(2.0, 0.0, 
+    flat_channel.set_keyframe_at_time(2.0, 0.0, 
         anim::Point2D(1.7, 0.0), anim::Point2D(2.3, 0.0), 
         anim::TangentMode::flat);
       // SMOOTH_AUTO mode
-    smooth_auto_channel.set_keyframe(0.0, 0.0, 
+    smooth_auto_channel.set_keyframe_at_time(0.0, 0.0, 
         anim::Point2D(-0.3, 0.0), anim::Point2D(0.3, 0.0), 
         anim::TangentMode::smoothAuto);
-    smooth_auto_channel.set_keyframe(1.0, 1.0, 
+    smooth_auto_channel.set_keyframe_at_time(1.0, 1.0, 
         anim::Point2D(0.7, 1.0), anim::Point2D(1.3, 1.0), 
         anim::TangentMode::smoothAuto);
-    smooth_auto_channel.set_keyframe(2.0, 0.0, 
+    smooth_auto_channel.set_keyframe_at_time(2.0, 0.0, 
         anim::Point2D(1.7, 0.0), anim::Point2D(2.3, 0.0), 
         anim::TangentMode::smoothAuto);
       // SMOOTH_MANUAL mode (with specifically placed handles)
-    smooth_manual_channel.set_keyframe(0.0, 0.0, 
+    smooth_manual_channel.set_keyframe_at_time(0.0, 0.0, 
         anim::Point2D(-0.3, 0.0), anim::Point2D(0.3, 0.3), 
         anim::TangentMode::smoothManual);
-    smooth_manual_channel.set_keyframe(1.0, 1.0, 
+    smooth_manual_channel.set_keyframe_at_time(1.0, 1.0, 
         anim::Point2D(0.7, 0.7), anim::Point2D(1.3, 0.7), 
         anim::TangentMode::smoothManual);
-    smooth_manual_channel.set_keyframe(2.0, 0.0, 
+    smooth_manual_channel.set_keyframe_at_time(2.0, 0.0, 
         anim::Point2D(1.7, 0.3), anim::Point2D(2.3, 0.0), 
         anim::TangentMode::smoothManual);
       // STEPPED mode
-    stepped_channel.set_keyframe(0.0, 0.0, 
+    stepped_channel.set_keyframe_at_time(0.0, 0.0, 
         anim::Point2D(-0.3, 0.0), anim::Point2D(0.3, 0.0), 
         anim::TangentMode::stepped);
-    stepped_channel.set_keyframe(1.0, 1.0, 
+    stepped_channel.set_keyframe_at_time(1.0, 1.0, 
         anim::Point2D(0.7, 1.0), anim::Point2D(1.3, 1.0), 
         anim::TangentMode::stepped);
-    stepped_channel.set_keyframe(2.0, 0.0, 
+    stepped_channel.set_keyframe_at_time(2.0, 0.0, 
         anim::Point2D(1.7, 0.0), anim::Point2D(2.3, 0.0), 
         anim::TangentMode::stepped);
       // BROKEN mode (with handles creating asymmetric curves)
-    broken_channel.set_keyframe(0.0, 0.0, 
+    broken_channel.set_keyframe_at_time(0.0, 0.0, 
         anim::Point2D(-0.3, 0.0), anim::Point2D(0.3, 0.5), 
         anim::TangentMode::broken);
-    broken_channel.set_keyframe(1.0, 1.0, 
+    broken_channel.set_keyframe_at_time(1.0, 1.0, 
         anim::Point2D(0.7, 0.5), anim::Point2D(1.3, 0.5), 
         anim::TangentMode::broken);
-    broken_channel.set_keyframe(2.0, 0.0, 
+    broken_channel.set_keyframe_at_time(2.0, 0.0, 
         anim::Point2D(1.7, 0.5), anim::Point2D(2.3, 0.0), 
         anim::TangentMode::broken);
     
@@ -156,34 +156,34 @@ int main() {
     anim::Animation animation;
     // Create X position channel (accelerating motion)
     anim::Channel x_channel("position.x");
-    x_channel.set_keyframe(0.0, 0.0, 
+    x_channel.set_keyframe_at_time(0.0, 0.0, 
         anim::Point2D(-0.3, 0.0), anim::Point2D(0.3, 0.0), 
         anim::TangentMode::smoothAuto);
-    x_channel.set_keyframe(1.0, 1.0, 
+    x_channel.set_keyframe_at_time(1.0, 1.0, 
         anim::Point2D(0.7, 1.0), anim::Point2D(1.3, 1.0), 
         anim::TangentMode::smoothAuto);
     
     // Create Y position channel (bounce curve)
     anim::Channel y_channel("position.y");
-    y_channel.set_keyframe(0.0, 0.0, 
+    y_channel.set_keyframe_at_time(0.0, 0.0, 
         anim::Point2D(-0.3, 0.0), anim::Point2D(0.3, 0.0), 
         anim::TangentMode::smoothAuto);
-    y_channel.set_keyframe(0.5, 1.0, 
+    y_channel.set_keyframe_at_time(0.5, 1.0, 
         anim::Point2D(0.4, 1.0), anim::Point2D(0.6, 1.0), 
         anim::TangentMode::smoothAuto);
-    y_channel.set_keyframe(1.0, 0.0, 
+    y_channel.set_keyframe_at_time(1.0, 0.0, 
         anim::Point2D(0.7, 0.0), anim::Point2D(1.3, 0.0), 
         anim::TangentMode::smoothAuto);
     
     // Create scale channel (starts and ends at 1.0, contracts in the middle)
     anim::Channel scale_channel("scale");
-    scale_channel.set_keyframe(0.0, 1.0, 
+    scale_channel.set_keyframe_at_time(0.0, 1.0, 
         anim::Point2D(-0.3, 1.0), anim::Point2D(0.3, 1.0), 
         anim::TangentMode::flat);
-    scale_channel.set_keyframe(0.5, 0.5, 
+    scale_channel.set_keyframe_at_time(0.5, 0.5, 
         anim::Point2D(0.4, 0.5), anim::Point2D(0.6, 0.5), 
         anim::TangentMode::flat);
-    scale_channel.set_keyframe(1.0, 1.0, 
+    scale_channel.set_keyframe_at_time(1.0, 1.0, 
         anim::Point2D(0.7, 1.0), anim::Point2D(1.3, 1.0), 
         anim::TangentMode::flat);
     
