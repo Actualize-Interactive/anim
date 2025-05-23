@@ -119,6 +119,261 @@ public:
      */
     size_t find_channel_index(const std::string& name) const;
     
+    // Keyframe manipulation
+    /**
+     * @brief Insert a new keyframe into a channel specified by name
+     *
+     * @param channel_name The name of the channel
+     * @param time The time position for the keyframe
+     * @param value The value at this keyframe
+     * @param in_tangent The incoming Bézier handle
+     * @param out_tangent The outgoing Bézier handle
+     * @param mode The tangent mode that controls how handles behave
+     * @return true if keyframe was inserted, false otherwise
+     */
+    bool insert_keyframe(const std::string& channel_name, 
+                       double time, double value,
+                       const BezierHandle& in_tangent,
+                       const BezierHandle& out_tangent,
+                       TangentMode mode);
+
+    /**
+     * @brief Insert a new keyframe into a channel specified by index
+     *
+     * @param channel_index The index of the channel
+     * @param time The time position for the keyframe
+     * @param value The value at this keyframe
+     * @param in_tangent The incoming Bézier handle
+     * @param out_tangent The outgoing Bézier handle
+     * @param mode The tangent mode that controls how handles behave
+     * @return true if keyframe was inserted, false otherwise
+     */
+    bool insert_keyframe(size_t channel_index,
+                       double time, double value,
+                       const BezierHandle& in_tangent,
+                       const BezierHandle& out_tangent,
+                       TangentMode mode);
+
+    /**
+     * @brief Update or insert a keyframe in a channel specified by name
+     *
+     * @param channel_name The name of the channel
+     * @param time The time position for the keyframe
+     * @param value The value at this keyframe
+     * @param in_tangent The incoming Bézier handle
+     * @param out_tangent The outgoing Bézier handle
+     * @param mode The tangent mode that controls how handles behave
+     * @return true if keyframe was upserted, false if channel not found
+     */
+    bool upsert_keyframe(const std::string& channel_name,
+                        double time, double value,
+                        const BezierHandle& in_tangent,
+                        const BezierHandle& out_tangent,
+                        TangentMode mode);
+
+    /**
+     * @brief Update or insert a keyframe in a channel specified by index
+     *
+     * @param channel_index The index of the channel
+     * @param time The time position for the keyframe
+     * @param value The value at this keyframe
+     * @param in_tangent The incoming Bézier handle
+     * @param out_tangent The outgoing Bézier handle
+     * @param mode The tangent mode that controls how handles behave
+     * @return true if keyframe was upserted, false if channel not found
+     */
+    bool upsert_keyframe(size_t channel_index,
+                        double time, double value,
+                        const BezierHandle& in_tangent,
+                        const BezierHandle& out_tangent,
+                        TangentMode mode);
+
+    /**
+     * @brief Update an existing keyframe in a channel specified by name
+     *
+     * @param channel_name The name of the channel
+     * @param time The time of the keyframe to update
+     * @param new_value The new value for the keyframe
+     * @param new_in_tangent The new incoming tangent handle
+     * @param new_out_tangent The new outgoing tangent handle
+     * @param new_mode The new tangent mode
+     * @return true if keyframe was updated, false if channel or keyframe not found
+     */
+    bool update_keyframe_at_time(const std::string& channel_name,
+                             double time,
+                             double new_value,
+                             const BezierHandle& new_in_tangent,
+                             const BezierHandle& new_out_tangent,
+                             TangentMode new_mode);
+
+    /**
+     * @brief Update an existing keyframe in a channel specified by index
+     *
+     * @param channel_index The index of the channel
+     * @param time The time of the keyframe to update
+     * @param new_value The new value for the keyframe
+     * @param new_in_tangent The new incoming tangent handle
+     * @param new_out_tangent The new outgoing tangent handle
+     * @param new_mode The new tangent mode
+     * @return true if keyframe was updated, false if channel or keyframe not found
+     */
+    bool update_keyframe_at_time(size_t channel_index,
+                             double time,
+                             double new_value,
+                             const BezierHandle& new_in_tangent,
+                             const BezierHandle& new_out_tangent,
+                             TangentMode new_mode);
+
+    /**
+     * @brief Update selected properties of an existing keyframe in a channel by name
+     *
+     * @param channel_name The name of the channel
+     * @param time The time of the keyframe to update
+     * @param new_value Optional new value for the keyframe
+     * @param new_in_tangent Optional new incoming tangent handle
+     * @param new_out_tangent Optional new outgoing tangent handle
+     * @param new_mode Optional new tangent mode
+     * @return true if keyframe was updated, false if channel or keyframe not found
+     */
+    bool update_keyframe_at_time(const std::string& channel_name,
+                             double time,
+                             const std::optional<double>& new_value = std::nullopt,
+                             const std::optional<BezierHandle>& new_in_tangent = std::nullopt,
+                             const std::optional<BezierHandle>& new_out_tangent = std::nullopt,
+                             const std::optional<TangentMode>& new_mode = std::nullopt);
+
+    /**
+     * @brief Update selected properties of an existing keyframe in a channel by index
+     *
+     * @param channel_index The index of the channel
+     * @param time The time of the keyframe to update
+     * @param new_value Optional new value for the keyframe
+     * @param new_in_tangent Optional new incoming tangent handle
+     * @param new_out_tangent Optional new outgoing tangent handle
+     * @param new_mode Optional new tangent mode
+     * @return true if keyframe was updated, false if channel or keyframe not found
+     */
+    bool update_keyframe_at_time(size_t channel_index,
+                             double time,
+                             const std::optional<double>& new_value = std::nullopt,
+                             const std::optional<BezierHandle>& new_in_tangent = std::nullopt,
+                             const std::optional<BezierHandle>& new_out_tangent = std::nullopt,
+                             const std::optional<TangentMode>& new_mode = std::nullopt);
+
+    /**
+     * @brief Update a keyframe at a specific index in a channel specified by name
+     *
+     * @param channel_name The name of the channel
+     * @param keyframe_index The index of the keyframe to update
+     * @param time New time for the keyframe
+     * @param value New value for the keyframe
+     * @param in_tangent New incoming tangent handle
+     * @param out_tangent New outgoing tangent handle
+     * @param mode New tangent mode
+     * @return true if keyframe was updated, false if channel not found or index out of range
+     */
+    bool update_keyframe(const std::string& channel_name,
+                      size_t keyframe_index,
+                      double time, double value,
+                      const BezierHandle& in_tangent,
+                      const BezierHandle& out_tangent,
+                      TangentMode mode);
+
+    /**
+     * @brief Update a keyframe at a specific index in a channel specified by index
+     *
+     * @param channel_index The index of the channel
+     * @param keyframe_index The index of the keyframe to update
+     * @param time New time for the keyframe
+     * @param value New value for the keyframe
+     * @param in_tangent New incoming tangent handle
+     * @param out_tangent New outgoing tangent handle
+     * @param mode New tangent mode
+     * @return true if keyframe was updated, false if channel not found or index out of range
+     */
+    bool update_keyframe(size_t channel_index,
+                      size_t keyframe_index,
+                      double time, double value,
+                      const BezierHandle& in_tangent,
+                      const BezierHandle& out_tangent,
+                      TangentMode mode);
+
+    /**
+     * @brief Update selected properties of a keyframe by index in a channel specified by name
+     *
+     * @param channel_name The name of the channel
+     * @param keyframe_index The index of the keyframe to update
+     * @param time Optional new time for the keyframe
+     * @param value Optional new value for the keyframe
+     * @param in_tangent Optional new incoming tangent handle
+     * @param out_tangent Optional new outgoing tangent handle
+     * @param mode Optional new tangent mode
+     * @return true if keyframe was updated, false if channel not found or index out of range
+     */
+    bool update_keyframe(const std::string& channel_name,
+                      size_t keyframe_index,
+                      const std::optional<double>& time = std::nullopt,
+                      const std::optional<double>& value = std::nullopt,
+                      const std::optional<BezierHandle>& in_tangent = std::nullopt,
+                      const std::optional<BezierHandle>& out_tangent = std::nullopt,
+                      const std::optional<TangentMode>& mode = std::nullopt);
+
+    /**
+     * @brief Update selected properties of a keyframe by index in a channel specified by index
+     *
+     * @param channel_index The index of the channel
+     * @param keyframe_index The index of the keyframe to update
+     * @param time Optional new time for the keyframe
+     * @param value Optional new value for the keyframe
+     * @param in_tangent Optional new incoming tangent handle
+     * @param out_tangent Optional new outgoing tangent handle
+     * @param mode Optional new tangent mode
+     * @return true if keyframe was updated, false if channel not found or index out of range
+     */
+    bool update_keyframe(size_t channel_index,
+                      size_t keyframe_index,
+                      const std::optional<double>& time = std::nullopt,
+                      const std::optional<double>& value = std::nullopt,
+                      const std::optional<BezierHandle>& in_tangent = std::nullopt,
+                      const std::optional<BezierHandle>& out_tangent = std::nullopt,
+                      const std::optional<TangentMode>& mode = std::nullopt);
+
+    /**
+     * @brief Remove a keyframe from a channel by name and time
+     *
+     * @param channel_name The name of the channel
+     * @param time The time of the keyframe to remove
+     * @return true if keyframe was removed, false if channel not found or keyframe not at that time
+     */
+    bool remove_keyframe(const std::string& channel_name, double time);
+
+    /**
+     * @brief Remove a keyframe from a channel by index and time
+     *
+     * @param channel_index The index of the channel
+     * @param time The time of the keyframe to remove
+     * @return true if keyframe was removed, false if channel not found or keyframe not at that time
+     */
+    bool remove_keyframe(size_t channel_index, double time);
+
+    /**
+     * @brief Remove a keyframe from a channel by name and index
+     *
+     * @param channel_name The name of the channel
+     * @param keyframe_index The index of the keyframe to remove
+     * @return true if keyframe was removed, false if channel not found or index out of range
+     */
+    bool remove_keyframe_at_index(const std::string& channel_name, size_t keyframe_index);
+
+    /**
+     * @brief Remove a keyframe from a channel by index and index
+     *
+     * @param channel_index The index of the channel
+     * @param keyframe_index The index of the keyframe to remove
+     * @return true if keyframe was removed, false if channel not found or index out of range
+     */
+    bool remove_keyframe_at_index(size_t channel_index, size_t keyframe_index);
+    
     // Evaluation
     /**
      * @brief Evaluate all channels at a specific time

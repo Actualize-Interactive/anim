@@ -102,6 +102,231 @@ size_t Animation::find_channel_index(const std::string& name) const {
     return static_cast<size_t>(-1);
 }
 
+// Keyframe manipulation
+bool Animation::insert_keyframe(const std::string& channel_name,
+                              double time, double value,
+                              const BezierHandle& in_tangent,
+                              const BezierHandle& out_tangent,
+                              TangentMode mode) {
+    Channel* channel = get_channel(channel_name);
+    if (!channel) {
+        return false;
+    }
+    
+    return channel->insert_keyframe(time, value, in_tangent, out_tangent, mode);
+}
+
+bool Animation::insert_keyframe(size_t channel_index,
+                              double time, double value,
+                              const BezierHandle& in_tangent,
+                              const BezierHandle& out_tangent,
+                              TangentMode mode) {
+    Channel* channel = get_channel(channel_index);
+    if (!channel) {
+        return false;
+    }
+    
+    return channel->insert_keyframe(time, value, in_tangent, out_tangent, mode);
+}
+
+bool Animation::upsert_keyframe(const std::string& channel_name,
+                              double time, double value,
+                              const BezierHandle& in_tangent,
+                              const BezierHandle& out_tangent,
+                              TangentMode mode) {
+    Channel* channel = get_channel(channel_name);
+    if (!channel) {
+        return false;
+    }
+    
+    channel->upsert_keyframe(time, value, in_tangent, out_tangent, mode);
+    return true;
+}
+
+bool Animation::upsert_keyframe(size_t channel_index,
+                              double time, double value,
+                              const BezierHandle& in_tangent,
+                              const BezierHandle& out_tangent,
+                              TangentMode mode) {
+    Channel* channel = get_channel(channel_index);
+    if (!channel) {
+        return false;
+    }
+    
+    channel->upsert_keyframe(time, value, in_tangent, out_tangent, mode);
+    return true;
+}
+
+bool Animation::update_keyframe_at_time(const std::string& channel_name,
+                                     double time,
+                                     double new_value,
+                                     const BezierHandle& new_in_tangent,
+                                     const BezierHandle& new_out_tangent,
+                                     TangentMode new_mode) {
+    Channel* channel = get_channel(channel_name);
+    if (!channel) {
+        return false;
+    }
+    
+    return channel->update_keyframe_at_time(time, new_value, new_in_tangent, new_out_tangent, new_mode);
+}
+
+bool Animation::update_keyframe_at_time(size_t channel_index,
+                                     double time,
+                                     double new_value,
+                                     const BezierHandle& new_in_tangent,
+                                     const BezierHandle& new_out_tangent,
+                                     TangentMode new_mode) {
+    Channel* channel = get_channel(channel_index);
+    if (!channel) {
+        return false;
+    }
+    
+    return channel->update_keyframe_at_time(time, new_value, new_in_tangent, new_out_tangent, new_mode);
+}
+
+bool Animation::update_keyframe_at_time(const std::string& channel_name,
+                                     double time,
+                                     const std::optional<double>& new_value,
+                                     const std::optional<BezierHandle>& new_in_tangent,
+                                     const std::optional<BezierHandle>& new_out_tangent,
+                                     const std::optional<TangentMode>& new_mode) {
+    Channel* channel = get_channel(channel_name);
+    if (!channel) {
+        return false;
+    }
+    
+    return channel->update_keyframe_at_time(time, new_value, new_in_tangent, new_out_tangent, new_mode);
+}
+
+bool Animation::update_keyframe_at_time(size_t channel_index,
+                                     double time,
+                                     const std::optional<double>& new_value,
+                                     const std::optional<BezierHandle>& new_in_tangent,
+                                     const std::optional<BezierHandle>& new_out_tangent,
+                                     const std::optional<TangentMode>& new_mode) {
+    Channel* channel = get_channel(channel_index);
+    if (!channel) {
+        return false;
+    }
+    
+    return channel->update_keyframe_at_time(time, new_value, new_in_tangent, new_out_tangent, new_mode);
+}
+
+bool Animation::update_keyframe(const std::string& channel_name,
+                              size_t keyframe_index,
+                              double time, double value,
+                              const BezierHandle& in_tangent,
+                              const BezierHandle& out_tangent,
+                              TangentMode mode) {
+    Channel* channel = get_channel(channel_name);
+    if (!channel) {
+        return false;
+    }
+    
+    try {
+        channel->update_keyframe(keyframe_index, time, value, in_tangent, out_tangent, mode);
+        return true;
+    } catch (const std::out_of_range&) {
+        return false;
+    }
+}
+
+bool Animation::update_keyframe(size_t channel_index,
+                              size_t keyframe_index,
+                              double time, double value,
+                              const BezierHandle& in_tangent,
+                              const BezierHandle& out_tangent,
+                              TangentMode mode) {
+    Channel* channel = get_channel(channel_index);
+    if (!channel) {
+        return false;
+    }
+    
+    try {
+        channel->update_keyframe(keyframe_index, time, value, in_tangent, out_tangent, mode);
+        return true;
+    } catch (const std::out_of_range&) {
+        return false;
+    }
+}
+
+bool Animation::update_keyframe(const std::string& channel_name,
+                              size_t keyframe_index,
+                              const std::optional<double>& time,
+                              const std::optional<double>& value,
+                              const std::optional<BezierHandle>& in_tangent,
+                              const std::optional<BezierHandle>& out_tangent,
+                              const std::optional<TangentMode>& mode) {
+    Channel* channel = get_channel(channel_name);
+    if (!channel) {
+        return false;
+    }
+    
+    try {
+        channel->update_keyframe(keyframe_index, time, value, in_tangent, out_tangent, mode);
+        return true;
+    } catch (const std::out_of_range&) {
+        return false;
+    }
+}
+
+bool Animation::update_keyframe(size_t channel_index,
+                              size_t keyframe_index,
+                              const std::optional<double>& time,
+                              const std::optional<double>& value,
+                              const std::optional<BezierHandle>& in_tangent,
+                              const std::optional<BezierHandle>& out_tangent,
+                              const std::optional<TangentMode>& mode) {
+    Channel* channel = get_channel(channel_index);
+    if (!channel) {
+        return false;
+    }
+    
+    try {
+        channel->update_keyframe(keyframe_index, time, value, in_tangent, out_tangent, mode);
+        return true;
+    } catch (const std::out_of_range&) {
+        return false;
+    }
+}
+
+bool Animation::remove_keyframe(const std::string& channel_name, double time) {
+    Channel* channel = get_channel(channel_name);
+    if (!channel) {
+        return false;
+    }
+    
+    return channel->remove_keyframe_at_time(time);
+}
+
+bool Animation::remove_keyframe(size_t channel_index, double time) {
+    Channel* channel = get_channel(channel_index);
+    if (!channel) {
+        return false;
+    }
+    
+    return channel->remove_keyframe_at_time(time);
+}
+
+bool Animation::remove_keyframe_at_index(const std::string& channel_name, size_t keyframe_index) {
+    Channel* channel = get_channel(channel_name);
+    if (!channel) {
+        return false;
+    }
+    
+    return channel->remove_keyframe(keyframe_index);
+}
+
+bool Animation::remove_keyframe_at_index(size_t channel_index, size_t keyframe_index) {
+    Channel* channel = get_channel(channel_index);
+    if (!channel) {
+        return false;
+    }
+    
+    return channel->remove_keyframe(keyframe_index);
+}
+
 // Evaluation functions
 std::map<std::string, double> Animation::evaluate_channels(double time) const {
     std::map<std::string, double> results;
