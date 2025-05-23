@@ -28,16 +28,19 @@ Channel* Animation::get_channel(size_t index) {
     return &m_channels[index];
 }
 
+const Channel* Animation::get_channel(size_t index) const {
+    if (index >= m_channels.size()) {
+        return nullptr;
+    }
+    return &m_channels[index];
+}
+
 bool Animation::remove_channel(size_t index) {
     if (index >= m_channels.size()) {
         return false;
     }
     m_channels.erase(m_channels.begin() + index);
     return true;
-}
-
-size_t Animation::get_channel_count() const {
-    return m_channels.size();
 }
 
 // Channel management by name
@@ -50,6 +53,27 @@ Channel* Animation::get_channel(const std::string& name) {
         return &(*it);
     }
     return nullptr;
+}
+
+const Channel* Animation::get_channel(const std::string& name) const {
+    auto it = std::find_if(m_channels.begin(), m_channels.end(),
+                          [&name](const Channel& channel) {
+                              return channel.name() == name;
+                          });
+    if (it != m_channels.end()) {
+        return &(*it);
+    }
+    return nullptr;
+}
+
+bool Animation::has_channel(const std::string &name) const
+{
+    return get_channel(name) != nullptr;
+}
+
+size_t Animation::get_channel_count() const 
+{
+    return m_channels.size();
 }
 
 bool Animation::remove_channel(const std::string& name) {
