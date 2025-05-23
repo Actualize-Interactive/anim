@@ -55,13 +55,14 @@ public:
      * @return Pointer to the channel, or nullptr if index is out of range
      */
     Channel* get_channel(size_t index);
-    
+
     /**
-     * @brief Get the number of channels in the animation
-     * @return The channel count
+     * @brief Get a channel by its index (const version)
+     * @param index The index of the channel to retrieve
+     * @return Pointer to the channel, or nullptr if index is out of range
      */
-    size_t get_channel_count() const;
-    
+    const Channel* get_channel(size_t index) const;
+
     // Channel management by name
     /**
      * @brief Get a channel by its name
@@ -71,11 +72,26 @@ public:
     Channel* get_channel(const std::string& name);
 
     /**
+     * @brief Get a channel by its name (const version)
+     * @param name The name of the channel to retrieve
+     * @return Pointer to the channel, or nullptr if no channel with that name exists
+     */
+    const Channel* get_channel(const std::string& name) const;
+
+    /**
      * @brief Check if a channel with the specified name exists
      * @param name The name of the channel to check
      * @return true if the channel exists, false otherwise
      */
     bool has_channel(const std::string& name) const;
+
+    
+    /**
+     * @brief Get the number of channels in the animation
+     * @return The channel count
+     */
+    size_t get_channel_count() const;
+    
 
     /**
      * @brief Remove a channel by its name
