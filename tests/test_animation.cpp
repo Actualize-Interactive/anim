@@ -31,12 +31,12 @@ TEST_CASE("Animation with multiple channels", "[animation]") {
     Animation anim;
     // Create and add channels
     Channel channel1("position.x");
-    channel1.set_keyframe_at_time(1.0, 10.0, Point2D(0.9, 10.0), Point2D(1.1, 10.0), TangentMode::linear);
-    channel1.set_keyframe_at_time(3.0, 30.0, Point2D(2.9, 30.0), Point2D(3.1, 30.0), TangentMode::linear);
+    channel1.set_keyframe_at_time(1.0, 10.0, BezierHandle(0.9, 10.0), BezierHandle(1.1, 10.0), TangentMode::linear);
+    channel1.set_keyframe_at_time(3.0, 30.0, BezierHandle(2.9, 30.0), BezierHandle(3.1, 30.0), TangentMode::linear);
     
     Channel channel2("position.y");
-    channel2.set_keyframe_at_time(2.0, 20.0, Point2D(1.9, 20.0), Point2D(2.1, 20.0), TangentMode::linear);
-    channel2.set_keyframe_at_time(4.0, 40.0, Point2D(3.9, 40.0), Point2D(4.1, 40.0), TangentMode::linear);
+    channel2.set_keyframe_at_time(2.0, 20.0, BezierHandle(1.9, 20.0), BezierHandle(2.1, 20.0), TangentMode::linear);
+    channel2.set_keyframe_at_time(4.0, 40.0, BezierHandle(3.9, 40.0), BezierHandle(4.1, 40.0), TangentMode::linear);
     
     anim.append_channel(channel1);
     anim.append_channel(channel2);
@@ -138,7 +138,7 @@ TEST_CASE("Animation with empty channel", "[animation]") {
     
     // Add a non-empty channel
     Channel channel("non_empty");
-    channel.set_keyframe_at_time(1.0, 10.0, Point2D(0.9, 10.0), Point2D(1.1, 10.0), TangentMode::linear);
+    channel.set_keyframe_at_time(1.0, 10.0, BezierHandle(0.9, 10.0), BezierHandle(1.1, 10.0), TangentMode::linear);
     anim.append_channel(channel);
     
     SECTION("Animation is not empty") {
@@ -172,7 +172,7 @@ TEST_CASE("Animation channel creation", "[animation]") {
         REQUIRE(anim.get_channel_count() == 1);
         
         // Set a keyframe on the created channel
-        ch1->set_keyframe_at_time(1.0, 5.0, Point2D(0.9, 5.0), Point2D(1.1, 5.0), TangentMode::linear);
+        ch1->set_keyframe_at_time(1.0, 5.0, BezierHandle(0.9, 5.0), BezierHandle(1.1, 5.0), TangentMode::linear);
         REQUIRE_FALSE(ch1->is_empty());
         
         // Channel should be accessible through both index and name
@@ -199,17 +199,17 @@ TEST_CASE("Animation channel modification", "[animation]") {
     
     // Set up animation with multiple channels
     Channel* ch1 = anim.create_channel("channel1");
-    ch1->set_keyframe_at_time(1.0, 10.0, Point2D(0.9, 10.0), Point2D(1.1, 10.0), TangentMode::linear);
+    ch1->set_keyframe_at_time(1.0, 10.0, BezierHandle(0.9, 10.0), BezierHandle(1.1, 10.0), TangentMode::linear);
     
     Channel* ch2 = anim.create_channel("channel2");
-    ch2->set_keyframe_at_time(2.0, 20.0, Point2D(1.9, 20.0), Point2D(2.1, 20.0), TangentMode::linear);
+    ch2->set_keyframe_at_time(2.0, 20.0, BezierHandle(1.9, 20.0), BezierHandle(2.1, 20.0), TangentMode::linear);
     
     SECTION("Modifying channel through the animation pointer") {
         Channel* ch = anim.get_channel("channel1");
         REQUIRE(ch != nullptr);
         
         // Add a new keyframe
-        ch->set_keyframe_at_time(3.0, 30.0, Point2D(2.9, 30.0), Point2D(3.1, 30.0), TangentMode::linear);
+        ch->set_keyframe_at_time(3.0, 30.0, BezierHandle(2.9, 30.0), BezierHandle(3.1, 30.0), TangentMode::linear);
         
         // Verify the keyframe was added
         REQUIRE(ch->get_all_keyframes().size() == 2);
@@ -237,7 +237,7 @@ TEST_CASE("Animation channel modification", "[animation]") {
         
         // Modify channel1
         Channel* ch = anim.get_channel("channel1");
-        ch->set_keyframe_at_time(1.0, 100.0, Point2D(0.9, 100.0), Point2D(1.1, 100.0), TangentMode::linear);
+        ch->set_keyframe_at_time(1.0, 100.0, BezierHandle(0.9, 100.0), BezierHandle(1.1, 100.0), TangentMode::linear);
         
         // Evaluation should reflect changes
         auto results2 = anim.evaluate_channels(1.5);
@@ -251,8 +251,8 @@ TEST_CASE("Animation channel sampling", "[animation]") {
     
     // Create channels with keyframes at different times
     Channel* ch1 = anim.create_channel("ch1");
-    ch1->set_keyframe_at_time(0.0, 0.0, Point2D(-0.1, 0.0), Point2D(0.1, 0.0), TangentMode::linear);
-    ch1->set_keyframe_at_time(10.0, 100.0, Point2D(9.9, 100.0), Point2D(10.1, 100.0), TangentMode::linear);
+    ch1->set_keyframe_at_time(0.0, 0.0, BezierHandle(-0.1, 0.0), BezierHandle(0.1, 0.0), TangentMode::linear);
+    ch1->set_keyframe_at_time(10.0, 100.0, BezierHandle(9.9, 100.0), BezierHandle(10.1, 100.0), TangentMode::linear);
     
     SECTION("Sampling with fixed count") {
         auto results = anim.evaluate_channels_range(0.0, 10.0, 11);

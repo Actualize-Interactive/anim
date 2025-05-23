@@ -87,7 +87,7 @@ if(ANIM_BUILD_TESTS)
     FetchContent_MakeAvailable(Catch2)    
     add_executable(anim_tests 
         tests/test_main.cpp
-        tests/test_point2d.cpp
+        tests/test_bezier_handle.cpp
         tests/test_keyframe.cpp
         tests/test_channel.cpp
         tests/test_animation.cpp

@@ -118,8 +118,8 @@ TEST_CASE("Channel tangent modes", "[channel]") {
     Channel channel;
     SECTION("LINEAR mode evaluation") {
         // Set up two keyframes with LINEAR mode
-        channel.set_keyframe_at_time(1.0, 2.0, Point2D(0.9, 2.0), Point2D(1.1, 2.0), TangentMode::linear);
-        channel.set_keyframe_at_time(3.0, 6.0, Point2D(2.9, 6.0), Point2D(3.1, 6.0), TangentMode::linear);
+        channel.set_keyframe_at_time(1.0, 2.0, BezierHandle(0.9, 2.0), BezierHandle(1.1, 2.0), TangentMode::linear);
+        channel.set_keyframe_at_time(3.0, 6.0, BezierHandle(2.9, 6.0), BezierHandle(3.1, 6.0), TangentMode::linear);
         
         // Evaluate at points between keyframes
         REQUIRE(channel.evaluate(1.0) == Catch::Approx(2.0));
@@ -127,8 +127,8 @@ TEST_CASE("Channel tangent modes", "[channel]") {
         REQUIRE(channel.evaluate(3.0) == Catch::Approx(6.0));
     }    SECTION("FLAT mode evaluation") {
         // Set up two keyframes with FLAT mode
-        channel.set_keyframe_at_time(1.0, 2.0, Point2D(0.9, 2.0), Point2D(1.1, 2.0), TangentMode::flat);
-        channel.set_keyframe_at_time(3.0, 6.0, Point2D(2.9, 6.0), Point2D(3.1, 6.0), TangentMode::flat);
+        channel.set_keyframe_at_time(1.0, 2.0, BezierHandle(0.9, 2.0), BezierHandle(1.1, 2.0), TangentMode::flat);
+        channel.set_keyframe_at_time(3.0, 6.0, BezierHandle(2.9, 6.0), BezierHandle(3.1, 6.0), TangentMode::flat);
         
         // Check key frame values directly
         REQUIRE(channel.evaluate(1.0) == Catch::Approx(2.0));
@@ -147,8 +147,8 @@ TEST_CASE("Channel tangent modes", "[channel]") {
     
     SECTION("STEPPED mode evaluation") {
         // Set up two keyframes with STEPPED mode
-        channel.set_keyframe_at_time(1.0, 2.0, Point2D(0.9, 2.0), Point2D(1.1, 2.0), TangentMode::stepped);
-        channel.set_keyframe_at_time(3.0, 6.0, Point2D(2.9, 6.0), Point2D(3.1, 6.0), TangentMode::stepped);
+        channel.set_keyframe_at_time(1.0, 2.0, BezierHandle(0.9, 2.0), BezierHandle(1.1, 2.0), TangentMode::stepped);
+        channel.set_keyframe_at_time(3.0, 6.0, BezierHandle(2.9, 6.0), BezierHandle(3.1, 6.0), TangentMode::stepped);
         
         // Evaluate at points between keyframes
         REQUIRE(channel.evaluate(1.0) == Catch::Approx(2.0));        REQUIRE(channel.evaluate(2.0) == Catch::Approx(2.0)); // Should stay at first keyframe value
@@ -158,8 +158,8 @@ TEST_CASE("Channel tangent modes", "[channel]") {
     
     SECTION("SMOOTH_AUTO mode evaluation") {
         // Set up keyframes with SMOOTH_AUTO mode
-        channel.set_keyframe_at_time(1.0, 2.0, Point2D(0.9, 2.0), Point2D(1.1, 2.0), TangentMode::smoothAuto);
-        channel.set_keyframe_at_time(3.0, 6.0, Point2D(2.9, 6.0), Point2D(3.1, 6.0), TangentMode::smoothAuto);
+        channel.set_keyframe_at_time(1.0, 2.0, BezierHandle(0.9, 2.0), BezierHandle(1.1, 2.0), TangentMode::smoothAuto);
+        channel.set_keyframe_at_time(3.0, 6.0, BezierHandle(2.9, 6.0), BezierHandle(3.1, 6.0), TangentMode::smoothAuto);
         
         // Evaluate at each keyframe and between
         REQUIRE(channel.evaluate(1.0) == Catch::Approx(2.0));
@@ -176,9 +176,9 @@ TEST_CASE("Channel keyframe indexing and removal", "[channel]") {
     Channel channel;
     
     // Add three keyframes
-    channel.set_keyframe_at_time(1.0, 10.0, Point2D(0.9, 10.0), Point2D(1.1, 10.0), TangentMode::flat);
-    channel.set_keyframe_at_time(2.0, 20.0, Point2D(1.9, 20.0), Point2D(2.1, 20.0), TangentMode::flat);
-    channel.set_keyframe_at_time(3.0, 30.0, Point2D(2.9, 30.0), Point2D(3.1, 30.0), TangentMode::flat);
+    channel.set_keyframe_at_time(1.0, 10.0, BezierHandle(0.9, 10.0), BezierHandle(1.1, 10.0), TangentMode::flat);
+    channel.set_keyframe_at_time(2.0, 20.0, BezierHandle(1.9, 20.0), BezierHandle(2.1, 20.0), TangentMode::flat);
+    channel.set_keyframe_at_time(3.0, 30.0, BezierHandle(2.9, 30.0), BezierHandle(3.1, 30.0), TangentMode::flat);
     
     SECTION("Keyframe count is correct") {
         REQUIRE(channel.keyframe_count() == 3);
@@ -231,8 +231,8 @@ TEST_CASE("Channel keyframe indexing and removal", "[channel]") {
 
 TEST_CASE("Channel range evaluation", "[channel]") {
     Channel channel;
-    channel.set_keyframe_at_time(1.0, 2.0, Point2D(0.9, 2.0), Point2D(1.1, 2.0), TangentMode::linear);
-    channel.set_keyframe_at_time(5.0, 6.0, Point2D(4.9, 6.0), Point2D(5.1, 6.0), TangentMode::linear);
+    channel.set_keyframe_at_time(1.0, 2.0, BezierHandle(0.9, 2.0), BezierHandle(1.1, 2.0), TangentMode::linear);
+    channel.set_keyframe_at_time(5.0, 6.0, BezierHandle(4.9, 6.0), BezierHandle(5.1, 6.0), TangentMode::linear);
     
     SECTION("Fixed sample count") {
         std::vector<double> samples = channel.evaluate_range(1.0, 5.0, 5);
