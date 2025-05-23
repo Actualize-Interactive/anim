@@ -25,48 +25,36 @@ public:
      * @brief Default constructor creates an empty animation
      */
     Animation() = default;
-
-    // Channel management by index
+   
     /**
-     * @brief Add a channel to the animation (appends to the end)
-     * @param channel The channel to add
+     * @brief Create a new channel with a specified name
+     * @param name The name identifying this channel
+     * @return Pointer to the created channel
      */
-    void add_channel(const Channel& channel);
-    
+    Channel* create_channel(const std::string& name);
+
+    /**
+     * @brief Append a channel to the end of the animation
+     * @param channel The channel to append
+     * @return Pointer to the appended channel
+     */
+    Channel* append_channel(const Channel& channel);
+
     /**
      * @brief Insert a channel at a specific position
      * @param index The position to insert the channel
      * @param channel The channel to insert
+     * @return Pointer to the inserted channel
      * @throws std::out_of_range if index is out of range
      */
-    void insert_channel(size_t index, const Channel& channel);
-    
-    /**
-     * @brief Append a channel to the end of the animation
-     * @param channel The channel to append
-     */
-    void append_channel(const Channel& channel);
-    
+    Channel* insert_channel(size_t index, const Channel& channel);
+
     /**
      * @brief Get a channel by its index
      * @param index The index of the channel to retrieve
      * @return Pointer to the channel, or nullptr if index is out of range
      */
     Channel* get_channel(size_t index);
-    
-    /**
-     * @brief Get a const channel by its index
-     * @param index The index of the channel to retrieve
-     * @return Const pointer to the channel, or nullptr if index is out of range
-     */
-    const Channel* get_channel(size_t index) const;
-    
-    /**
-     * @brief Remove a channel by its index
-     * @param index The index of the channel to remove
-     * @return true if the channel was removed, false if index was out of range
-     */
-    bool remove_channel(size_t index);
     
     /**
      * @brief Get the number of channels in the animation
@@ -81,20 +69,26 @@ public:
      * @return Pointer to the channel, or nullptr if no channel with that name exists
      */
     Channel* get_channel(const std::string& name);
-    
+
     /**
-     * @brief Get a const channel by its name
-     * @param name The name of the channel to retrieve
-     * @return Const pointer to the channel, or nullptr if no channel with that name exists
+     * @brief Check if a channel with the specified name exists
+     * @param name The name of the channel to check
+     * @return true if the channel exists, false otherwise
      */
-    const Channel* get_channel(const std::string& name) const;
-    
+    bool has_channel(const std::string& name) const;
+
     /**
      * @brief Remove a channel by its name
      * @param name The name of the channel to remove
      * @return true if the channel was found and removed, false otherwise
      */
     bool remove_channel(const std::string& name);
+    /**
+     * @brief Remove a channel by its index
+     * @param index The index of the channel to remove
+     * @return true if the channel was removed, false if index was out of range
+     */
+    bool remove_channel(size_t index);
     
     /**
      * @brief Get a list of all channel names

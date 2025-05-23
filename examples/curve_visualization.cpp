@@ -188,9 +188,9 @@ int main() {
         anim::TangentMode::flat);
     
     // Add channels to animation
-    animation.add_channel(x_channel);
-    animation.add_channel(y_channel);
-    animation.add_channel(scale_channel);
+    animation.append_channel(x_channel);
+    animation.append_channel(y_channel);
+    animation.append_channel(scale_channel);
     
     // Display the curves
     std::cout << "Position X Channel:\n";
