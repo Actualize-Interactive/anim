@@ -2,7 +2,7 @@
 
 namespace anim {
 
-void Channel::set_keyframe(double time, double value, 
+void Channel::set_keyframe_at_time(double time, double value, 
                          const BezierHandle& in_tangent, 
                          const BezierHandle& out_tangent, 
                          TangentMode mode) {
@@ -22,120 +22,35 @@ void Channel::set_keyframe(double time, double value,
     }
     recalculate_dependent_tangents_internal();
 }
-
-void Channel::set_keyframe_time(double old_time, double new_time) {
-    auto it = std::find_if(m_keyframes.begin(), m_keyframes.end(), 
-                          [old_time](const Keyframe& kf) {
-                              constexpr double epsilon = 1e-10;
-                              return std::abs(kf.time() - old_time) < epsilon;
-                          });
-    if (it == m_keyframes.end()) {
-        throw std::out_of_range("No keyframe found at specified time");
+void Channel::set_keyframe(size_t index, double time, double new_value, 
+                          const BezierHandle& new_in_tangent, 
+                          const BezierHandle& new_out_tangent, 
+                          TangentMode new_mode) {
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
     }
-    double value = it->value();
-    BezierHandle in_tangent(it->in_tangent().time - old_time + new_time, it->in_tangent().value);
-    BezierHandle out_tangent(it->out_tangent().time - old_time + new_time, it->out_tangent().value);
-    TangentMode mode = it->mode();
-    it->set_time(new_time);
-    it->set_in_tangent(in_tangent);
-    it->set_out_tangent(out_tangent);
-    // Resort after time change
-    sort_keyframes_internal();
+    m_keyframes[index].set_time(time);
+    m_keyframes[index].set_value(new_value);
+    m_keyframes[index].set_in_tangent(new_in_tangent);
+    m_keyframes[index].set_out_tangent(new_out_tangent);
+    m_keyframes[index].set_mode(new_mode);
+    
     recalculate_dependent_tangents_internal();
 }
 
-void Channel::set_keyframe_value(double time, double new_value) {
-    auto it = std::find_if(m_keyframes.begin(), m_keyframes.end(), 
-                          [time](const Keyframe& kf) {
-                              constexpr double epsilon = 1e-10;
-                              return std::abs(kf.time() - time) < epsilon;
-                          });
-    if (it == m_keyframes.end()) {
-        throw std::out_of_range("No keyframe found at specified time");
-    }
-    double value_diff = new_value - it->value();
-    it->set_value(new_value);
-    it->set_in_tangent(BezierHandle(it->in_tangent().time, it->in_tangent().value + value_diff));
-    it->set_out_tangent(BezierHandle(it->out_tangent().time, it->out_tangent().value + value_diff));
-    recalculate_dependent_tangents_internal();
+bool Channel::has_keyframe_at_time(double time) const {
+    return std::any_of(m_keyframes.begin(), m_keyframes.end(), 
+                       [time](const Keyframe& kf) {
+                           constexpr double epsilon = 1e-10;
+                           return std::abs(kf.time() - time) < epsilon;
+                       });
 }
 
-void Channel::set_keyframe_in_tangent(double time, const BezierHandle& new_in_tangent) {
-    auto it = std::find_if(m_keyframes.begin(), m_keyframes.end(), 
-                          [time](const Keyframe& kf) {
-                              constexpr double epsilon = 1e-10;
-                              return std::abs(kf.time() - time) < epsilon;
-                          });
-    if (it == m_keyframes.end()) {
-        throw std::out_of_range("No keyframe found at specified time");
-    }
-    BezierHandle out_tangent = it->out_tangent();
-    if (it->mode() == TangentMode::smoothManual) {
-        Point2D kf_point(it->time(), it->value());
-        Point2D direction = new_in_tangent - kf_point;
-        direction = direction * -1.0;
-        double original_length = std::sqrt(
-            std::pow(out_tangent.time - it->time(), 2) +
-            std::pow(out_tangent.value - it->value(), 2)
-        );
-        double new_length = std::sqrt(
-            std::pow(direction.time, 2) + std::pow(direction.value, 2)
-        );
-        if (new_length > 1e-10) {
-            direction = direction * (original_length / new_length);
-        }
-        out_tangent = kf_point + direction;
-    }
-    it->set_in_tangent(new_in_tangent);
-    it->set_out_tangent(out_tangent);
-    recalculate_dependent_tangents_internal();
+bool Channel::has_keyframe(size_t index) const {
+    return index < m_keyframes.size();
 }
 
-void Channel::set_keyframe_out_tangent(double time, const BezierHandle& new_out_tangent) {
-    auto it = std::find_if(m_keyframes.begin(), m_keyframes.end(), 
-                          [time](const Keyframe& kf) {
-                              constexpr double epsilon = 1e-10;
-                              return std::abs(kf.time() - time) < epsilon;
-                          });
-    if (it == m_keyframes.end()) {
-        throw std::out_of_range("No keyframe found at specified time");
-    }
-    BezierHandle in_tangent = it->in_tangent();
-    if (it->mode() == TangentMode::smoothManual) {
-        Point2D kf_point(it->time(), it->value());
-        Point2D direction = new_out_tangent - kf_point;
-        direction = direction * -1.0;
-        double original_length = std::sqrt(
-            std::pow(in_tangent.time - it->time(), 2) +
-            std::pow(in_tangent.value - it->value(), 2)
-        );
-        double new_length = std::sqrt(
-            std::pow(direction.time, 2) + std::pow(direction.value, 2)
-        );
-        if (new_length > 1e-10) {
-            direction = direction * (original_length / new_length);
-        }
-        in_tangent = kf_point + direction;
-    }
-    it->set_in_tangent(in_tangent);
-    it->set_out_tangent(new_out_tangent);
-    recalculate_dependent_tangents_internal();
-}
-
-void Channel::set_keyframe_tangent_mode(double time, TangentMode new_mode) {
-    auto it = std::find_if(m_keyframes.begin(), m_keyframes.end(), 
-                          [time](const Keyframe& kf) {
-                              constexpr double epsilon = 1e-10;
-                              return std::abs(kf.time() - time) < epsilon;
-                          });
-    if (it == m_keyframes.end()) {
-        throw std::out_of_range("No keyframe found at specified time");
-    }
-    it->set_mode(new_mode);
-    recalculate_dependent_tangents_internal();
-}
-
-bool Channel::remove_keyframe(double time) {
+bool Channel::remove_keyframe_at_time(double time) {
     size_t original_size = m_keyframes.size();
     
     m_keyframes.erase(
@@ -154,7 +69,17 @@ bool Channel::remove_keyframe(double time) {
     return removed;
 }
 
-std::optional<Keyframe> Channel::get_keyframe(double time) const {
+bool Channel::remove_keyframe(size_t index) {
+    if (index >= m_keyframes.size()) {
+        return false;
+    }
+    
+    m_keyframes.erase(m_keyframes.begin() + index);
+    recalculate_dependent_tangents_internal();
+    return true;
+}
+
+std::optional<Keyframe> Channel::get_keyframe_at_time(double time) const {
     auto it = std::find_if(m_keyframes.begin(), m_keyframes.end(), 
                           [time](const Keyframe& kf) {
                               constexpr double epsilon = 1e-10;
@@ -164,6 +89,13 @@ std::optional<Keyframe> Channel::get_keyframe(double time) const {
         return *it;
     }
     return std::nullopt;
+}
+
+Keyframe& Channel::get_keyframe(size_t index) {
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    return m_keyframes[index];
 }
 
 const std::vector<Keyframe>& Channel::get_all_keyframes() const {
@@ -197,6 +129,12 @@ double Channel::evaluate(double time) const {
     const Keyframe& start_kf = *lower;
     const Keyframe& end_kf = *upper;
     
+    // Handle linear tangent mode
+    if (start_kf.mode() == TangentMode::linear) {
+        double t = (time - start_kf.time()) / (end_kf.time() - start_kf.time());
+        return start_kf.value() + t * (end_kf.value() - start_kf.value());
+    }
+
     // Handle stepped tangent mode
     if (start_kf.mode() == TangentMode::stepped) {
         return start_kf.value();
@@ -218,6 +156,14 @@ std::vector<double> Channel::evaluate_range(double start_time, double end_time, 
     if (num_samples <= 1) {
         return {evaluate(start_time)};
     }
+    if (start_time > end_time) {
+        throw std::invalid_argument("Start time must be less than or equal to end time");
+    }
+    
+    // For equal times, just return the value at that time
+    if (start_time == end_time) {
+        return {evaluate(start_time)};
+    }
     
     std::vector<double> result(num_samples);
     double step = (end_time - start_time) / (num_samples - 1);
@@ -233,6 +179,14 @@ std::vector<double> Channel::evaluate_range(double start_time, double end_time, 
 std::vector<double> Channel::evaluate_range_by_rate(double start_time, double end_time, double sample_rate) const {
     if (sample_rate <= 0.0) {
         throw std::invalid_argument("Sample rate must be positive");
+    }
+    if (start_time > end_time) {
+        throw std::invalid_argument("Start time must be less than or equal to end time");
+    }
+    
+    // For equal times, just return the value at that time
+    if (start_time == end_time) {
+        return {evaluate(start_time)};
     }
     
     int num_samples = static_cast<int>(std::ceil((end_time - start_time) * sample_rate)) + 1;

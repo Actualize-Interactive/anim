@@ -44,71 +44,65 @@ public:
      * @param out_tangent The outgoing Bézier handle
      * @param mode The tangent mode that controls how handles behave
      */
-    void set_keyframe(double time, double value, 
+    void set_keyframe_at_time(double time, double value, 
                      const BezierHandle& in_tangent, 
                      const BezierHandle& out_tangent, 
                      TangentMode mode);
 
     /**
-     * @brief Change the time of an existing keyframe
-     * 
-     * @param old_time The current time of the keyframe to modify
-     * @param new_time The new time to assign to the keyframe
-     * @throws std::out_of_range if no keyframe exists at old_time
-     */
-    void set_keyframe_time(double old_time, double new_time);
-    
-    /**
-     * @brief Change the value of an existing keyframe
-     * 
+     * @brief Set an existing keyframe's time, value, and tangents
+     * @param index The index of the keyframe to modify
      * @param time The time of the keyframe to modify
      * @param new_value The new value to assign to the keyframe
-     * @throws std::out_of_range if no keyframe exists at the specified time
-     */
-    void set_keyframe_value(double time, double new_value);
-    
-    /**
-     * @brief Set the incoming tangent handle for a keyframe
-     * 
-     * @param time The time of the keyframe to modify
      * @param new_in_tangent The new incoming tangent handle
-     * @throws std::out_of_range if no keyframe exists at the specified time
-     */
-    void set_keyframe_in_tangent(double time, const BezierHandle& new_in_tangent);
-    
-    /**
-     * @brief Set the outgoing tangent handle for a keyframe
-     * 
-     * @param time The time of the keyframe to modify
      * @param new_out_tangent The new outgoing tangent handle
-     * @throws std::out_of_range if no keyframe exists at the specified time
-     */
-    void set_keyframe_out_tangent(double time, const BezierHandle& new_out_tangent);
-    
-    /**
-     * @brief Change the tangent mode of a keyframe
-     * 
-     * @param time The time of the keyframe to modify
      * @param new_mode The new tangent mode
      * @throws std::out_of_range if no keyframe exists at the specified time
      */
-    void set_keyframe_tangent_mode(double time, TangentMode new_mode);
+    void set_keyframe(size_t index, double time, double new_value, 
+                     const BezierHandle& new_in_tangent, 
+                     const BezierHandle& new_out_tangent, 
+                     TangentMode new_mode);
+
     
+    bool has_keyframe_at_time(double time) const;
+    bool has_keyframe(size_t index) const;
+    size_t keyframe_count() const { return m_keyframes.size(); }
+
+
+
     /**
      * @brief Remove a keyframe at the specified time
      * 
      * @param time The time of the keyframe to remove
      * @return true if a keyframe was found and removed, false otherwise
      */
-    bool remove_keyframe(double time);
-    
+    bool remove_keyframe_at_time(double time);
+
+    /**
+     * @brief Remove a keyframe at the specified index
+     * 
+     * @param index The index of the keyframe to remove
+     * @return true if a keyframe was found and removed, false otherwise
+     */
+    bool remove_keyframe(size_t index);
+
     /**
      * @brief Get the keyframe at the specified time
      * 
      * @param time The time to look for a keyframe
      * @return An optional containing the keyframe if found, or empty if not found
      */
-    std::optional<Keyframe> get_keyframe(double time) const;
+    std::optional<Keyframe> get_keyframe_at_time(double time) const;
+
+    /**
+     * @brief Get the keyframe at the specified index
+     * 
+     * @param index The index of the keyframe to retrieve
+     * @return A reference to the keyframe at the specified index
+     * @throws std::out_of_range if index is out of range
+     */
+    Keyframe& get_keyframe(size_t index);
     
     /**
      * @brief Get all keyframes in this channel
