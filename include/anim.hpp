@@ -29,7 +29,7 @@
  * 
  * @section components_sec Main Components
  * 
- * - Point2D: Basic 2D point for time/value coordinates
+ * - BezierHandle: Handle point for Bézier curve control
  * - Keyframe: Defines a value at a specific time with tangent information
  * - Channel: A sequence of keyframes representing a single animatable property
  * - Animation: Collection of channels forming a complete animation
@@ -42,11 +42,11 @@
  * anim::Channel position_x("position.x");
  * 
  * // Add keyframes
- * position_x.set_keyframe(0.0, 0.0, 
- *     anim::Point2D(-0.3, 0.0), anim::Point2D(0.3, 0.0), 
+ * position_x.set_keyframe_at_time(0.0, 0.0, 
+ *     anim::BezierHandle(-0.3, 0.0), anim::BezierHandle(0.3, 0.0), 
  *     anim::TangentMode::smoothAuto);
- * position_x.set_keyframe(1.0, 10.0, 
- *     anim::Point2D(0.7, 10.0), anim::Point2D(1.3, 10.0), 
+ * position_x.set_keyframe_at_time(1.0, 10.0, 
+ *     anim::BezierHandle(0.7, 10.0), anim::BezierHandle(1.3, 10.0), 
  *     anim::TangentMode::smoothAuto);
  * 
  * // Evaluate at a specific time
@@ -58,7 +58,7 @@
  * ```
  */
 
-#include "anim/point2d.hpp"
+#include "anim/bezier_handle.hpp"
 #include "anim/tangent_mode.hpp"
 #include "anim/keyframe.hpp"
 #include "anim/bezier_utils.hpp"

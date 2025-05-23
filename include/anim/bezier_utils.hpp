@@ -1,7 +1,7 @@
 #ifndef ANIM_BEZIER_UTILS_HPP
 #define ANIM_BEZIER_UTILS_HPP
 
-#include "anim/point2d.hpp"
+#include "anim/bezier_handle.hpp"
 #include <vector>
 #include <stdexcept>
 
@@ -25,9 +25,9 @@ namespace bezier_utils {
      * @param t The parameter value, typically in range [0,1]
      * @return The point on the Bézier curve at parameter t
      */
-    Point2D evaluate_cubic_bezier(
-        const Point2D& p0, const Point2D& p1,
-        const Point2D& p2, const Point2D& p3,
+    BezierHandle evaluate_cubic_bezier(
+        const BezierHandle& p0, const BezierHandle& p1,
+        const BezierHandle& p2, const BezierHandle& p3,
         double t);
     
     /**
@@ -46,8 +46,8 @@ namespace bezier_utils {
      * @return The parameter t that gives the target time value
      */
     double find_parameter_for_time(
-        const Point2D& p0, const Point2D& p1,
-        const Point2D& p2, const Point2D& p3,
+        const BezierHandle& p0, const BezierHandle& p1,
+        const BezierHandle& p2, const BezierHandle& p3,
         double target_time,
         double precision = 1e-6,
         int max_iterations = 30);
@@ -63,8 +63,8 @@ namespace bezier_utils {
      * @param out_p2 Output parameter for the second control point
      */
     void create_linear_bezier_handles(
-        const Point2D& p0, const Point2D& p3,
-        Point2D& out_p1, Point2D& out_p2);
+        const BezierHandle& p0, const BezierHandle& p3,
+        BezierHandle& out_p1, BezierHandle& out_p2);
     
     /**
      * @brief Create flat tangent handles for a keyframe.
@@ -78,10 +78,10 @@ namespace bezier_utils {
      * @param out_out_handle Output parameter for the outgoing handle
      */
     void create_flat_bezier_handles(
-        const Point2D& keyframe_point, 
+        const BezierHandle& keyframe_point, 
         double time_offset,
-        Point2D& out_in_handle, 
-        Point2D& out_out_handle);
+        BezierHandle& out_in_handle, 
+        BezierHandle& out_out_handle);
     
 } // namespace bezier_utils
 

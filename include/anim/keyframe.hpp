@@ -1,7 +1,7 @@
 #ifndef ANIM_KEYFRAME_HPP
 #define ANIM_KEYFRAME_HPP
 
-#include "anim/point2d.hpp"
+#include "anim/bezier_handle.hpp"
 #include "anim/tangent_mode.hpp"
 #include <utility> // For std::move
 

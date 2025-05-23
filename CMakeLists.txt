@@ -21,7 +21,7 @@ option(ANIM_BUILD_SHARED "Build shared library" OFF)
 
 # Source files
 set(ANIM_SOURCES
-    src/point2d.cpp
+    src/bezier_handle.cpp
     src/keyframe.cpp
     src/bezier_utils.cpp
     src/channel.cpp
@@ -31,7 +31,7 @@ set(ANIM_SOURCES
 # Header files (for IDE organization)
 set(ANIM_HEADERS
     include/anim.hpp
-    include/anim/point2d.hpp
+    include/anim/bezier_handle.hpp
     include/anim/tangent_mode.hpp
     include/anim/keyframe.hpp
     include/anim/bezier_utils.hpp
