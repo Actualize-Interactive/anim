@@ -2,30 +2,26 @@
 
 namespace anim {
 
-// Channel management by index
-void Animation::add_channel(const Channel& channel) {
-    append_channel(channel);
+Channel* Animation::create_channel(const std::string& name) {
+    m_channels.emplace_back(name);
+    return &m_channels.back();
 }
 
-void Animation::insert_channel(size_t index, const Channel& channel) {
+Channel* Animation::append_channel(const Channel& channel) {
+    m_channels.push_back(channel);
+    return &m_channels.back();
+}
+
+// Channel management by index
+Channel* Animation::insert_channel(size_t index, const Channel& channel) {
     if (index > m_channels.size()) {
         throw std::out_of_range("Channel index out of range");
     }
     m_channels.insert(m_channels.begin() + index, channel);
-}
-
-void Animation::append_channel(const Channel& channel) {
-    m_channels.push_back(channel);
-}
-
-Channel* Animation::get_channel(size_t index) {
-    if (index >= m_channels.size()) {
-        return nullptr;
-    }
     return &m_channels[index];
 }
 
-const Channel* Animation::get_channel(size_t index) const {
+Channel* Animation::get_channel(size_t index) {
     if (index >= m_channels.size()) {
         return nullptr;
     }
@@ -46,17 +42,6 @@ size_t Animation::get_channel_count() const {
 
 // Channel management by name
 Channel* Animation::get_channel(const std::string& name) {
-    auto it = std::find_if(m_channels.begin(), m_channels.end(),
-                          [&name](const Channel& channel) {
-                              return channel.name() == name;
-                          });
-    if (it != m_channels.end()) {
-        return &(*it);
-    }
-    return nullptr;
-}
-
-const Channel* Animation::get_channel(const std::string& name) const {
     auto it = std::find_if(m_channels.begin(), m_channels.end(),
                           [&name](const Channel& channel) {
                               return channel.name() == name;

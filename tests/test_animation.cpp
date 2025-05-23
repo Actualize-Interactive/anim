@@ -38,8 +38,8 @@ TEST_CASE("Animation with multiple channels", "[animation]") {
     channel2.set_keyframe(2.0, 20.0, Point2D(1.9, 20.0), Point2D(2.1, 20.0), TangentMode::linear);
     channel2.set_keyframe(4.0, 40.0, Point2D(3.9, 40.0), Point2D(4.1, 40.0), TangentMode::linear);
     
-    anim.add_channel(channel1);
-    anim.add_channel(channel2);
+    anim.append_channel(channel1);
+    anim.append_channel(channel2);
     
     SECTION("Animation is not empty") {
         REQUIRE_FALSE(anim.is_empty());
@@ -134,12 +134,12 @@ TEST_CASE("Animation with empty channel", "[animation]") {
     
     // Add an empty channel
     Channel empty_channel("empty");
-    anim.add_channel(empty_channel);
+    anim.append_channel(empty_channel);
     
     // Add a non-empty channel
     Channel channel("non_empty");
     channel.set_keyframe(1.0, 10.0, Point2D(0.9, 10.0), Point2D(1.1, 10.0), TangentMode::linear);
-    anim.add_channel(channel);
+    anim.append_channel(channel);
     
     SECTION("Animation is not empty") {
         REQUIRE_FALSE(anim.is_empty());
