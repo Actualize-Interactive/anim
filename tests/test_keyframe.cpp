@@ -15,10 +15,10 @@ TEST_CASE("Keyframe constructor and accessors", "[keyframe]") {
     SECTION("Getter methods") {
         REQUIRE(kf.time() == Catch::Approx(2.0));
         REQUIRE(kf.value() == Catch::Approx(3.0));
-        REQUIRE(kf.in_tangent().time == Catch::Approx(1.5));
-        REQUIRE(kf.in_tangent().value == Catch::Approx(2.5));
-        REQUIRE(kf.out_tangent().time == Catch::Approx(2.5));
-        REQUIRE(kf.out_tangent().value == Catch::Approx(3.5));
+        REQUIRE(kf.in_handle().time == Catch::Approx(1.5));
+        REQUIRE(kf.in_handle().value == Catch::Approx(2.5));
+        REQUIRE(kf.out_handle().time == Catch::Approx(2.5));
+        REQUIRE(kf.out_handle().value == Catch::Approx(3.5));
         REQUIRE(kf.mode() == TangentMode::smoothAuto);
     }
 }
@@ -98,17 +98,17 @@ TEST_CASE("Keyframe mutability", "[keyframe]") {
         kf.set_value(7.5);
         REQUIRE(kf.value() == Catch::Approx(7.5));
     }
-    SECTION("Set in_tangent") {
+    SECTION("Set in_handle") {
         BezierHandle new_in(9.0, 8.0);
-        kf.set_in_tangent(new_in);
-        REQUIRE(kf.in_tangent().time == Catch::Approx(9.0));
-        REQUIRE(kf.in_tangent().value == Catch::Approx(8.0));
+        kf.set_in_handle(new_in);
+        REQUIRE(kf.in_handle().time == Catch::Approx(9.0));
+        REQUIRE(kf.in_handle().value == Catch::Approx(8.0));
     }
-    SECTION("Set out_tangent") {
+    SECTION("Set out_handle") {
         BezierHandle new_out(10.0, 11.0);
-        kf.set_out_tangent(new_out);
-        REQUIRE(kf.out_tangent().time == Catch::Approx(10.0));
-        REQUIRE(kf.out_tangent().value == Catch::Approx(11.0));
+        kf.set_out_handle(new_out);
+        REQUIRE(kf.out_handle().time == Catch::Approx(10.0));
+        REQUIRE(kf.out_handle().value == Catch::Approx(11.0));
     }
     SECTION("Set mode") {
         kf.set_mode(TangentMode::flat);

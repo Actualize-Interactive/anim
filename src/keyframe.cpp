@@ -3,11 +3,11 @@
 namespace anim {
 
 Keyframe::Keyframe(double time, double value,
-                   const BezierHandle& in_tangent,
-                   const BezierHandle& out_tangent,
+                   const BezierHandle& in_handle,
+                   const BezierHandle& out_handle,
                    TangentMode mode)
     : m_time(time), m_value(value),
-      m_in_tangent(in_tangent), m_out_tangent(out_tangent),
+      m_in_tangent(in_handle), m_out_tangent(out_handle),
       m_mode(mode) {}
       
 Keyframe::Keyframe(const Keyframe& other)
@@ -51,11 +51,11 @@ double Keyframe::value() const {
     return m_value; 
 }
 
-const BezierHandle& Keyframe::in_tangent() const { 
+const BezierHandle& Keyframe::in_handle() const { 
     return m_in_tangent; 
 }
 
-const BezierHandle& Keyframe::out_tangent() const { 
+const BezierHandle& Keyframe::out_handle() const { 
     return m_out_tangent; 
 }
 
@@ -71,12 +71,12 @@ void Keyframe::set_value(double value) {
     m_value = value; 
 }
 
-void Keyframe::set_in_tangent(const BezierHandle& in_tangent) { 
-    m_in_tangent = in_tangent; 
+void Keyframe::set_in_handle(const BezierHandle& in_handle) { 
+    m_in_tangent = in_handle; 
 }
 
-void Keyframe::set_out_tangent(const BezierHandle& out_tangent) { 
-    m_out_tangent = out_tangent; 
+void Keyframe::set_out_handle(const BezierHandle& out_handle) { 
+    m_out_tangent = out_handle; 
 }
 
 void Keyframe::set_mode(TangentMode mode) { 
