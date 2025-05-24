@@ -40,13 +40,13 @@ public:
      * 
      * @param time The time position for the keyframe
      * @param value The value at this keyframe
-     * @param in_tangent The incoming Bézier handle
-     * @param out_tangent The outgoing Bézier handle
+     * @param in_handle The incoming Bézier handle
+     * @param out_handle The outgoing Bézier handle
      * @param mode The tangent mode that controls how handles behave
      */
     void upsert_keyframe(double time, double value, 
-                     const BezierHandle& in_tangent, 
-                     const BezierHandle& out_tangent, 
+                     const BezierHandle& in_handle, 
+                     const BezierHandle& out_handle, 
                      TangentMode mode);
     
     /**
@@ -54,8 +54,8 @@ public:
      * @deprecated Use upsert_keyframe instead
      */
     void set_keyframe_at_time(double time, double value, 
-                     const BezierHandle& in_tangent, 
-                     const BezierHandle& out_tangent, 
+                     const BezierHandle& in_handle, 
+                     const BezierHandle& out_handle, 
                      TangentMode mode);
     
     /**
@@ -65,14 +65,14 @@ public:
      * 
      * @param time The time position for the keyframe
      * @param value The value at this keyframe
-     * @param in_tangent The incoming Bézier handle
-     * @param out_tangent The outgoing Bézier handle
+     * @param in_handle The incoming Bézier handle
+     * @param out_handle The outgoing Bézier handle
      * @param mode The tangent mode that controls how handles behave
      * @return true if keyframe was inserted, false if a keyframe already exists at the time
      */
     bool insert_keyframe(double time, double value, 
-                     const BezierHandle& in_tangent, 
-                     const BezierHandle& out_tangent, 
+                     const BezierHandle& in_handle, 
+                     const BezierHandle& out_handle, 
                      TangentMode mode);
     
     /**
@@ -82,15 +82,15 @@ public:
      * 
      * @param time The time position for the keyframe (must be greater than any existing keyframe time)
      * @param value The value at this keyframe
-     * @param in_tangent The incoming Bézier handle
-     * @param out_tangent The outgoing Bézier handle
+     * @param in_handle The incoming Bézier handle
+     * @param out_handle The outgoing Bézier handle
      * @param mode The tangent mode that controls how handles behave
      * @return true if keyframe was appended, false if couldn't be appended
      * @throws std::invalid_argument if time is not greater than all existing keyframe times
      */
     bool append_keyframe(double time, double value, 
-                     const BezierHandle& in_tangent, 
-                     const BezierHandle& out_tangent, 
+                     const BezierHandle& in_handle, 
+                     const BezierHandle& out_handle, 
                      TangentMode mode);
     
     /**
@@ -99,14 +99,14 @@ public:
      * @param index The index of the keyframe to update
      * @param time The new time of the keyframe
      * @param value The new value of the keyframe
-     * @param in_tangent The new incoming tangent handle
-     * @param out_tangent The new outgoing tangent handle
+     * @param in_handle The new incoming Bézier handle
+     * @param out_handle The new outgoing Bézier handle
      * @param mode The new tangent mode
      * @throws std::out_of_range if no keyframe exists at the specified index
      */
     void update_keyframe(size_t index, double time, double value, 
-                    const BezierHandle& in_tangent, 
-                    const BezierHandle& out_tangent, 
+                    const BezierHandle& in_handle, 
+                    const BezierHandle& out_handle, 
                     TangentMode mode);
     
     /**
@@ -117,16 +117,16 @@ public:
      * @param index The index of the keyframe to update
      * @param time Optional new time for the keyframe
      * @param value Optional new value for the keyframe
-     * @param in_tangent Optional new incoming tangent handle
-     * @param out_tangent Optional new outgoing tangent handle
+     * @param in_handle Optional new incoming Bézier handle
+     * @param out_handle Optional new outgoing Bézier handle
      * @param mode Optional new tangent mode
      * @throws std::out_of_range if no keyframe exists at the specified index
      */
     void update_keyframe(size_t index, 
                     const std::optional<double>& time = std::nullopt, 
                     const std::optional<double>& value = std::nullopt, 
-                    const std::optional<BezierHandle>& in_tangent = std::nullopt, 
-                    const std::optional<BezierHandle>& out_tangent = std::nullopt, 
+                    const std::optional<BezierHandle>& in_handle = std::nullopt, 
+                    const std::optional<BezierHandle>& out_handle = std::nullopt, 
                     const std::optional<TangentMode>& mode = std::nullopt);
     
     /**
@@ -134,15 +134,15 @@ public:
      *
      * @param time The time of the keyframe to update
      * @param new_value The new value for the keyframe
-     * @param new_in_tangent The new incoming tangent handle
-     * @param new_out_tangent The new outgoing tangent handle
+     * @param new_in_handle The new incoming Bézier handle
+     * @param new_out_handle The new outgoing Bézier handle
      * @param new_mode The new tangent mode
      * @return true if keyframe was updated, false if no keyframe exists at the specified time
      */
     bool update_keyframe_at_time(double time, 
                             double new_value, 
-                            const BezierHandle& new_in_tangent, 
-                            const BezierHandle& new_out_tangent, 
+                            const BezierHandle& new_in_handle, 
+                            const BezierHandle& new_out_handle, 
                             TangentMode new_mode);
     
     /**
@@ -152,15 +152,15 @@ public:
      *
      * @param time The time of the keyframe to update
      * @param new_value Optional new value for the keyframe
-     * @param new_in_tangent Optional new incoming tangent handle
-     * @param new_out_tangent Optional new outgoing tangent handle
+     * @param new_in_handle Optional new incoming Bézier handle
+     * @param new_out_handle Optional new outgoing Bézier handle
      * @param new_mode Optional new tangent mode
      * @return true if keyframe was updated, false if no keyframe exists at the specified time
      */
     bool update_keyframe_at_time(double time, 
                             const std::optional<double>& new_value = std::nullopt, 
-                            const std::optional<BezierHandle>& new_in_tangent = std::nullopt, 
-                            const std::optional<BezierHandle>& new_out_tangent = std::nullopt, 
+                            const std::optional<BezierHandle>& new_in_handle = std::nullopt, 
+                            const std::optional<BezierHandle>& new_out_handle = std::nullopt, 
                             const std::optional<TangentMode>& new_mode = std::nullopt);
 
     /**
@@ -168,15 +168,15 @@ public:
      * @param index The index of the keyframe to modify
      * @param time The time of the keyframe to modify
      * @param new_value The new value to assign to the keyframe
-     * @param new_in_tangent The new incoming tangent handle
-     * @param new_out_tangent The new outgoing tangent handle
+     * @param new_in_handle The new incoming Bézier handle
+     * @param new_out_handle The new outgoing Bézier handle
      * @param new_mode The new tangent mode
      * @throws std::out_of_range if no keyframe exists at the specified time
      * @deprecated Use update_keyframe instead
      */
     void set_keyframe(size_t index, double time, double new_value, 
-                     const BezierHandle& new_in_tangent, 
-                     const BezierHandle& new_out_tangent, 
+                     const BezierHandle& new_in_handle, 
+                     const BezierHandle& new_out_handle, 
                      TangentMode new_mode);
 
     
@@ -309,22 +309,22 @@ public:
     bool set_keyframe_value(double time, double new_value);
     
     /**
-     * @brief Set the in-tangent of an existing keyframe
+     * @brief Set the in-handle of an existing keyframe
      * 
      * @param time The time of the keyframe to modify
-     * @param new_in_tangent The new in-tangent to assign
+     * @param new_in_handle The new in-handle to assign
      * @return true if a keyframe was found and updated, false otherwise
      */
-    bool set_keyframe_in_tangent(double time, const BezierHandle& new_in_tangent);
+    bool set_keyframe_in_handle(double time, const BezierHandle& new_in_handle);
     
     /**
-     * @brief Set the out-tangent of an existing keyframe
+     * @brief Set the out-handle of an existing keyframe
      * 
      * @param time The time of the keyframe to modify
-     * @param new_out_tangent The new out-tangent to assign
+     * @param new_out_handle The new out-handle to assign
      * @return true if a keyframe was found and updated, false otherwise
      */
-    bool set_keyframe_out_tangent(double time, const BezierHandle& new_out_tangent);
+    bool set_keyframe_out_handle(double time, const BezierHandle& new_out_handle);
     
     /**
      * @brief Set the tangent mode of an existing keyframe

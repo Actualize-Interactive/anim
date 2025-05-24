@@ -20,13 +20,13 @@ public:
      * 
      * @param time The time position of the keyframe
      * @param value The value at this keyframe
-     * @param in_tangent The incoming Bézier handle
-     * @param out_tangent The outgoing Bézier handle
+     * @param in_handle The incoming Bézier handle
+     * @param out_handle The outgoing Bézier handle
      * @param mode The tangent mode that controls how handles behave
      */
     Keyframe(double time, double value,
-             const BezierHandle& in_tangent,
-             const BezierHandle& out_tangent,
+             const BezierHandle& in_handle,
+             const BezierHandle& out_handle,
              TangentMode mode);
           
     /**
@@ -62,16 +62,16 @@ public:
     double value() const;
     
     /**
-     * @brief Get the incoming tangent handle
-     * @return Reference to the in-tangent handle
+     * @brief Get the incoming Bézier handle
+     * @return Reference to the in-handle
      */
-    const BezierHandle& in_tangent() const;
+    const BezierHandle& in_handle() const;
     
     /**
-     * @brief Get the outgoing tangent handle
-     * @return Reference to the out-tangent handle
+     * @brief Get the outgoing Bézier handle
+     * @return Reference to the out-handle
      */
-    const BezierHandle& out_tangent() const;
+    const BezierHandle& out_handle() const;
     
     /**
      * @brief Get the tangent mode
@@ -92,16 +92,16 @@ public:
     void set_value(double value);
     
     /**
-     * @brief Set the incoming tangent handle
-     * @param in_tangent New in-tangent handle
+     * @brief Set the incoming Bézier handle
+     * @param in_handle New in-handle
      */
-    void set_in_tangent(const BezierHandle& in_tangent);
+    void set_in_handle(const BezierHandle& in_handle);
     
     /**
-     * @brief Set the outgoing tangent handle
-     * @param out_tangent New out-tangent handle
+     * @brief Set the outgoing Bézier handle
+     * @param out_handle New out-handle
      */
-    void set_out_tangent(const BezierHandle& out_tangent);
+    void set_out_handle(const BezierHandle& out_handle);
     
     /**
      * @brief Set the tangent mode
