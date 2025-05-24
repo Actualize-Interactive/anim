@@ -53,11 +53,11 @@ TEST_CASE("Channel name", "[channel]") {
 TEST_CASE("Channel with a single keyframe", "[channel]") {
     Channel channel;
     // Create a single keyframe
-    BezierHandle in_tangent(1.5, 3.0);
-    BezierHandle out_tangent(2.5, 3.0);
+    BezierHandle in_handle(1.5, 3.0);
+    BezierHandle out_handle(2.5, 3.0);
     TangentMode mode = TangentMode::flat;
     
-    channel.set_keyframe_at_time(2.0, 3.0, in_tangent, out_tangent, mode);
+    channel.set_keyframe_at_time(2.0, 3.0, in_handle, out_handle, mode);
     
     SECTION("Channel is not empty") {
         REQUIRE_FALSE(channel.is_empty());
@@ -89,12 +89,12 @@ TEST_CASE("Channel with a single keyframe", "[channel]") {
 TEST_CASE("Channel with multiple keyframes", "[channel]") {
     Channel channel("test");
     // Add keyframes in non-sequential order to test sorting
-    BezierHandle in_tangent(2.5, 5.0);
-    BezierHandle out_tangent(3.5, 5.0);
-    channel.set_keyframe_at_time(3.0, 5.0, in_tangent, out_tangent, TangentMode::flat);
-    BezierHandle in_tangent2(0.5, 2.0);
-    BezierHandle out_tangent2(1.5, 2.0);
-    channel.set_keyframe_at_time(1.0, 2.0, in_tangent2, out_tangent2, TangentMode::flat);
+    BezierHandle in_handle(2.5, 5.0);
+    BezierHandle out_handle(3.5, 5.0);
+    channel.set_keyframe_at_time(3.0, 5.0, in_handle, out_handle, TangentMode::flat);
+    BezierHandle in_handle2(0.5, 2.0);
+    BezierHandle out_handle2(1.5, 2.0);
+    channel.set_keyframe_at_time(1.0, 2.0, in_handle2, out_handle2, TangentMode::flat);
     
     SECTION("Keyframes are sorted by time") {
         const auto& keyframes = channel.get_all_keyframes();
