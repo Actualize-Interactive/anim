@@ -485,6 +485,43 @@ void Channel::recalculate_dependent_tangents_internal() {
             current.set_in_handle(in_handle);
             current.set_out_handle(out_handle);
         }
+        else if (current.mode() == TangentMode::smoothManual) {
+            // For smoothManual, we ensure the handles are colinear and of equal magnitude
+            // Get the current handles
+            BezierHandle in_handle = current.in_handle();
+            BezierHandle out_handle = current.out_handle();
+            
+            // Calculate vectors from keyframe to handles
+            BezierHandle kf_point(current.time(), current.value());
+            BezierHandle in_vec = in_handle - kf_point;
+            BezierHandle out_vec = out_handle - kf_point;
+            
+            // Calculate magnitudes of both vectors
+            double in_mag = std::sqrt(in_vec.time * in_vec.time + in_vec.value * in_vec.value);
+            double out_mag = std::sqrt(out_vec.time * out_vec.time + out_vec.value * out_vec.value);
+            
+            // If either handle is very close to the keyframe, keep it as is
+            if (in_mag < 1e-6 || out_mag < 1e-6) {
+                continue;
+            }
+            
+            // Use the average magnitude for both handles
+            double avg_mag = (in_mag + out_mag) / 2.0;
+            
+            // Normalize and rescale vectors
+            in_vec = in_vec * (avg_mag / in_mag);
+            out_vec = out_vec * (avg_mag / out_mag);
+            
+            // Make out_vec opposite to in_vec to ensure collinearity
+            out_vec = in_vec * -1;
+            
+            // Update the handles
+            in_handle = kf_point + in_vec;
+            out_handle = kf_point + out_vec;
+            
+            current.set_in_handle(in_handle);
+            current.set_out_handle(out_handle);
+        }
         else if (current.mode() == TangentMode::smoothAuto) {
             BezierHandle current_point(current.time(), current.value());
             
@@ -544,6 +581,7 @@ void Channel::recalculate_dependent_tangents_internal() {
             current.set_in_handle(in_handle);
             current.set_out_handle(out_handle);
         }
+        // For BROKEN mode, no special handling needed as handles can be independently adjusted
     }
 }
 
