@@ -8,7 +8,7 @@ using namespace anim;
 TEST_CASE("Keyframe constructor and accessors", "[keyframe]") {
     BezierHandle in_tangent(1.5, 2.5);
     BezierHandle out_tangent(2.5, 3.5);
-    TangentMode mode = TangentMode::smoothAuto;
+    TangentMode mode = TangentMode::smooth;
     
     Keyframe kf(2.0, 3.0, in_tangent, out_tangent, mode);
     
@@ -19,14 +19,14 @@ TEST_CASE("Keyframe constructor and accessors", "[keyframe]") {
         REQUIRE(kf.in_handle().value == Catch::Approx(2.5));
         REQUIRE(kf.out_handle().time == Catch::Approx(2.5));
         REQUIRE(kf.out_handle().value == Catch::Approx(3.5));
-        REQUIRE(kf.mode() == TangentMode::smoothAuto);
+        REQUIRE(kf.mode() == TangentMode::smooth);
     }
 }
 
 TEST_CASE("Keyframe comparison operators", "[keyframe]") {
     BezierHandle in_tangent1(1.5, 2.5);
     BezierHandle out_tangent1(2.5, 3.5);
-    TangentMode mode1 = TangentMode::smoothAuto;
+    TangentMode mode1 = TangentMode::smooth;
     
     Keyframe kf1(2.0, 3.0, in_tangent1, out_tangent1, mode1);
     Keyframe kf2(2.0, 3.0, in_tangent1, out_tangent1, mode1);
@@ -66,7 +66,7 @@ TEST_CASE("Keyframe comparison operators", "[keyframe]") {
 TEST_CASE("Keyframe comparison for sorting", "[keyframe]") {
     BezierHandle in_tangent(1.5, 2.5);
     BezierHandle out_tangent(2.5, 3.5);
-    TangentMode mode = TangentMode::smoothAuto;
+    TangentMode mode = TangentMode::smooth;
     
     Keyframe kf1(1.0, 3.0, in_tangent, out_tangent, mode);
     Keyframe kf2(2.0, 3.0, in_tangent, out_tangent, mode);
@@ -87,7 +87,7 @@ TEST_CASE("Keyframe comparison for sorting", "[keyframe]") {
 TEST_CASE("Keyframe mutability", "[keyframe]") {
     BezierHandle in_tangent(1.5, 2.5);
     BezierHandle out_tangent(2.5, 3.5);
-    TangentMode mode = TangentMode::smoothAuto;
+    TangentMode mode = TangentMode::smooth;
     Keyframe kf(2.0, 3.0, in_tangent, out_tangent, mode);
 
     SECTION("Set time") {

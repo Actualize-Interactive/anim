@@ -292,8 +292,8 @@ double Channel::evaluate(double time) const {
         return start_kf.value() + t * (end_kf.value() - start_kf.value());
     }
 
-    // Handle stepped tangent mode
-    if (start_kf.mode() == TangentMode::stepped) {
+    // Handle constant tangent mode
+    if (start_kf.mode() == TangentMode::constant) {
         return start_kf.value();
     }
     
@@ -485,8 +485,8 @@ void Channel::recalculate_dependent_tangents_internal() {
             current.set_in_handle(in_handle);
             current.set_out_handle(out_handle);
         }
-        else if (current.mode() == TangentMode::smoothManual) {
-            // For smoothManual, we ensure the handles are colinear and of equal magnitude
+        else if (current.mode() == TangentMode::manual) {
+            // For manual, we ensure the handles are colinear and of equal magnitude
             // Get the current handles
             BezierHandle in_handle = current.in_handle();
             BezierHandle out_handle = current.out_handle();
@@ -522,7 +522,7 @@ void Channel::recalculate_dependent_tangents_internal() {
             current.set_in_handle(in_handle);
             current.set_out_handle(out_handle);
         }
-        else if (current.mode() == TangentMode::smoothAuto) {
+        else if (current.mode() == TangentMode::smooth) {
             BezierHandle current_point(current.time(), current.value());
             
             // Default handles point horizontally
