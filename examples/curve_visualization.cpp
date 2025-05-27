@@ -50,6 +50,23 @@ void print_curve_ascii(const anim::Channel& channel, double start_time, double e
 }
 
 int main() {
+    anim::Channel channel;
+    channel.set_keyframe_at_time(0.0, 0.0, 
+        anim::BezierHandle(-0.30, 0.0), anim::BezierHandle(0.0, 0.0), 
+        anim::TangentMode::linear);
+    channel.set_keyframe_at_time(1.0, 1.0, 
+        anim::BezierHandle(.1, 1.0), anim::BezierHandle(1.1, 1.0), 
+        anim::TangentMode::manual);
+    channel.set_keyframe_at_time(2.0, 0.0, 
+        anim::BezierHandle(2, 0.0), anim::BezierHandle(2, 0.0), 
+        anim::TangentMode::linear);
+
+    // Print each curve
+    std::cout << "Test channel:\n";
+    print_curve_ascii(channel, 0.0, 2.0, 200, 40);
+    std::cout << "\n";
+
+/*
     // Example 1: Comparing different tangent modes
     std::cout << "Example 1: Comparing Different Tangent Modes\n";
     std::cout << "==========================================\n\n";
@@ -231,7 +248,7 @@ int main() {
     std::cout << "Animation length: " << animation.length() << " time units\n";
     std::cout << "Number of samples at 30Hz: " << animation.num_samples(30.0) << " samples\n";
     std::cout << "Number of samples at 60Hz: " << animation.num_samples(60.0) << " samples\n\n";
-    
+*/
     return 0;
 }
 

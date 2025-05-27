@@ -4,9 +4,9 @@ namespace anim {
 
 namespace bezier_utils {
 
-BezierHandle evaluate_cubic_bezier(
-    const BezierHandle& p0, const BezierHandle& p1,
-    const BezierHandle& p2, const BezierHandle& p3,
+Point evaluate_cubic_bezier(
+    const Point& p0, const Point& p1,
+    const Point& p2, const Point& p3,
     double t) {
     
     if (t < 0.0 || t > 1.0) {
@@ -28,8 +28,8 @@ BezierHandle evaluate_cubic_bezier(
 }
 
 double find_parameter_for_time(
-    const BezierHandle& p0, const BezierHandle& p1,
-    const BezierHandle& p2, const BezierHandle& p3,
+    const Point& p0, const Point& p1,
+    const Point& p2, const Point& p3,
     double target_time,
     double precision,
     int max_iterations) {
@@ -49,7 +49,7 @@ double find_parameter_for_time(
     double t = 0.5;
     
     for (int i = 0; i < max_iterations; ++i) {
-        BezierHandle point = evaluate_cubic_bezier(p0, p1, p2, p3, t);
+        Point point = evaluate_cubic_bezier(p0, p1, p2, p3, t);
         
         double diff = point.time - target_time;
         
@@ -70,26 +70,26 @@ double find_parameter_for_time(
 }
 
 void create_linear_bezier_handles(
-    const BezierHandle& p0, const BezierHandle& p3,
-    BezierHandle& out_p1, BezierHandle& out_p2) {
+    const Point& p0, const Point& p3,
+    Point& out_p1, Point& out_p2) {
     
     // For a true linear segment, we'd set P1=P0 and P2=P3, but
     // for better visualization, place handles at 1/3 along segment
     double t_diff = p3.time - p0.time;
     double v_diff = p3.value - p0.value;
     
-    out_p1 = BezierHandle(p0.time + t_diff / 3.0, p0.value + v_diff / 3.0);
-    out_p2 = BezierHandle(p3.time - t_diff / 3.0, p3.value - v_diff / 3.0);
+    out_p1 = Point(p0.time + t_diff / 3.0, p0.value + v_diff / 3.0);
+    out_p2 = Point(p3.time - t_diff / 3.0, p3.value - v_diff / 3.0);
 }
 
 void create_flat_bezier_handles(
-    const BezierHandle& keyframe_point, 
+    const Point& keyframe_point, 
     double time_offset,
-    BezierHandle& out_in_handle, 
-    BezierHandle& out_out_handle) {
+    Point& out_in_handle, 
+    Point& out_out_handle) {
     
-    out_in_handle = BezierHandle(keyframe_point.time - time_offset, keyframe_point.value);
-    out_out_handle = BezierHandle(keyframe_point.time + time_offset, keyframe_point.value);
+    out_in_handle = Point(keyframe_point.time - time_offset, keyframe_point.value);
+    out_out_handle = Point(keyframe_point.time + time_offset, keyframe_point.value);
 }
 
 } // namespace bezier_utils

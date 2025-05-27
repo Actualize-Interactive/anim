@@ -1,39 +1,68 @@
 #ifndef ANIM_KEYFRAME_HPP
 #define ANIM_KEYFRAME_HPP
 
-#include "anim/bezier_handle.hpp"
-#include "anim/tangent_mode.hpp"
-#include <utility> // For std::move
+#include "point.hpp"
+#include "handle_type.hpp"
+#include "function_type.hpp"
+
 
 namespace anim {
 
-class Keyframe {
-public:
-    Keyframe(double time, double value, const BezierHandle& in_handle, const BezierHandle& out_handle, TangentMode mode);
-    Keyframe(const Keyframe& other);
-    Keyframe(Keyframe&& other) noexcept;
-    Keyframe& operator=(const Keyframe& other);
-    Keyframe& operator=(Keyframe&& other) noexcept;
-    double time() const;
-    double value() const;
-    const BezierHandle& in_handle() const;
-    const BezierHandle& out_handle() const;
-    TangentMode mode() const;
-    void set_time(double time);
-    void set_value(double value);
-    void set_in_handle(const BezierHandle& in_handle);
-    void set_out_handle(const BezierHandle& out_handle);
-    void set_mode(TangentMode mode);
-    bool operator==(const Keyframe& other) const;
-    bool operator!=(const Keyframe& other) const;
-    bool operator<(const Keyframe& other) const;
+struct Keyframe {
+    Point        position;
+    Point        in_handle;
+    Point        out_handle;
+    FunctionType function_type;
+    HandleType   handle_type;
+    Keyframe(const Point& pos, const Point& in, const Point& out,
+             FunctionType func_type = FunctionType::bezier,
+             HandleType handle_type = HandleType::smooth)
+        : position(pos),
+          in_handle(in), out_handle(out),
+          function_type(func_type), handle_type(handle_type) {}
 
-private:
-    double m_time;
-    double m_value;
-    BezierHandle m_in_tangent;
-    BezierHandle m_out_tangent;
-    TangentMode m_mode;
+    Keyframe(double time, double value,
+             const Point& in_handle = Point(),
+             const Point& out_handle = Point(),
+             FunctionType function_type = FunctionType::bezier,
+             HandleType handle_type = HandleType::smooth)
+        : position(time, value),
+          in_handle(in_handle),
+          out_handle(out_handle),
+          function_type(function_type),
+          handle_type(handle_type) {}
+
+    Keyframe(double time = 0.0, double value = 0.0,
+             double in_handle_time = 0.0, double in_handle_value = 0.0,
+             double out_handle_time = 0.0, double out_handle_value = 0.0,
+             FunctionType function_type = FunctionType::bezier,
+             HandleType handle_type = HandleType::smooth)
+        : position(time, value),
+          in_handle(in_handle_time, in_handle_value),
+          out_handle(out_handle_time, out_handle_value),
+          function_type(function_type),
+          handle_type(handle_type) {}
+
+
+
+    Keyframe(const Keyframe& other) = default;
+    Keyframe(Keyframe&& other) noexcept = default;
+    Keyframe& operator=(const Keyframe& other) = default;
+    Keyframe& operator=(Keyframe&& other) noexcept = default;
+
+    bool operator==(const Keyframe& other) const {
+        return position == other.position &&
+               in_handle == other.in_handle &&
+               out_handle == other.out_handle &&
+               function_type == other.function_type &&
+               handle_type == other.handle_type;
+    }
+    bool operator!=(const Keyframe& other) const {
+        return !(*this == other);
+    }
+
+    double time() const { return position.time; }
+    double value() const { return position.value; }
 };
 
 } // namespace anim
