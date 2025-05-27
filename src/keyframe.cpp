@@ -96,8 +96,8 @@ void Keyframe::set_in_handle(const BezierHandle& in_handle) {
         m_in_tangent.time = in_handle.time;
         m_in_tangent.value = m_value;
     }
-    // For smoothManual mode, update the out handle to maintain collinearity
-    else if (m_mode == TangentMode::smoothManual) {
+    // For manual mode, update the out handle to maintain collinearity
+    else if (m_mode == TangentMode::manual) {
         m_in_tangent = in_handle;
         
         // Calculate the vector from keyframe to in_handle
@@ -129,8 +129,8 @@ void Keyframe::set_out_handle(const BezierHandle& out_handle) {
         m_out_tangent.time = out_handle.time;
         m_out_tangent.value = m_value;
     }
-    // For smoothManual mode, update the in handle to maintain collinearity
-    else if (m_mode == TangentMode::smoothManual) {
+    // For manual mode, update the in handle to maintain collinearity
+    else if (m_mode == TangentMode::manual) {
         m_out_tangent = out_handle;
         
         // Calculate the vector from keyframe to out_handle

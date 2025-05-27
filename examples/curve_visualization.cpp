@@ -58,7 +58,7 @@ int main() {
     anim::Channel flat_channel;
     anim::Channel smooth_auto_channel;
     anim::Channel smooth_manual_channel;
-    anim::Channel stepped_channel;
+    anim::Channel constant_channel;
     anim::Channel broken_channel;
     
     // Set keyframes for each channel (same time/values, different modes)
@@ -87,33 +87,33 @@ int main() {
       // SMOOTH_AUTO mode
     smooth_auto_channel.set_keyframe_at_time(0.0, 0.0, 
         anim::BezierHandle(-0.3, 0.0), anim::BezierHandle(0.3, 0.0), 
-        anim::TangentMode::smoothAuto);
+        anim::TangentMode::smooth);
     smooth_auto_channel.set_keyframe_at_time(1.0, 1.0, 
         anim::BezierHandle(0.7, 1.0), anim::BezierHandle(1.3, 1.0), 
-        anim::TangentMode::smoothAuto);
+        anim::TangentMode::smooth);
     smooth_auto_channel.set_keyframe_at_time(2.0, 0.0, 
         anim::BezierHandle(1.7, 0.0), anim::BezierHandle(2.3, 0.0), 
-        anim::TangentMode::smoothAuto);
+        anim::TangentMode::smooth);
       // SMOOTH_MANUAL mode (with specifically placed handles)
     smooth_manual_channel.set_keyframe_at_time(0.0, 0.0, 
         anim::BezierHandle(-0.3, 0.0), anim::BezierHandle(0.3, 0.3), 
-        anim::TangentMode::smoothManual);
+        anim::TangentMode::manual);
     smooth_manual_channel.set_keyframe_at_time(1.0, 1.0, 
         anim::BezierHandle(0.7, 0.7), anim::BezierHandle(1.3, 0.7), 
-        anim::TangentMode::smoothManual);
+        anim::TangentMode::manual);
     smooth_manual_channel.set_keyframe_at_time(2.0, 0.0, 
         anim::BezierHandle(1.7, 0.3), anim::BezierHandle(2.3, 0.0), 
-        anim::TangentMode::smoothManual);
+        anim::TangentMode::manual);
       // STEPPED mode
-    stepped_channel.set_keyframe_at_time(0.0, 0.0, 
+    constant_channel.set_keyframe_at_time(0.0, 0.0, 
         anim::BezierHandle(-0.3, 0.0), anim::BezierHandle(0.3, 0.0), 
-        anim::TangentMode::stepped);
-    stepped_channel.set_keyframe_at_time(1.0, 1.0, 
+        anim::TangentMode::constant);
+    constant_channel.set_keyframe_at_time(1.0, 1.0, 
         anim::BezierHandle(0.7, 1.0), anim::BezierHandle(1.3, 1.0), 
-        anim::TangentMode::stepped);
-    stepped_channel.set_keyframe_at_time(2.0, 0.0, 
+        anim::TangentMode::constant);
+    constant_channel.set_keyframe_at_time(2.0, 0.0, 
         anim::BezierHandle(1.7, 0.0), anim::BezierHandle(2.3, 0.0), 
-        anim::TangentMode::stepped);
+        anim::TangentMode::constant);
       // BROKEN mode (with handles creating asymmetric curves)
     broken_channel.set_keyframe_at_time(0.0, 0.0, 
         anim::BezierHandle(-0.3, 0.0), anim::BezierHandle(0.3, 0.5), 
@@ -143,7 +143,7 @@ int main() {
     std::cout << "\n";
     
     std::cout << "STEPPED mode:\n";
-    print_curve_ascii(stepped_channel, 0.0, 2.0);
+    print_curve_ascii(constant_channel, 0.0, 2.0);
     std::cout << "\n";
     
     std::cout << "BROKEN mode:\n";
@@ -158,22 +158,22 @@ int main() {
     anim::Channel x_channel("position.x");
     x_channel.set_keyframe_at_time(0.0, 0.0, 
         anim::BezierHandle(-0.3, 0.0), anim::BezierHandle(0.3, 0.0), 
-        anim::TangentMode::smoothAuto);
+        anim::TangentMode::smooth);
     x_channel.set_keyframe_at_time(1.0, 1.0, 
         anim::BezierHandle(0.7, 1.0), anim::BezierHandle(1.3, 1.0), 
-        anim::TangentMode::smoothAuto);
+        anim::TangentMode::smooth);
     
     // Create Y position channel (bounce curve)
     anim::Channel y_channel("position.y");
     y_channel.set_keyframe_at_time(0.0, 0.0, 
         anim::BezierHandle(-0.3, 0.0), anim::BezierHandle(0.3, 0.0), 
-        anim::TangentMode::smoothAuto);
+        anim::TangentMode::smooth);
     y_channel.set_keyframe_at_time(0.5, 1.0, 
         anim::BezierHandle(0.4, 1.0), anim::BezierHandle(0.6, 1.0), 
-        anim::TangentMode::smoothAuto);
+        anim::TangentMode::smooth);
     y_channel.set_keyframe_at_time(1.0, 0.0, 
         anim::BezierHandle(0.7, 0.0), anim::BezierHandle(1.3, 0.0), 
-        anim::TangentMode::smoothAuto);
+        anim::TangentMode::smooth);
     
     // Create scale channel (starts and ends at 1.0, contracts in the middle)
     anim::Channel scale_channel("scale");

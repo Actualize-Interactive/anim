@@ -12,9 +12,9 @@ namespace anim {
 enum class TangentMode {
     flat = 0,       /**< Tangent handles create a flat curve near the keyframe */
     linear = 1,     /**< Tangent handles create a straight line between keyframes */
-    stepped = 2,    /**< Value stays constant until the next keyframe, creating a sudden jump */
-    smoothAuto = 3, /**< Tangent handles are automatically calculated for smooth transitions */
-    smoothManual = 4, /**< Tangent handles can be manually set but maintain curvature continuity */
+    constant = 2,    /**< Value stays constant until the next keyframe, creating a sudden jump */
+    smooth = 3, /**< Tangent handles are automatically calculated for smooth transitions */
+    manual = 4, /**< Tangent handles can be manually set but maintain curvature continuity */
     broken = 5,       /**< Tangent handles can be manually set with no constraints */
     count = 6 /**< Total number of tangent modes */
 };
