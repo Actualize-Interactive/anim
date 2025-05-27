@@ -98,6 +98,10 @@ std::vector<std::string> Animation::get_channel_names() const {
     return names;
 }
 
+void Animation::clear_channels() {
+    m_channels.clear();
+}
+
 size_t Animation::find_channel_index(const std::string& name) const {
     for (size_t i = 0; i < m_channels.size(); ++i) {
         if (m_channels[i].name() == name) {
