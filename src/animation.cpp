@@ -76,6 +76,11 @@ size_t Animation::get_channel_count() const
     return m_channels.size();
 }
 
+size_t Animation::num_channels() const 
+{
+    return m_channels.size();
+}
+
 bool Animation::remove_channel(const std::string& name) {
     size_t index = find_channel_index(name);
     if (index == static_cast<size_t>(-1)) {

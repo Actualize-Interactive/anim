@@ -92,6 +92,12 @@ public:
      */
     size_t get_channel_count() const;
     
+    /**
+     * @brief Get the number of channels in the animation
+     * @return The channel count
+     */
+    size_t num_channels() const;
+    
 
     /**
      * @brief Remove a channel by its name
