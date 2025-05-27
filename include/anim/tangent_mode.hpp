@@ -3,20 +3,14 @@
 
 namespace anim {
 
-/**
- * @brief Defines how keyframe tangent handles behave when interpolating between keyframes.
- * 
- * Different tangent modes control the shape of the animation curve between keyframes,
- * affecting how smooth or sharp transitions are.
- */
 enum class TangentMode {
-    flat = 0,       /**< Tangent handles create a flat curve near the keyframe */
-    linear = 1,     /**< Tangent handles create a straight line between keyframes */
-    constant = 2,    /**< Value stays constant until the next keyframe, creating a sudden jump */
-    smooth = 3, /**< Tangent handles are automatically calculated for smooth transitions */
-    manual = 4, /**< Tangent handles can be manually set but maintain curvature continuity */
-    broken = 5,       /**< Tangent handles can be manually set with no constraints */
-    count = 6 /**< Total number of tangent modes */
+    flat = 0,
+    linear = 1,
+    constant = 2,
+    smooth = 3,
+    manual = 4,
+    broken = 5,
+    count = 6
 };
 
 } // namespace anim
