@@ -113,6 +113,11 @@ public:
     std::vector<std::string> get_channel_names() const;
     
     /**
+     * @brief Remove all channels from the animation
+     */
+    void clear_channels();
+    
+    /**
      * @brief Find the index of a channel by its name
      * @param name The name of the channel to find
      * @return The index of the channel, or -1 if not found

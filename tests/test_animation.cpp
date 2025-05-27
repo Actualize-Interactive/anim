@@ -25,6 +25,13 @@ TEST_CASE("Animation empty state", "[animation]") {
         auto results = anim.evaluate_channels(0.0);
         REQUIRE(results.empty());
     }
+    
+    SECTION("Clearing empty animation has no effect") {
+        REQUIRE(anim.is_empty());
+        anim.clear_channels();
+        REQUIRE(anim.is_empty());
+        REQUIRE(anim.get_channel_count() == 0);
+    }
 }
 
 TEST_CASE("Animation with multiple channels", "[animation]") {
@@ -126,6 +133,14 @@ TEST_CASE("Animation with multiple channels", "[animation]") {
         REQUIRE(anim.remove_channel(0));
         REQUIRE(anim.get_channel_count() == 1);
         REQUIRE_FALSE(anim.remove_channel(999));
+    }
+    
+    SECTION("Clear all channels") {
+        REQUIRE_FALSE(anim.is_empty());
+        anim.clear_channels();
+        REQUIRE(anim.is_empty());
+        REQUIRE(anim.get_channel_count() == 0);
+        REQUIRE(anim.get_channel_names().empty());
     }
 }
 
