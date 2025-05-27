@@ -85,7 +85,7 @@ TEST_CASE("Animation with multiple channels", "[animation]") {
     }
     
     SECTION("Channel count") {
-        REQUIRE(anim.get_channel_count() == 2);
+        REQUIRE(anim.num_channels() == 2);
     }
     
     SECTION("Evaluate all channels at specific time") {
@@ -124,7 +124,7 @@ TEST_CASE("Animation with multiple channels", "[animation]") {
     
     SECTION("Remove channel by index") {
         REQUIRE(anim.remove_channel(0));
-        REQUIRE(anim.get_channel_count() == 1);
+        REQUIRE(anim.num_channels() == 1);
         REQUIRE_FALSE(anim.remove_channel(999));
     }
 }
@@ -169,7 +169,7 @@ TEST_CASE("Animation channel creation", "[animation]") {
         Channel* ch1 = anim.create_channel("position.x");
         REQUIRE(ch1 != nullptr);
         REQUIRE(ch1->name() == "position.x");
-        REQUIRE(anim.get_channel_count() == 1);
+        REQUIRE(anim.num_channels() == 1);
         
         // Set a keyframe on the created channel
         ch1->set_keyframe_at_time(1.0, 5.0, BezierHandle(0.9, 5.0), BezierHandle(1.1, 5.0), TangentMode::linear);
@@ -186,7 +186,7 @@ TEST_CASE("Animation channel creation", "[animation]") {
         anim.create_channel("position.y");
         anim.create_channel("position.z");
         
-        REQUIRE(anim.get_channel_count() == 3);
+        REQUIRE(anim.num_channels() == 3);
         REQUIRE(anim.has_channel("position.x"));
         REQUIRE(anim.has_channel("position.y"));
         REQUIRE(anim.has_channel("position.z"));
