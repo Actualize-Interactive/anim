@@ -248,3 +248,157 @@ TEST_CASE("Channel range evaluation", "[channel]") {
         REQUIRE(samples[4] == Catch::Approx(6.0));
     }
 }
+
+TEST_CASE("Channel bezier handle adjustments", "[channel]") {
+    
+    SECTION("FLAT mode handle adjustment") {
+        Channel channel;
+        // Set up keyframe with FLAT mode
+        channel.set_keyframe_at_time(2.0, 3.0, 
+                                   BezierHandle(1.8, 3.0), 
+                                   BezierHandle(2.2, 3.0), 
+                                   TangentMode::flat);
+        
+        // Get the keyframe to test
+        Keyframe& kf = channel.get_keyframe(0);
+        
+        // Store original handle values
+        BezierHandle orig_in_handle = kf.in_handle();
+        BezierHandle orig_out_handle = kf.out_handle();
+        
+        // Try to adjust the in_handle time
+        BezierHandle new_in_handle(1.5, 3.0);
+        kf.set_in_handle(new_in_handle);
+        
+        // For flat mode, the time should be adjustable but the value should remain at keyframe value
+        REQUIRE(kf.in_handle().time == Catch::Approx(1.5));
+        REQUIRE(kf.in_handle().value == Catch::Approx(3.0)); // Value should remain at keyframe value
+        
+        // Try to adjust the out_handle time
+        BezierHandle new_out_handle(2.5, 3.0);
+        kf.set_out_handle(new_out_handle);
+        
+        // For flat mode, the time should be adjustable but the value should remain at keyframe value
+        REQUIRE(kf.out_handle().time == Catch::Approx(2.5));
+        REQUIRE(kf.out_handle().value == Catch::Approx(3.0)); // Value should remain at keyframe value
+        
+        // Try to adjust the value (should be reset to keyframe value)
+        kf.set_in_handle(BezierHandle(1.5, 4.0));
+        REQUIRE(kf.in_handle().time == Catch::Approx(1.5));
+        REQUIRE(kf.in_handle().value == Catch::Approx(3.0)); // Value should remain at keyframe value
+    }
+    
+    SECTION("SMOOTH_MANUAL mode handle adjustment") {
+        Channel channel;
+        // Set up keyframe with SMOOTH_MANUAL mode
+        channel.set_keyframe_at_time(2.0, 3.0, 
+                                   BezierHandle(1.7, 2.7), // In-handle
+                                   BezierHandle(2.3, 3.3), // Out-handle
+                                   TangentMode::smoothManual);
+        
+        // Get the keyframe to test
+        Keyframe& kf = channel.get_keyframe(0);
+        
+        // Store original handle values
+        BezierHandle orig_in_handle = kf.in_handle();
+        BezierHandle orig_out_handle = kf.out_handle();
+        
+        // Adjust the in_handle
+        BezierHandle new_in_handle(1.5, 2.5);
+        kf.set_in_handle(new_in_handle);
+        
+        // In smoothManual mode, when adjusting in_handle, the out_handle should adjust to maintain colinearity
+        // The out_handle should be at the same distance from the keyframe but in the opposite direction
+        
+        // Calculate the vectors from keyframe to handles
+        BezierHandle kf_point(kf.time(), kf.value());
+        BezierHandle in_vec = kf.in_handle() - kf_point;
+        BezierHandle out_vec = kf.out_handle() - kf_point;
+        
+        // Check that the vectors are pointing in opposite directions (should be colinear)
+        double in_slope = in_vec.value / in_vec.time;
+        double out_slope = out_vec.value / out_vec.time;
+        
+        // Slopes should be approximately equal
+        REQUIRE(in_slope == Catch::Approx(out_slope));
+        
+        // Lengths should be equal
+        double in_length = in_vec.length();
+        double out_length = out_vec.length();
+        REQUIRE(in_length == Catch::Approx(out_length));
+    }
+    
+    SECTION("SMOOTH_AUTO mode handle adjustment") {
+        Channel channel;
+        // Set up a sequence of keyframes with SMOOTH_AUTO mode
+        channel.set_keyframe_at_time(1.0, 2.0, 
+                                   BezierHandle(0.8, 2.0), 
+                                   BezierHandle(1.2, 2.0), 
+                                   TangentMode::smoothAuto);
+        channel.set_keyframe_at_time(2.0, 3.0, 
+                                   BezierHandle(1.8, 3.0), 
+                                   BezierHandle(2.2, 3.0), 
+                                   TangentMode::smoothAuto);
+        channel.set_keyframe_at_time(3.0, 1.0, 
+                                   BezierHandle(2.8, 1.0), 
+                                   BezierHandle(3.2, 1.0), 
+                                   TangentMode::smoothAuto);
+        
+        // Get the middle keyframe to test
+        Keyframe& kf = channel.get_keyframe(1);
+        
+        // Store original handle values
+        BezierHandle orig_in_handle = kf.in_handle();
+        BezierHandle orig_out_handle = kf.out_handle();
+        
+        // Try to adjust the in_handle (should get auto-calculated by the channel)
+        BezierHandle new_in_handle(1.5, 2.5);
+        kf.set_in_handle(new_in_handle);
+        
+        // For smoothAuto, the handles should be automatically calculated based on neighboring keyframes
+        // We just verify that they're not what we tried to set manually
+        
+        // In a proper implementation, changing the keyframe time should update the handles
+        kf.set_time(2.1);
+        
+        // Handles should be recalculated
+        REQUIRE(kf.in_handle().time != Catch::Approx(new_in_handle.time));
+        REQUIRE(kf.out_handle().time != Catch::Approx(orig_out_handle.time));
+    }
+    
+    SECTION("BROKEN mode handle adjustment") {
+        Channel channel;
+        // Set up keyframe with BROKEN mode
+        channel.set_keyframe_at_time(2.0, 3.0, 
+                                   BezierHandle(1.7, 2.7), // In-handle
+                                   BezierHandle(2.3, 3.3), // Out-handle
+                                   TangentMode::broken);
+        
+        // Get the keyframe to test
+        Keyframe& kf = channel.get_keyframe(0);
+        
+        // Store original handle values
+        BezierHandle orig_in_handle = kf.in_handle();
+        BezierHandle orig_out_handle = kf.out_handle();
+        
+        // Adjust the in_handle
+        BezierHandle new_in_handle(1.5, 2.5);
+        kf.set_in_handle(new_in_handle);
+        
+        // In broken mode, adjusting in_handle should not affect the out_handle
+        REQUIRE(kf.in_handle().time == Catch::Approx(1.5));
+        REQUIRE(kf.in_handle().value == Catch::Approx(2.5));
+        REQUIRE(kf.out_handle().time == Catch::Approx(orig_out_handle.time));
+        REQUIRE(kf.out_handle().value == Catch::Approx(orig_out_handle.value));
+        
+        // Adjust the out_handle
+        BezierHandle new_out_handle(2.5, 3.5);
+        kf.set_out_handle(new_out_handle);
+        
+        // Both handles should now be adjusted independently
+        REQUIRE(kf.in_handle().time == Catch::Approx(1.5));
+        REQUIRE(kf.in_handle().value == Catch::Approx(2.5));
+        REQUIRE(kf.out_handle().time == Catch::Approx(2.5));
+        REQUIRE(kf.out_handle().value == Catch::Approx(3.5));
+    }
+}
