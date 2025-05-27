@@ -10,9 +10,9 @@ A modern C++ library for creating, managing, and evaluating animation channels b
 - Multiple tangent modes for animation curves:
   - flat: Horizontal tangents
   - linear: Direct linear interpolation between keyframes
-  - stepped: Value stays constant until the next keyframe
-  - smoothAuto: Automatically calculated smooth tangents
-  - smoothManual: Manual control of one tangent with auto-adjustment of the other
+  - constant: Value stays constant until the next keyframe
+  - smooth: Automatically calculated smooth tangents
+  - manual: Manual control of one tangent with auto-adjustment of the other
   - broken: Complete manual control of both tangents
 - Cubic Bézier curve interpolation
 - Support for multiple named animation channels
@@ -138,16 +138,16 @@ int main() {    // Create an animation channel
         anim::Point2D(0.1, 0.0),   // out-tangent
         anim::TangentMode::linear);
     
-    // Second keyframe at time 1.0 with smoothAuto mode
+    // Second keyframe at time 1.0 with smooth mode
     channel.set_keyframe(1.0, 1.0,
         anim::Point2D(0.9, 1.0),   // in-tangent
         anim::Point2D(1.1, 1.0),   // out-tangent
-        anim::TangentMode::smoothAuto);
+        anim::TangentMode::smooth);
     
-    // Third keyframe at time 2.0 with stepped mode    channel.set_keyframe(2.0, 0.0,
+    // Third keyframe at time 2.0 with constant mode    channel.set_keyframe(2.0, 0.0,
         anim::Point2D(1.9, 0.0),   // in-tangent
         anim::Point2D(2.1, 0.0),   // out-tangent
-        anim::TangentMode::stepped);
+        anim::TangentMode::constant);
     
     // Evaluate the channel at different times
     std::cout << "t=0.0: " << channel.evaluate(0.0) << std::endl;
@@ -193,15 +193,15 @@ int main() {
     position_y.set_keyframe(0.0, 0.0, 
         anim::Point2D(-0.1, 0.0), 
         anim::Point2D(0.1, 0.0), 
-        anim::TangentMode::smoothAuto);
+        anim::TangentMode::smooth);
     position_y.set_keyframe(0.5, 5.0,
         anim::Point2D(0.4, 5.0), 
         anim::Point2D(0.6, 5.0), 
-        anim::TangentMode::smoothAuto);
+        anim::TangentMode::smooth);
     position_y.set_keyframe(1.0, 0.0,
         anim::Point2D(0.9, 0.0), 
         anim::Point2D(1.1, 0.0), 
-        anim::TangentMode::smoothAuto);
+        anim::TangentMode::smooth);
     
     // Add channels to animation
     animation.add_channel("position.x", position_x);
@@ -266,7 +266,7 @@ int main() {
     channel.set_keyframe(1.0, 1.0, 
         anim::Point2D(0.9, 1.0), 
         anim::Point2D(1.1, 1.0), 
-        anim::TangentMode::smoothAuto);
+        anim::TangentMode::smooth);
     
     // Visualize the curve
     print_curve_ascii(channel, 0.0, 1.0);

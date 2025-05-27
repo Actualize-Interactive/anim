@@ -147,8 +147,8 @@ TEST_CASE("Channel tangent modes", "[channel]") {
     
     SECTION("STEPPED mode evaluation") {
         // Set up two keyframes with STEPPED mode
-        channel.set_keyframe_at_time(1.0, 2.0, BezierHandle(0.9, 2.0), BezierHandle(1.1, 2.0), TangentMode::stepped);
-        channel.set_keyframe_at_time(3.0, 6.0, BezierHandle(2.9, 6.0), BezierHandle(3.1, 6.0), TangentMode::stepped);
+        channel.set_keyframe_at_time(1.0, 2.0, BezierHandle(0.9, 2.0), BezierHandle(1.1, 2.0), TangentMode::constant);
+        channel.set_keyframe_at_time(3.0, 6.0, BezierHandle(2.9, 6.0), BezierHandle(3.1, 6.0), TangentMode::constant);
         
         // Evaluate at points between keyframes
         REQUIRE(channel.evaluate(1.0) == Catch::Approx(2.0));        REQUIRE(channel.evaluate(2.0) == Catch::Approx(2.0)); // Should stay at first keyframe value
@@ -158,8 +158,8 @@ TEST_CASE("Channel tangent modes", "[channel]") {
     
     SECTION("SMOOTH_AUTO mode evaluation") {
         // Set up keyframes with SMOOTH_AUTO mode
-        channel.set_keyframe_at_time(1.0, 2.0, BezierHandle(0.9, 2.0), BezierHandle(1.1, 2.0), TangentMode::smoothAuto);
-        channel.set_keyframe_at_time(3.0, 6.0, BezierHandle(2.9, 6.0), BezierHandle(3.1, 6.0), TangentMode::smoothAuto);
+        channel.set_keyframe_at_time(1.0, 2.0, BezierHandle(0.9, 2.0), BezierHandle(1.1, 2.0), TangentMode::smooth);
+        channel.set_keyframe_at_time(3.0, 6.0, BezierHandle(2.9, 6.0), BezierHandle(3.1, 6.0), TangentMode::smooth);
         
         // Evaluate at each keyframe and between
         REQUIRE(channel.evaluate(1.0) == Catch::Approx(2.0));
@@ -294,7 +294,7 @@ TEST_CASE("Channel bezier handle adjustments", "[channel]") {
         channel.set_keyframe_at_time(2.0, 3.0, 
                                    BezierHandle(1.7, 2.7), // In-handle
                                    BezierHandle(2.3, 3.3), // Out-handle
-                                   TangentMode::smoothManual);
+                                   TangentMode::manual);
         
         // Get the keyframe to test
         Keyframe& kf = channel.get_keyframe(0);
@@ -307,7 +307,7 @@ TEST_CASE("Channel bezier handle adjustments", "[channel]") {
         BezierHandle new_in_handle(1.5, 2.5);
         kf.set_in_handle(new_in_handle);
         
-        // In smoothManual mode, when adjusting in_handle, the out_handle should adjust to maintain colinearity
+        // In manual mode, when adjusting in_handle, the out_handle should adjust to maintain colinearity
         // The out_handle should be at the same distance from the keyframe but in the opposite direction
         
         // Calculate the vectors from keyframe to handles
@@ -334,15 +334,15 @@ TEST_CASE("Channel bezier handle adjustments", "[channel]") {
         channel.set_keyframe_at_time(1.0, 2.0, 
                                    BezierHandle(0.8, 2.0), 
                                    BezierHandle(1.2, 2.0), 
-                                   TangentMode::smoothAuto);
+                                   TangentMode::smooth);
         channel.set_keyframe_at_time(2.0, 3.0, 
                                    BezierHandle(1.8, 3.0), 
                                    BezierHandle(2.2, 3.0), 
-                                   TangentMode::smoothAuto);
+                                   TangentMode::smooth);
         channel.set_keyframe_at_time(3.0, 1.0, 
                                    BezierHandle(2.8, 1.0), 
                                    BezierHandle(3.2, 1.0), 
-                                   TangentMode::smoothAuto);
+                                   TangentMode::smooth);
         
         // Get the middle keyframe to test
         Keyframe& kf = channel.get_keyframe(1);
@@ -355,7 +355,7 @@ TEST_CASE("Channel bezier handle adjustments", "[channel]") {
         BezierHandle new_in_handle(1.5, 2.5);
         kf.set_in_handle(new_in_handle);
         
-        // For smoothAuto, the handles should be automatically calculated based on neighboring keyframes
+        // For smooth, the handles should be automatically calculated based on neighboring keyframes
         // We just verify that they're not what we tried to set manually
         
         // In a proper implementation, changing the keyframe time should update the handles

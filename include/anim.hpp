@@ -20,7 +20,7 @@
  * 
  * @section features_sec Key Features
  * 
- * - Multiple tangent modes (linear, flat, stepped, smooth, etc.)
+ * - Multiple tangent modes (linear, flat, constant, smooth, etc.)
  * - Bézier curve interpolation between keyframes
  * - Flexible keyframe manipulation
  * - Named animation channels with intuitive API
@@ -44,10 +44,10 @@
  * // Add keyframes
  * position_x.set_keyframe_at_time(0.0, 0.0, 
  *     anim::BezierHandle(-0.3, 0.0), anim::BezierHandle(0.3, 0.0), 
- *     anim::TangentMode::smoothAuto);
+ *     anim::TangentMode::smooth);
  * position_x.set_keyframe_at_time(1.0, 10.0, 
  *     anim::BezierHandle(0.7, 10.0), anim::BezierHandle(1.3, 10.0), 
- *     anim::TangentMode::smoothAuto);
+ *     anim::TangentMode::smooth);
  * 
  * // Evaluate at a specific time
  * double value = position_x.evaluate(0.5); // Get value at t=0.5
