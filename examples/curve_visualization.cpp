@@ -35,6 +35,18 @@ std::vector<anim::Channel> curves;
 // Storage for keyframe visibility toggles
 static std::vector<std::vector<bool>> s_keyframe_visibilities;
 static bool s_vis_data_initialized = false; // To track if visibility data is synced with curves
+
+// Selection and interaction state
+struct Selection {
+    int curve_idx = -1;
+    int keyframe_idx = -1;
+    bool is_handle = false;
+    bool is_in_handle = false; // true for in-handle, false for out-handle
+    bool is_dragging = false;
+};
+static Selection s_selection;
+static const float SELECTION_RADIUS = 8.0f; // Pixel radius for selection
+
 double eval_step = 0.01;
 
 // Enum string mappers - ensure these match your anim::Function and anim::HandleMode enum order and values
@@ -45,8 +57,11 @@ const char* const c_hmode_items[] = { "Flat", "Smooth", "Aligned", "Free" }; // 
 void CreateExampleCurves() {
     curves.clear(); 
     s_keyframe_visibilities.clear(); 
+    
+    // Reset selection when curves change
+    s_selection = Selection{};
 
-    if (false) { // Placeholder for future curves, currently only sine wave
+    if (true) { // Placeholder for future curves, currently only sine wave
         // Curve 1: Simple Sine Wave (8 points) - only curve for now
         anim::Channel sine_curve("Sine Wave");
         for (float t = 0; t <= 32.f; t += 8.f) { 
@@ -55,20 +70,11 @@ void CreateExampleCurves() {
         curves.push_back(sine_curve);
     }
 
-    if (false){
+    if (true){
         // Curve 1: Simple Sine Wave (8 points) - only curve for now
         anim::Channel sine_curve("Sine Wave");
         for (float t = 0; t <= 32.f; t += 8.f) { 
-            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)), anim::Function::linear);
-        }
-        curves.push_back(sine_curve);
-    }
-
-    if (false){
-        // Curve 1: Simple Sine Wave (8 points) - only curve for now
-        anim::Channel sine_curve("Sine Wave");
-        for (float t = 0; t <= 32.f; t += 8.f) { 
-            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)), anim::Function::bezier, anim::HandleMode::flat);
+            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + .25, anim::Function::linear);
         }
         curves.push_back(sine_curve);
     }
@@ -77,16 +83,25 @@ void CreateExampleCurves() {
         // Curve 1: Simple Sine Wave (8 points) - only curve for now
         anim::Channel sine_curve("Sine Wave");
         for (float t = 0; t <= 32.f; t += 8.f) { 
-            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)), anim::Function::bezier, anim::HandleMode::aligned);
+            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + .5, anim::Function::bezier, anim::HandleMode::flat);
+        }
+        curves.push_back(sine_curve);
+    }
+
+    if (true){
+        // Curve 1: Simple Sine Wave (8 points) - only curve for now
+        anim::Channel sine_curve("Sine Wave");
+        for (float t = 0; t <= 32.f; t += 8.f) { 
+            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + .75, anim::Function::bezier, anim::HandleMode::aligned);
         }
         curves.push_back(sine_curve);
     }   
 
-    if (false){
+    if (true){
         // Curve 1: Simple Sine Wave (8 points) - only curve for now
         anim::Channel sine_curve("Sine Wave");
         for (float t = 0; t <= 32.f; t += 8.f) { 
-            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)), anim::Function::bezier, anim::HandleMode::free);
+            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + 1.0, anim::Function::bezier, anim::HandleMode::free);
         }
         curves.push_back(sine_curve);
     }   
@@ -99,6 +114,22 @@ void CreateExampleCurves() {
     s_vis_data_initialized = true;
 }
 
+// Helper function to check if a point is near another point in plot coordinates
+bool IsPointNear(ImVec2 plot_pos, ImVec2 mouse_plot_pos, float radius_pixels) {
+    ImVec2 plot_size = ImPlot::GetPlotSize();
+    ImPlotRect limits = ImPlot::GetPlotLimits();
+    
+    // Convert pixel radius to plot coordinates
+    float x_range = limits.X.Max - limits.X.Min;
+    float y_range = limits.Y.Max - limits.Y.Min;
+    float radius_x = (radius_pixels / plot_size.x) * x_range;
+    float radius_y = (radius_pixels / plot_size.y) * y_range;
+    
+    float dx = plot_pos.x - mouse_plot_pos.x;
+    float dy = plot_pos.y - mouse_plot_pos.y;
+    
+    return (dx*dx)/(radius_x*radius_x) + (dy*dy)/(radius_y*radius_y) <= 1.0f;
+}
 
 int main() {
     // Setup window
@@ -226,17 +257,146 @@ int main() {
 
 
         ImGui::Begin("Curves Plot");
-        // Help marker can be removed or kept if desired
-        // ImGui::Text("Displaying example animation curves.");
-        // ImGui::SameLine(); ShowHelpMarker("Right-click to configure plot.\nCtrl+Click to box select.");
 
-        if (ImPlot::BeginPlot("Animation Curves", ImVec2(-1,-1), ImPlotFlags_NoLegend)) { // Fill parent window
+        if (ImPlot::BeginPlot("Animation Curves", ImVec2(-1,-1), ImPlotFlags_NoLegend)) {
             ImPlot::SetupAxes("Time (s)", "Value");
-            ImPlot::SetupAxesLimits(-2, 34, -2, 3, ImGuiCond_Once); // Adjusted limits for new data range
+            ImPlot::SetupAxesLimits(-2, 34, -2, 3, ImGuiCond_Once);
 
+            // Handle mouse interaction
+            bool plot_hovered = ImPlot::IsPlotHovered();
+            bool mouse_clicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+            bool mouse_down = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+            bool mouse_released = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+            
+            auto mouse_pnt = ImPlot::GetPlotMousePos();
+            ImVec2 mouse_plot_pos = ImVec2(mouse_pnt.x, mouse_pnt.y);
+
+            // Check if mouse is over any interactive element
+            bool mouse_over_interactive_element = false;
+            if (plot_hovered) {
+                for (size_t i = 0; i < curves.size() && !mouse_over_interactive_element; ++i) {
+                    anim::Channel& curve = curves[i];
+                    
+                    for (size_t k = 0; k < curve.num_keyframes(); ++k) {
+                        // Skip invisible keyframes
+                        if (!s_vis_data_initialized || i >= s_keyframe_visibilities.size() || 
+                            k >= s_keyframe_visibilities[i].size() || !s_keyframe_visibilities[i][k]) {
+                            continue;
+                        }
+                        
+                        const auto& kf = curve.keyframe(k);
+                        ImVec2 kf_pos = ImVec2(static_cast<float>(kf.time()), static_cast<float>(kf.value()));
+                        
+                        // Check keyframe
+                        if (IsPointNear(kf_pos, mouse_plot_pos, SELECTION_RADIUS)) {
+                            mouse_over_interactive_element = true;
+                            break;
+                        }
+                        
+                        // Check handles for bezier curves
+                        if (kf.function == anim::Function::bezier) {
+                            ImVec2 in_handle_pos = ImVec2(static_cast<float>(kf.in_handle.time), 
+                                                         static_cast<float>(kf.in_handle.value));
+                            ImVec2 out_handle_pos = ImVec2(static_cast<float>(kf.out_handle.time), 
+                                                          static_cast<float>(kf.out_handle.value));
+                            
+                            if (IsPointNear(in_handle_pos, mouse_plot_pos, SELECTION_RADIUS) ||
+                                IsPointNear(out_handle_pos, mouse_plot_pos, SELECTION_RADIUS)) {
+                                mouse_over_interactive_element = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Only process selection if mouse is not over interactive elements OR we're already dragging
+            if (mouse_over_interactive_element || s_selection.is_dragging) {
+                // Disable plot navigation temporarily
+                ImPlot::GetInputMap().Pan = ImGuiMouseButton_COUNT; // Disable panning
+                ImPlot::GetInputMap().Menu = ImGuiMouseButton_COUNT; // Disable context menu
+            }
+            
+            // Start selection/dragging
+            if (plot_hovered && mouse_clicked && mouse_over_interactive_element) {
+                s_selection = Selection{}; // Reset selection
+                
+                // Check for keyframe/handle selection
+                for (size_t i = 0; i < curves.size() && s_selection.curve_idx == -1; ++i) {
+                    anim::Channel& curve = curves[i];
+                    
+                    for (size_t k = 0; k < curve.num_keyframes(); ++k) {
+                        // Skip invisible keyframes
+                        if (!s_vis_data_initialized || i >= s_keyframe_visibilities.size() || 
+                            k >= s_keyframe_visibilities[i].size() || !s_keyframe_visibilities[i][k]) {
+                            continue;
+                        }
+                        
+                        const auto& kf = curve.keyframe(k);
+                        ImVec2 kf_pos = ImVec2(static_cast<float>(kf.time()), static_cast<float>(kf.value()));
+                        
+                        // Check handles first (for bezier curves) - they have priority over keyframes
+                        if (kf.function == anim::Function::bezier) {
+                            ImVec2 in_handle_pos = ImVec2(static_cast<float>(kf.in_handle.time), 
+                                                         static_cast<float>(kf.in_handle.value));
+                            ImVec2 out_handle_pos = ImVec2(static_cast<float>(kf.out_handle.time), 
+                                                          static_cast<float>(kf.out_handle.value));
+                            
+                            if (IsPointNear(in_handle_pos, mouse_plot_pos, SELECTION_RADIUS)) {
+                                s_selection = {static_cast<int>(i), static_cast<int>(k), true, true, false};
+                                break;
+                            } else if (IsPointNear(out_handle_pos, mouse_plot_pos, SELECTION_RADIUS)) {
+                                s_selection = {static_cast<int>(i), static_cast<int>(k), true, false, false};
+                                break;
+                            }
+                        }
+                        
+                        // Check keyframe
+                        if (IsPointNear(kf_pos, mouse_plot_pos, SELECTION_RADIUS)) {
+                            s_selection = {static_cast<int>(i), static_cast<int>(k), false, false, false};
+                            break;
+                        }
+                    }
+                }
+                
+                if (s_selection.curve_idx != -1) {
+                    s_selection.is_dragging = true;
+                }
+            }
+            
+            // Handle dragging
+            if (s_selection.is_dragging && mouse_down && s_selection.curve_idx != -1) {
+                anim::Channel& curve = curves[s_selection.curve_idx];
+                
+                if (s_selection.is_handle) {
+                    // Move handle
+                    anim::Point new_handle_pos(static_cast<double>(mouse_plot_pos.x), 
+                                             static_cast<double>(mouse_plot_pos.y));
+                    
+                    if (s_selection.is_in_handle) {
+                        curve.set_keyframe_in_handle(s_selection.keyframe_idx, new_handle_pos);
+                    } else {
+                        curve.set_keyframe_out_handle(s_selection.keyframe_idx, new_handle_pos);
+                    }
+                } else {
+                    // Move keyframe
+                    // curve.set_keyframe_time(s_selection.keyframe_idx, static_cast<double>(mouse_plot_pos.x));
+                    // curve.set_keyframe_value(s_selection.keyframe_idx, static_cast<double>(mouse_plot_pos.y));
+                    anim::Point new_kf_pos(static_cast<double>(mouse_plot_pos.x), 
+                                           static_cast<double>(mouse_plot_pos.y));
+                    curve.set_keyframe_position(s_selection.keyframe_idx, new_kf_pos);
+                }
+            }
+            
+            // End dragging
+            if (mouse_released) {
+                s_selection.is_dragging = false;
+            }
+
+            // Plot curves
             for (size_t i = 0; i < curves.size(); ++i) {
                 anim::Channel& curve = curves[i];
-                std::vector<double> x_data, y_data; // Use double for anim library consistency
+                std::vector<double> x_data, y_data;
   
                 // Sample the curve for plotting
                 if (curve.num_keyframes() > 0) { // Use num_keyframes()
@@ -270,59 +430,107 @@ int main() {
 
                 // Plot keyframes as points & handles
                 std::vector<float> kf_x_f, kf_y_f;
+                std::vector<float> selected_kf_x, selected_kf_y;
+                
                 for (size_t k_idx = 0; k_idx < curve.num_keyframes(); ++k_idx) {
-                    // Check visibility
-                    if (!s_vis_data_initialized || i >= s_keyframe_visibilities.size() || k_idx >= s_keyframe_visibilities[i].size() || !s_keyframe_visibilities[i][k_idx]) {
-                        continue; // Skip plotting this keyframe if not visible or data is out of sync
+                    if (!s_vis_data_initialized || i >= s_keyframe_visibilities.size() || 
+                        k_idx >= s_keyframe_visibilities[i].size() || !s_keyframe_visibilities[i][k_idx]) {
+                        continue;
                     }
 
-                    const auto& kf = curve.keyframe(k_idx); // Access keyframe by index
-                    kf_x_f.push_back(static_cast<float>(kf.time()));
-                    kf_y_f.push_back(static_cast<float>(kf.value()));
+                    const auto& kf = curve.keyframe(k_idx);
+                    float kf_t = static_cast<float>(kf.time());
+                    float kf_v = static_cast<float>(kf.value());
+                    
+                    // Check if this keyframe is selected
+                    bool is_selected = (s_selection.curve_idx == static_cast<int>(i) && 
+                                       s_selection.keyframe_idx == static_cast<int>(k_idx) && 
+                                       !s_selection.is_handle);
+                    
+                    if (is_selected) {
+                        selected_kf_x.push_back(kf_t);
+                        selected_kf_y.push_back(kf_v);
+                    } else {
+                        kf_x_f.push_back(kf_t);
+                        kf_y_f.push_back(kf_v);
+                    }
 
-                    // Plot handles for bezier curves if keyframe is visible
+                    // Plot handles for bezier curves
                     if (kf.function == anim::Function::bezier) {
-                        // Access absolute handle positions
                         anim::Point in_handle_abs = kf.in_handle;
                         anim::Point out_handle_abs = kf.out_handle;
 
-                        float kf_t_plot = static_cast<float>(kf.time());
-                        float kf_v_plot = static_cast<float>(kf.value());
-
-                        // Absolute coordinates for handle points
-                        float in_h_t_abs_plot = static_cast<float>(in_handle_abs.time);
-                        float in_h_v_abs_plot = static_cast<float>(in_handle_abs.value);
-                        float out_h_t_abs_plot = static_cast<float>(out_handle_abs.time);
-                        float out_h_v_abs_plot = static_cast<float>(out_handle_abs.value);
+                        float in_h_t = static_cast<float>(in_handle_abs.time);
+                        float in_h_v = static_cast<float>(in_handle_abs.value);
+                        float out_h_t = static_cast<float>(out_handle_abs.time);
+                        float out_h_v = static_cast<float>(out_handle_abs.value);
                         
                         std::string handle_label_base = curve.name() + "_KF" + std::to_string(k_idx);
 
-                        // Line from keyframe to in-handle
-                        float line_in_x[] = { kf_t_plot, in_h_t_abs_plot };
-                        float line_in_y[] = { kf_v_plot, in_h_v_abs_plot };
+                        // Handle lines
+                        float line_in_x[] = { kf_t, in_h_t };
+                        float line_in_y[] = { kf_v, in_h_v };
                         ImPlot::PlotLine((handle_label_base + "_InLine").c_str(), line_in_x, line_in_y, 2);
                         
-                        // Line from keyframe to out-handle
-                        float line_out_x[] = { kf_t_plot, out_h_t_abs_plot };
-                        float line_out_y[] = { kf_v_plot, out_h_v_abs_plot };
+                        float line_out_x[] = { kf_t, out_h_t };
+                        float line_out_y[] = { kf_v, out_h_v };
                         ImPlot::PlotLine((handle_label_base + "_OutLine").c_str(), line_out_x, line_out_y, 2);
 
-                        // Scatter for handle points
-                        float handle_pts_x[] = { in_h_t_abs_plot, out_h_t_abs_plot };
-                        float handle_pts_y[] = { in_h_v_abs_plot, out_h_v_abs_plot };
-                        ImPlot::SetNextMarkerStyle(ImPlotMarker_Diamond);
-                        ImPlot::PlotScatter((handle_label_base + "_Handles").c_str(), handle_pts_x, handle_pts_y, 2);
+                        // Handle points with selection highlighting
+                        bool in_handle_selected = (s_selection.curve_idx == static_cast<int>(i) && 
+                                                  s_selection.keyframe_idx == static_cast<int>(k_idx) && 
+                                                  s_selection.is_handle && s_selection.is_in_handle);
+                        bool out_handle_selected = (s_selection.curve_idx == static_cast<int>(i) && 
+                                                   s_selection.keyframe_idx == static_cast<int>(k_idx) && 
+                                                   s_selection.is_handle && !s_selection.is_in_handle);
+                        
+                        if (in_handle_selected) {
+                            ImPlot::SetNextMarkerStyle(ImPlotMarker_Diamond, 8.0f, ImVec4(1,1,0,1)); // Yellow for selected
+                            float selected_in_x[] = { in_h_t };
+                            float selected_in_y[] = { in_h_v };
+                            ImPlot::PlotScatter((handle_label_base + "_InSelected").c_str(), selected_in_x, selected_in_y, 1);
+                        }
+                        if (out_handle_selected) {
+                            ImPlot::SetNextMarkerStyle(ImPlotMarker_Diamond, 8.0f, ImVec4(1,1,0,1)); // Yellow for selected
+                            float selected_out_x[] = { out_h_t };
+                            float selected_out_y[] = { out_h_v };
+                            ImPlot::PlotScatter((handle_label_base + "_OutSelected").c_str(), selected_out_x, selected_out_y, 1);
+                        }
+                        
+                        // Plot non-selected handles
+                        std::vector<float> normal_handle_x, normal_handle_y;
+                        if (!in_handle_selected) {
+                            normal_handle_x.push_back(in_h_t);
+                            normal_handle_y.push_back(in_h_v);
+                        }
+                        if (!out_handle_selected) {
+                            normal_handle_x.push_back(out_h_t);
+                            normal_handle_y.push_back(out_h_v);
+                        }
+                        if (!normal_handle_x.empty()) {
+                            ImPlot::SetNextMarkerStyle(ImPlotMarker_Diamond);
+                            ImPlot::PlotScatter((handle_label_base + "_Handles").c_str(), 
+                                              normal_handle_x.data(), normal_handle_y.data(), normal_handle_x.size());
+                        }
                     }
                 }
+                
+                // Plot normal keyframes
                 if (!kf_x_f.empty()) {
                     ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
                     ImPlot::PlotScatter((curve.name() + " Keyframes").c_str(), kf_x_f.data(), kf_y_f.data(), kf_x_f.size());
+                }
+                
+                // Plot selected keyframe with different style
+                if (!selected_kf_x.empty()) {
+                    ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 8.0f, ImVec4(1,1,0,1)); // Yellow for selected
+                    ImPlot::PlotScatter((curve.name() + " Selected").c_str(), selected_kf_x.data(), selected_kf_y.data(), selected_kf_x.size());
                 }
             }
             ImPlot::EndPlot();
         }
         ImGui::End();
-        
+
         ImGui::Begin("Curve Editor");
         // No CollapsingHeader for "Edit Curves", content is directly in the curve's TreeNode
         for (size_t i = 0; i < curves.size(); ++i) {

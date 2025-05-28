@@ -36,7 +36,7 @@ bool Channel::has_keyframe(double time) const
                         });
 }
 
-void anim::Channel::delete_keyframe(size_t index)
+void Channel::delete_keyframe(size_t index)
 {
     if (index < 0 || index >= m_keyframes.size()) {
         throw std::out_of_range("Keyframe index out of range");
@@ -44,7 +44,7 @@ void anim::Channel::delete_keyframe(size_t index)
     m_keyframes.erase(m_keyframes.begin() + index);
 }
 
-const Keyframe &anim::Channel::keyframe(size_t index) const
+const Keyframe &Channel::keyframe(size_t index) const
 {
     if (index < 0 || index >= m_keyframes.size()) {
         throw std::out_of_range("Keyframe index out of range");
@@ -52,7 +52,7 @@ const Keyframe &anim::Channel::keyframe(size_t index) const
     return m_keyframes[index];
 }
 
-const Keyframe &anim::Channel::prev_keyframe(double time) const
+const Keyframe &Channel::prev_keyframe(double time) const
 {
     if (m_keyframes.empty()) {
         throw std::out_of_range("No keyframes available");
@@ -70,7 +70,7 @@ const Keyframe &anim::Channel::prev_keyframe(double time) const
     return *(--it);
 }
 
-const Keyframe &anim::Channel::next_keyframe(double time) const
+const Keyframe &Channel::next_keyframe(double time) const
 {
     if (m_keyframes.empty()) {
         throw std::out_of_range("No keyframes available");
@@ -88,7 +88,7 @@ const Keyframe &anim::Channel::next_keyframe(double time) const
     return *it;
 }
 
-const Keyframe &anim::Channel::closest_keyframe(double time) const
+const Keyframe &Channel::closest_keyframe(double time) const
 {
     if (m_keyframes.empty()) {
         throw std::out_of_range("No keyframes available");
@@ -112,55 +112,61 @@ const Keyframe &anim::Channel::closest_keyframe(double time) const
     return (std::abs(prev_it->time() - time) <= std::abs(it->time() - time)) ? *prev_it : *it;
 }
 
-void anim::Channel::update_keyframe(size_t index, const Keyframe& keyframe)
-{
-    if (index >= m_keyframes.size()) {
-        throw std::out_of_range("Keyframe index out of range");
-    }
-    // To ensure sorting and handle updates are correct, remove the old one and insert the new one.
-    // insert_keyframe will handle finding the correct sorted position and calling update_local_handles.
-    Keyframe kf_copy = keyframe; 
-    m_keyframes.erase(m_keyframes.begin() + index);
-    insert_keyframe(std::move(kf_copy));
-}
-
-void anim::Channel::set_keyframe_time(size_t index, double new_time)
+void Channel::update_keyframe(size_t index, const Keyframe& keyframe)
 {
     if (index >= m_keyframes.size()) {
         throw std::out_of_range("Keyframe index out of range");
     }
     auto it = m_keyframes.begin() + index;
-    
-    bool has_prev = (it != m_keyframes.begin());
-    bool has_next = (it + 1 != m_keyframes.end());
-    
-    if (!has_prev && !has_next) { // no neighbors, no clamping
-        it->position.time = new_time;
-    } else if (!has_prev) { // if no previous keyframe, clamp to next
-        auto next_it = it + 1;
-        it->position.time = std::min(new_time, next_it->time());
-    } else if (!has_next) { // if no next keyframe, clamp to previous
-        auto prev_it = it - 1;
-        it->position.time = std::max(new_time, prev_it->time());
-    } else {
-        auto prev_it = it - 1;
-        auto next_it = it + 1;
-        it->position.time = std::clamp(new_time, prev_it->time(), next_it->time());
+    if (*it == keyframe) {
+        return; // No change, no need to update
     }
+    // Update the keyframe at the specified index
+    it = m_keyframes.erase(it);
+    it = m_keyframes.insert(it, keyframe);
+    clamp_keyframe_time(it, keyframe.time());
     update_local_handles(it);
+}
+
+void Channel::set_keyframe_time(size_t index, double new_time)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    Point new_position(new_time, it->position.value);
+    update_keyframe_position(it, new_position);
 }
         
-void anim::Channel::set_keyframe_value(size_t index, double value)
+void Channel::set_keyframe_value(size_t index, double value)
 {
     if (index >= m_keyframes.size()) {
         throw std::out_of_range("Keyframe index out of range");
     }
     auto it = m_keyframes.begin() + index;
-    it->position.value = value;
-    update_local_handles(it);
+    update_keyframe_position(it, Point(it->position.time, value));
 }
 
-void anim::Channel::set_keyframe_in_handle(size_t index, const Point& in_handle)
+void Channel::set_keyframe_position(size_t index, const Point& position)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    update_keyframe_position(it, position);
+}
+
+
+void Channel::set_keyframe_position(size_t index, double time, double value)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    update_keyframe_position(it, Point(time, value));
+}
+
+void Channel::set_keyframe_in_handle(size_t index, const Point& in_handle)
 {
     if (index >= m_keyframes.size()) {
         throw std::out_of_range("Keyframe index out of range");
@@ -170,7 +176,7 @@ void anim::Channel::set_keyframe_in_handle(size_t index, const Point& in_handle)
     update_local_handles(it, false);
 }
 
-void anim::Channel::set_keyframe_out_handle(size_t index, const Point& out_handle)
+void Channel::set_keyframe_out_handle(size_t index, const Point& out_handle)
 {
     if (index >= m_keyframes.size()) {
         throw std::out_of_range("Keyframe index out of range");
@@ -180,7 +186,7 @@ void anim::Channel::set_keyframe_out_handle(size_t index, const Point& out_handl
     update_local_handles(it);
 }
 
-void anim::Channel::set_keyframe_function(size_t index, Function function)
+void Channel::set_keyframe_function(size_t index, Function function)
 {
     if (index >= m_keyframes.size()) {
         throw std::out_of_range("Keyframe index out of range");
@@ -190,7 +196,7 @@ void anim::Channel::set_keyframe_function(size_t index, Function function)
     update_local_handles(it);
 }
 
-void anim::Channel::set_keyframe_handle_mode(size_t index, HandleMode handle_mode)
+void Channel::set_keyframe_handle_mode(size_t index, HandleMode handle_mode)
 {
     if (index >= m_keyframes.size()) {
         throw std::out_of_range("Keyframe index out of range");
@@ -234,9 +240,8 @@ double Channel::evaluate(double time) const {
         return start_kf.value();
     }
     
-    double start_time = start_kf.time();
-    double end_time = end_kf.time();
-    double t = (time - start_time) / (end_time - start_time);
+    // auto t = bezier_utils::find_parameter_for_time(start_kf.position, start_kf.out_handle, end_kf.in_handle, end_kf.position, time);
+    double t = bezier_utils::solve_t_for_time(start_kf.position, start_kf.out_handle, end_kf.in_handle, end_kf.position, time);
     return bezier_utils::evaluate_cubic_bezier(start_kf.position, start_kf.out_handle, end_kf.in_handle, end_kf.position, t).value;
 }
 
@@ -302,7 +307,7 @@ double Channel::length() const {
     return end_time() - start_time();
 }
 
-size_t anim::Channel::num_samples(double sample_rate) const
+size_t Channel::num_samples(double sample_rate) const
 {
     if (sample_rate <= 0.0) {
         throw std::invalid_argument("Sample rate must be positive");
@@ -317,7 +322,7 @@ size_t anim::Channel::num_samples(double sample_rate) const
     
 }
 
-const Keyframe &anim::Channel::create_default_keyframe(const Point &position, Function function, HandleMode handle_mode)
+const Keyframe &Channel::create_default_keyframe(const Point &position, Function function, HandleMode handle_mode)
 {
     if (function == Function::constant || function == Function::linear) {
         return insert_keyframe(Keyframe(position, function, handle_mode));
@@ -353,7 +358,7 @@ const Keyframe &anim::Channel::create_default_keyframe(const Point &position, Fu
     return insert_keyframe(next_it, std::move(new_keyframe));
 }
 
-const Keyframe &anim::Channel::insert_keyframe(Keyframe&& keyframe, bool source_is_out_handle)
+const Keyframe &Channel::insert_keyframe(Keyframe&& keyframe, bool source_is_out_handle)
 {
     // Find the insertion point for the new keyframe
     auto it = std::lower_bound(m_keyframes.begin(), m_keyframes.end(), keyframe.time(),
@@ -363,7 +368,7 @@ const Keyframe &anim::Channel::insert_keyframe(Keyframe&& keyframe, bool source_
     return insert_keyframe(it, std::move(keyframe), source_is_out_handle);
 }
 
-const Keyframe &anim::Channel::insert_keyframe(KeyframeIt it, Keyframe&& keyframe, bool source_is_out_handle)
+const Keyframe &Channel::insert_keyframe(KeyframeIt it, Keyframe&& keyframe, bool source_is_out_handle)
 {
     // If the keyframe already exists at this time, replace it
     if (it != m_keyframes.end() && nearly_equal(it->time(), keyframe.time())) {
@@ -383,7 +388,41 @@ const Keyframe &anim::Channel::insert_keyframe(KeyframeIt it, Keyframe&& keyfram
     return *it;
 }
 
-void anim::Channel::update_local_handles(std::vector<anim::Keyframe>::iterator it, bool source_is_out_handle)
+void Channel::update_keyframe_position(KeyframeIt it, const Point& position)
+{
+    auto in_handle_delta = it->in_handle - it->position;
+    auto out_handle_delta = it->out_handle - it->position;
+
+    clamp_keyframe_time(it, position.time);
+    it->position.value = position.value;
+    
+    it->in_handle = it->position + in_handle_delta;
+    it->out_handle = it->position + out_handle_delta;
+
+    update_local_handles(it);
+}
+
+void Channel::clamp_keyframe_time(KeyframeIt it, double time)
+{
+    bool has_prev = (it != m_keyframes.begin());
+    bool has_next = (it + 1 != m_keyframes.end());
+    
+    if (!has_prev && !has_next) { // no neighbors, no clamping
+        it->position.time = time;
+    } else if (!has_prev) { // if no previous keyframe, clamp to next
+        auto next_it = it + 1;
+        it->position.time = std::min(time, next_it->time());
+    } else if (!has_next) { // if no next keyframe, clamp to previous
+        auto prev_it = it - 1;
+        it->position.time = std::max(time, prev_it->time());
+    } else {
+        auto prev_it = it - 1;
+        auto next_it = it + 1;
+        it->position.time = std::clamp(time, prev_it->time(), next_it->time());
+    }
+}
+
+void Channel::update_local_handles(std::vector<Keyframe>::iterator it, bool source_is_out_handle)
 {
     Keyframe* prev_it = nullptr;
     if (it != m_keyframes.begin()) {
@@ -401,7 +440,7 @@ void anim::Channel::update_local_handles(std::vector<anim::Keyframe>::iterator i
     update_handles(*it, prev_it, next_it, source_is_out_handle);
 }
 
-void anim::Channel::update_handles(Keyframe& keyframe, Keyframe* prev_keyframe_ptr, Keyframe* next_keyframe_ptr, bool source_is_out_handle)
+void Channel::update_handles(Keyframe& keyframe, Keyframe* prev_keyframe_ptr, Keyframe* next_keyframe_ptr, bool source_is_out_handle)
 {
     if (keyframe.function == Function::linear || keyframe.function == Function::constant) {
         return;
@@ -410,10 +449,19 @@ void anim::Channel::update_handles(Keyframe& keyframe, Keyframe* prev_keyframe_p
     if (keyframe.handle_mode == HandleMode::flat) {
         calculate_flat_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
     } else if (keyframe.handle_mode == HandleMode::smooth) {
+
+        // potentially usefull but needs a flag for the initialization of the handle when creating the keyframe
+        //
+        // auto smooth_factor = get_smooth_factor_from_handle(keyframe, prev_keyframe_ptr, next_keyframe_ptr, source_is_out_handle);
+        // calculate_smooth_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr, smooth_factor);
+
         calculate_smooth_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
+
     } else if (keyframe.handle_mode == HandleMode::aligned) {
-        enforce_aligned_handles(keyframe, source_is_out_handle);
-        // constrain_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
+        // apply_manual_smooth_handles_proportional(keyframe, prev_keyframe_ptr, next_keyframe_ptr, source_is_out_handle);
+        apply_manual_smooth_handles(keyframe, source_is_out_handle);
+
+        constrain_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
     } else if (keyframe.handle_mode == HandleMode::free) {
         constrain_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
     } else {

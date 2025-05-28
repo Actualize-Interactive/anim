@@ -4,6 +4,71 @@ namespace anim {
 
 namespace bezier_utils {
 
+
+// Helper to evaluate just the time component
+double evaluate_bezier_time_component(const Point& P0, const Point& P1, const Point& P2, const Point& P3, double t) {
+    double one_minus_t = 1.0 - t;
+    double t2 = t * t;
+    double t3 = t2 * t;
+    double omt2 = one_minus_t * one_minus_t;
+    double omt3 = omt2 * one_minus_t;
+
+    return (omt3 * P0.time) + 
+           (3.0 * omt2 * t * P1.time) + 
+           (3.0 * one_minus_t * t2 * P2.time) + 
+           (t3 * P3.time);
+}
+
+// Helper to evaluate the derivative of the time component
+double evaluate_bezier_time_derivative(const Point& P0, const Point& P1, const Point& P2, const Point& P3, double t) {
+    double one_minus_t = 1.0 - t;
+    double omt2 = one_minus_t * one_minus_t;
+    double t2 = t * t;
+
+    return 3.0 * omt2 * (P1.time - P0.time) +
+           6.0 * one_minus_t * t * (P2.time - P1.time) +
+           3.0 * t2 * (P3.time - P2.time);
+}
+
+// Function to find 't' for a given 'time' using Newton-Raphson
+double solve_t_for_time(const Point& P0, const Point& P1, const Point& P2, const Point& P3, double target_time) {
+    
+    // Check edge cases
+    if (target_time <= P0.time) return 0.0;
+    if (target_time >= P3.time) return 1.0;
+
+    // Initial guess using linear interpolation
+    double current_t = (target_time - P0.time) / (P3.time - P0.time);
+    current_t = std::max(0.0, std::min(1.0, current_t));
+
+    const int MAX_ITERATIONS = 10;
+    const double EPSILON = 1e-6; // How close we need to be
+
+    for (int i = 0; i < MAX_ITERATIONS; ++i) {
+        double current_time = evaluate_bezier_time_component(P0, P1, P2, P3, current_t);
+        double error = current_time - target_time;
+
+        if (std::abs(error) < EPSILON) {
+            return current_t; // Success!
+        }
+
+        double derivative = evaluate_bezier_time_derivative(P0, P1, P2, P3, current_t);
+
+        if (std::abs(derivative) < 1e-6) {
+            // Derivative is zero, can't proceed with Newton-Raphson
+            // Might need a fallback (like bisection) or just return best guess
+            break;
+        }
+
+        current_t -= error / derivative;
+        current_t = std::max(0.0, std::min(1.0, current_t)); // Clamp t to [0, 1]
+    }
+
+    return current_t; // Return the best guess after iterations
+}
+
+
+
 Point evaluate_cubic_bezier(
     const Point& p0, const Point& p1,
     const Point& p2, const Point& p3,

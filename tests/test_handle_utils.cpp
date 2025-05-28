@@ -347,7 +347,7 @@ TEST_CASE("enforce_aligned_handles function", "[handle_utils]") {
         Point initial_in_handle_pos = Point(4.0, 3.0); // Target: Arbitrary initial position
         kf.in_handle = initial_in_handle_pos;
 
-        enforce_aligned_handles(kf, true); // true means out_handle is source
+        enforce_aligned_handles(kf, nullptr, nullptr, true); // true means out_handle is source
 
         // in_handle should be on the line extending from out_handle through kf.position,
         // on the opposite side, preserving its original distance from kf.position.
@@ -373,7 +373,7 @@ TEST_CASE("enforce_aligned_handles function", "[handle_utils]") {
         Point initial_out_handle_pos = Point(6.0, 7.0); // Target: Arbitrary initial position
         kf.out_handle = initial_out_handle_pos;
 
-        enforce_aligned_handles(kf, false); // false means in_handle is source
+        enforce_aligned_handles(kf, nullptr, nullptr, false); // false means in_handle is source
 
         // out_handle should be on the line extending from in_handle through kf.position,
         // on the opposite side, preserving its original distance from kf.position.
@@ -427,7 +427,7 @@ TEST_CASE("enforce_aligned_handles function", "[handle_utils]") {
             kf.out_handle = Point(7.0, 7.0); // Source handle is not at kf.position
             kf.in_handle = kf.position;      // Target handle is already at kf.position
             
-            enforce_aligned_handles(kf, true); // out_handle is source, in_handle is target
+            enforce_aligned_handles(kf, nullptr, nullptr, true); // out_handle is source, in_handle is target
 
             // in_handle should remain at keyframe's position (distance is 0)
             REQUIRE(kf.in_handle.time == Catch::Approx(kf.position.time));
@@ -438,7 +438,7 @@ TEST_CASE("enforce_aligned_handles function", "[handle_utils]") {
             kf.in_handle = Point(3.0, 3.0);   // Source handle is not at kf.position
             kf.out_handle = kf.position;     // Target handle is already at kf.position
 
-            enforce_aligned_handles(kf, false); // in_handle is source, out_handle is target
+            enforce_aligned_handles(kf, nullptr, nullptr, false); // in_handle is source, out_handle is target
             
             // out_handle should remain at keyframe's position (distance is 0)
             REQUIRE(kf.out_handle.time == Catch::Approx(kf.position.time));

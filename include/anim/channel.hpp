@@ -45,6 +45,8 @@ public:
     void update_keyframe(size_t index, const Keyframe& keyframe);
     void set_keyframe_time(size_t index, double time);
     void set_keyframe_value(size_t index, double value);
+    void set_keyframe_position(size_t index, const Point& position);
+    void set_keyframe_position(size_t index, double time, double value);
     void set_keyframe_in_handle(size_t index, const Point& in_handle);
     void set_keyframe_out_handle(size_t index, const Point& out_handle);
     void set_keyframe_function(size_t index, Function function);
@@ -69,6 +71,9 @@ private:
     const Keyframe& create_default_keyframe(const Point& position, Function function, HandleMode handle_mode);
     const Keyframe& insert_keyframe(Keyframe&& keyframe, bool source_is_out_handle = true);
     const Keyframe& insert_keyframe(KeyframeIt it, Keyframe&& keyframe, bool source_is_out_handle = true);    
+
+    void update_keyframe_position(KeyframeIt it, const Point& position);
+    void clamp_keyframe_time(KeyframeIt it, double time);
     
     void update_local_handles(KeyframeIt it, bool source_is_out_handle = true);
     void update_handles(Keyframe& keyframe, Keyframe* prev_keyframe_ptr, Keyframe* next_keyframe_ptr, bool source_is_out_handle = true);

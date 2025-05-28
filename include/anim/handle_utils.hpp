@@ -66,13 +66,20 @@ namespace anim {
     // They are collinear, and their magnitude is typically a factor of the distance to adjacent keyframes.
     void calculate_smooth_handles(Keyframe& keyframe, const Keyframe* prev_keyframe_ptr, const Keyframe* next_keyframe_ptr, double smooth_factor = 1.0/3.0);
 
+    double get_smooth_factor_from_handle(const Keyframe& keyframe, const Keyframe* prev_keyframe_ptr, const Keyframe* next_keyframe_ptr, bool source_is_out_handle);
+    void apply_manual_smooth_handles(Keyframe& keyframe, bool source_is_out_handle);
+    void apply_manual_smooth_handles_proportional(
+            Keyframe& keyframe, 
+            const Keyframe* prev_keyframe_ptr, 
+            const Keyframe* next_keyframe_ptr,
+            bool source_is_out_handle);
     // HandleMode::aligned
     // This function is intended to be called when a user adjusts one handle,
     // and the other handle needs to be updated to remain collinear and opposite.
     // It does NOT auto-calculate tangents from neighbors like 'smooth'.
     // `source_is_out_handle` = true if out_handle was just moved by user, false if in_handle was.
     // out_handle is the source when updating from state
-    void enforce_aligned_handles(Keyframe& keyframe, bool source_is_out_handle = true);
+    void enforce_aligned_handles(Keyframe& keyframe, const Keyframe* prev_keyframe_ptr, const Keyframe* next_keyframe_ptr, bool source_is_out_handle = true);
     
     // Call this when switching TO aligned mode to set an initial state.
     // This uses the smooth calculation as a reasonable default.
