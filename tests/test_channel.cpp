@@ -462,6 +462,76 @@ TEST_CASE("Channel Handle Updates", "[channel]") {
         REQUIRE(ch.keyframe(1).value() == 40.0);
     }
 
+    SECTION("Handles update when keyframe time changes") {
+        Channel ch;
+        ch.create_keyframe(0.0, 0.0, Point(-0.5, 0.0), Point(0.5, 0.0), Function::bezier, HandleMode::free);
+        ch.create_keyframe(2.0, 20.0, Point(1.5, 20.0), Point(2.5, 20.0), Function::bezier, HandleMode::free);
+        ch.create_keyframe(4.0, 0.0, Point(3.5, 0.0), Point(4.5, 0.0), Function::bezier, HandleMode::free);
+        
+        // Store original handle positions for the middle keyframe
+        Point orig_in = ch.keyframe(1).in_handle;
+        Point orig_out = ch.keyframe(1).out_handle;
+        
+        // Move the middle keyframe to a new time - this should trigger handle updates
+        ch.set_keyframe_time(1, 3.0);
+        
+        // Verify the time was changed
+        REQUIRE(ch.keyframe(1).time() == 3.0);
+        
+        // Handles should be constrained/updated - at minimum, they should be clamped to valid time ranges
+        // The in_handle time should be between the previous keyframe (0.0) and current keyframe (3.0)
+        REQUIRE(ch.keyframe(1).in_handle.time >= 0.0);
+        REQUIRE(ch.keyframe(1).in_handle.time <= 3.0);
+        
+        // The out_handle time should be between current keyframe (3.0) and next keyframe (4.0)
+        REQUIRE(ch.keyframe(1).out_handle.time >= 3.0);
+        REQUIRE(ch.keyframe(1).out_handle.time <= 4.0);
+        
+        // At least one handle should have changed from its original position due to time constraints
+        bool handles_updated = (ch.keyframe(1).in_handle.time != orig_in.time) || 
+                              (ch.keyframe(1).out_handle.time != orig_out.time);
+        REQUIRE(handles_updated);
+    }
+
+    SECTION("Smooth handles recalculate when keyframe time changes") {
+        Channel ch;
+        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(2.0, 5.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(4.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        
+        // Store original handle positions for the middle keyframe
+        Point orig_in = ch.keyframe(1).in_handle;
+        Point orig_out = ch.keyframe(1).out_handle;
+        
+        // Move the middle keyframe - smooth handles should recalculate
+        ch.set_keyframe_time(1, 1.5);
+        
+        // Verify the time was changed
+        REQUIRE(ch.keyframe(1).time() == 1.5);
+        
+        // For smooth handles, they should be recalculated based on neighboring keyframes
+        // The handles should have changed from their original positions
+        REQUIRE(ch.keyframe(1).in_handle != orig_in);
+        REQUIRE(ch.keyframe(1).out_handle != orig_out);
+    }
+
+    SECTION("Adjacent keyframes' handles update when middle keyframe moves") {
+        Channel ch;
+        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(2.0, 5.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(4.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        
+        // Store original handle positions for adjacent keyframes
+        Point prev_out_orig = ch.keyframe(0).out_handle;
+        Point next_in_orig = ch.keyframe(2).in_handle;
+        
+        // Move the middle keyframe - this should affect neighboring keyframes' handles
+        ch.set_keyframe_time(1, 3.0);
+        
+        REQUIRE(ch.keyframe(0).out_handle != prev_out_orig);
+        REQUIRE(ch.keyframe(2).in_handle != next_in_orig);
+    }
+
     SECTION("Flat handles maintain horizontal orientation") {
         Channel ch;
         ch.create_keyframe(1.0, 10.0, Point(), Point(), Function::bezier, HandleMode::flat);

@@ -14,13 +14,16 @@ try {
 
     # Configure using CMake
     # Explicitly enable tests and examples for CI/standalone builds
-    cmake .. -DANIM_BUILD_TESTS=ON -DANIM_BUILD_EXAMPLES=OFF
+    cmake .. -DANIM_BUILD_TESTS=ON -DANIM_BUILD_EXAMPLES=ON
 
     # Build
     cmake --build . --config $Config # --verbose 
 
     # Run tests
     ctest # --verbose
+
+    # Run example
+    & ".\examples\$Config\curve_visualization.exe"
 
     Pop-Location
 } finally {

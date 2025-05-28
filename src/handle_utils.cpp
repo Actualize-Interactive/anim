@@ -5,6 +5,9 @@
 #include <limits>
 #include <numbers> 
 
+#include <iostream>
+
+
 namespace anim {
 
     bool nearly_equal(double a, double b, double epsilon) { 
@@ -127,26 +130,29 @@ namespace anim {
     }
 
     void calculate_flat_handles(Keyframe& keyframe, const Keyframe* prev_keyframe_ptr, const Keyframe* next_keyframe_ptr) {
-        if (prev_keyframe_ptr) {
-            double clamped_time = std::clamp(keyframe.in_handle.time, prev_keyframe_ptr->position.time, keyframe.position.time);
-            keyframe.in_handle = Point(clamped_time, keyframe.position.value);
-        } else {
-            keyframe.in_handle = keyframe.position;
-        }
-
-        if (next_keyframe_ptr) {
-            double clamped_time = std::clamp(keyframe.out_handle.time, keyframe.position.time, next_keyframe_ptr->position.time);
-            keyframe.out_handle = Point(clamped_time, keyframe.position.value);
-        } else {
-            keyframe.out_handle = keyframe.position;
+        if (prev_keyframe_ptr && next_keyframe_ptr) { // keyframe is in the middle of two keyframes
+            double in_time_offset = (prev_keyframe_ptr->position.time - keyframe.position.time) / 3.0;
+            keyframe.in_handle  = Point(keyframe.position.time + in_time_offset, keyframe.position.value);
+            double out_time_offset = (next_keyframe_ptr->position.time - keyframe.position.time) / 3.0;
+            keyframe.out_handle = Point(keyframe.position.time + out_time_offset, keyframe.position.value);
+        } else if (prev_keyframe_ptr) { // keyframe is the last keyframe
+            double time_offset = (prev_keyframe_ptr->position.time - keyframe.position.time) / 3.0;
+            keyframe.in_handle  = Point(keyframe.position.time + time_offset, keyframe.position.value);
+            keyframe.out_handle = Point(keyframe.position.time - time_offset, keyframe.position.value);
+        } else if (next_keyframe_ptr) { // keyframe is the first keyframe
+            double time_offset = (next_keyframe_ptr->position.time - keyframe.position.time) / 3.0;
+            keyframe.in_handle = Point(keyframe.position.time + time_offset, keyframe.position.value);
+            keyframe.out_handle = Point(keyframe.position.time + time_offset, keyframe.position.value);
+        } else { // keyframe is the only keyframe
+            keyframe.in_handle = Point(keyframe.position.time - 1.0, keyframe.position.value);
+            keyframe.out_handle = Point(keyframe.position.time + 1.0, keyframe.position.value);
         }
     }
 
     void calculate_smooth_handles(Keyframe& keyframe, const Keyframe* prev_keyframe_ptr, const Keyframe* next_keyframe_ptr, double smooth_factor) {
-        if (prev_keyframe_ptr && next_keyframe_ptr) {
+        if (prev_keyframe_ptr && next_keyframe_ptr) { // keyframe is in the middle of two keyframes
             Vector vec_prev_to_curr = vector(prev_keyframe_ptr->position, keyframe.position);
             Vector vec_curr_to_next = vector(keyframe.position, next_keyframe_ptr->position);
-
             Vector tangent_dir_vec = vector(prev_keyframe_ptr->position, next_keyframe_ptr->position);
             
             if (nearly_equal(length_squared(tangent_dir_vec), 0.0)) {
@@ -154,9 +160,8 @@ namespace anim {
                 return;
             }
             Vector normalized_tangent = normalize(tangent_dir_vec);
-
-            double dist_prev = distance(prev_keyframe_ptr->position, keyframe.position);
-            double dist_next = distance(keyframe.position, next_keyframe_ptr->position);
+            double dist_prev = length(vec_prev_to_curr);
+            double dist_next = length(vec_curr_to_next);
             
             Vector in_handle_offset = normalized_tangent * (dist_prev * smooth_factor);
             Vector out_handle_offset = normalized_tangent * (dist_next * smooth_factor);
@@ -164,9 +169,13 @@ namespace anim {
             keyframe.in_handle  = keyframe.position - in_handle_offset;
             keyframe.out_handle = keyframe.position + out_handle_offset;
 
-        } else if (prev_keyframe_ptr) {
+            std::cout << "Both Smooth handles calculated: "
+                      << "in_handle (" << keyframe.in_handle.time << ", " << keyframe.in_handle.value << "), "
+                      << "out_handle (" << keyframe.out_handle.time << ", " << keyframe.out_handle.value << ")" << std::endl;
+
+        } else if (prev_keyframe_ptr) { // keyframe is the last keyframe
             Vector vec_prev_to_curr = vector(prev_keyframe_ptr->position, keyframe.position);
-             if (nearly_equal(length_squared(vec_prev_to_curr), 0.0)) {
+            if (nearly_equal(length_squared(vec_prev_to_curr), 0.0)) {
                 calculate_flat_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
                 return;
             }
@@ -176,8 +185,11 @@ namespace anim {
             Vector handle_offset = normalized_tangent * (dist_prev * smooth_factor);
             keyframe.in_handle  = keyframe.position - handle_offset;
             keyframe.out_handle = keyframe.position + handle_offset;
+            std::cout << "In handle offset calculated: " << "offset: " << handle_offset.time << ", " << handle_offset.value << ", "
+                      << "in_handle (" << keyframe.in_handle.time << ", " << keyframe.in_handle.value << "), "
+                      << "out_handle (" << keyframe.out_handle.time << ", " << keyframe.out_handle.value << ")" << std::endl;
 
-        } else if (next_keyframe_ptr) {
+        } else if (next_keyframe_ptr) { // keyframe is the first keyframe
             Vector vec_curr_to_next = vector(keyframe.position, next_keyframe_ptr->position);
             if (nearly_equal(length_squared(vec_curr_to_next), 0.0)) {
                 calculate_flat_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
@@ -190,39 +202,34 @@ namespace anim {
             keyframe.in_handle  = keyframe.position - handle_offset;
             keyframe.out_handle = keyframe.position + handle_offset;
             
-        } else {
-            keyframe.in_handle  = keyframe.position;
-            keyframe.out_handle = keyframe.position;
+        } else { // keyframe is the only keyframe
+            keyframe.in_handle  = Point(keyframe.position.time - 1.0, keyframe.position.value);
+            keyframe.out_handle = Point(keyframe.position.time + 1.0, keyframe.position.value);
         }
     }
+
+
 
     void enforce_aligned_handles(Keyframe& keyframe, bool source_is_out_handle) {
         if (source_is_out_handle) {
             Vector out_tangent_vec = vector(keyframe.position, keyframe.out_handle);
             double out_length = length(out_tangent_vec);
 
-            if (nearly_equal(out_length, 0.0)) {
-                keyframe.in_handle = keyframe.position;
+            if (!nearly_equal(out_length, 0.0)) {
+                Vector in_tangent_dir = normalize(invert(out_tangent_vec));
+                double in_handle_current_dist = distance(keyframe.position, keyframe.in_handle);
+                keyframe.in_handle = keyframe.position - (in_tangent_dir * in_handle_current_dist);
                 return;
             }
-
-            Vector in_tangent_dir = normalize(invert(out_tangent_vec));
-            double in_handle_current_dist = distance(keyframe.position, keyframe.in_handle);
-            
-            keyframe.in_handle = keyframe.position + (in_tangent_dir * in_handle_current_dist);
         } else {
             Vector in_tangent_vec = vector(keyframe.position, keyframe.in_handle);
             double in_length = length(in_tangent_vec);
-
-            if (nearly_equal(in_length, 0.0)) {
-                keyframe.out_handle = keyframe.position;
+            if (!nearly_equal(in_length, 0.0)) {
+                Vector out_tangent_dir = normalize(invert(in_tangent_vec));
+                double out_handle_current_dist = distance(keyframe.position, keyframe.out_handle);
+                keyframe.out_handle = keyframe.position + (out_tangent_dir * out_handle_current_dist);
                 return;
             }
-            
-            Vector out_tangent_dir = normalize(invert(in_tangent_vec));
-            double out_handle_current_dist = distance(keyframe.position, keyframe.out_handle);
-            
-            keyframe.out_handle = keyframe.position + (out_tangent_dir * out_handle_current_dist) ;
         }
     }
     
