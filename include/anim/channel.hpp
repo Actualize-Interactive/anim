@@ -16,10 +16,10 @@ class Channel {
 public:
     Channel() = default;
     explicit Channel(const std::string& name) : m_name(name) {}
-    const std::string& name() const { return m_name; }
-    void set_name(const std::string& name) { m_name = name; }
+    inline const std::string& name() const { return m_name; }
+    inline void set_name(const std::string& name) { m_name = name; }
 
-    const Keyframe& create_keyframe(const Point& position, 
+    inline const Keyframe& create_keyframe(const Point& position, 
         const Point& in_handle = Point(), 
         const Point& out_handle = Point(),
         Function function = Function::bezier,
@@ -27,7 +27,7 @@ public:
         return insert_keyframe(Keyframe(position, function, handle_mode, in_handle, out_handle));
     }
 
-    const Keyframe& create_keyframe(double time, double value,
+    inline const Keyframe& create_keyframe(double time, double value,
         const Point& in_handle = Point(),
         const Point& out_handle = Point(),
         Function function = Function::bezier,
@@ -35,18 +35,20 @@ public:
         return insert_keyframe(Keyframe(time, value, function, handle_mode, in_handle, out_handle));
     }
 
-    const Keyframe& emplace_keyframe(Keyframe&& keyframe) {
+    inline const Keyframe& emplace_keyframe(Keyframe&& keyframe) {
         return insert_keyframe(std::move(keyframe));
     }
     
     bool has_keyframe(double time) const;
     void delete_keyframe(size_t index);
     const Keyframe& keyframe(size_t index) const;
+    inline const Keyframe& operator[](size_t index) const { return keyframe(index); }
     const Keyframe& prev_keyframe(double time) const;
     const Keyframe& next_keyframe(double time) const;
     const Keyframe& closest_keyframe(double time) const;
-    size_t size() const { return m_keyframes.size(); }
-    bool empty() const { return m_keyframes.empty(); }
+    inline size_t size() const { return m_keyframes.size(); }
+    inline size_t num_keyframes() const { return m_keyframes.size(); }
+    inline bool empty() const { return m_keyframes.empty(); }
 
     void update_keyframe(size_t index, const Keyframe& keyframe);
     void set_keyframe_time(size_t index, double time);
@@ -62,6 +64,7 @@ public:
     
     double start_time() const;
     double end_time() const;
+    double length() const;
     size_t num_samples(double sample_rate) const;
 
 private:

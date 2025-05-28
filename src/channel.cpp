@@ -85,10 +85,90 @@ const Keyframe &anim::Channel::closest_keyframe(double time) const
     
     // Compare distances to the previous and current keyframes
     auto prev_it = it - 1;
-    return (std::abs(prev_it->time() - time) < std::abs(it->time() - time)) ? *prev_it : *it;
+    return (std::abs(prev_it->time() - time) <= std::abs(it->time() - time)) ? *prev_it : *it;
 }
 
+void anim::Channel::update_keyframe(size_t index, const Keyframe& keyframe)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    // To ensure sorting and handle updates are correct, remove the old one and insert the new one.
+    // insert_keyframe will handle finding the correct sorted position and calling update_local_handles.
+    Keyframe kf_copy = keyframe; 
+    m_keyframes.erase(m_keyframes.begin() + index);
+    insert_keyframe(std::move(kf_copy));
+}
 
+void anim::Channel::set_keyframe_time(size_t index, double new_time)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    Keyframe kf_copy = m_keyframes[index];
+    m_keyframes.erase(m_keyframes.begin() + index);
+    kf_copy.position.time = new_time;
+    // insert_keyframe will re-sort and call update_local_handles,
+    // which in turn calls update_handles to adjust handle times and positions if necessary.
+    insert_keyframe(std::move(kf_copy));
+}
+
+void anim::Channel::set_keyframe_value(size_t index, double value)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    it->position.value = value;
+    update_local_handles(it);
+}
+
+void anim::Channel::set_keyframe_in_handle(size_t index, const Point& in_handle)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    it->in_handle = in_handle;
+    // update_local_handles will call update_handles, which will respect the current
+    // handle_mode. If mode is e.g. 'aligned', it will enforce alignment.
+    // If mode is 'smooth' or 'flat', this manually set handle might be overridden.
+    update_local_handles(it);
+}
+
+void anim::Channel::set_keyframe_out_handle(size_t index, const Point& out_handle)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    it->out_handle = out_handle;
+    update_local_handles(it);
+}
+
+void anim::Channel::set_keyframe_function(size_t index, Function function)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    it->function = function;
+    // update_local_handles will call update_handles. If function is linear/constant,
+    // update_handles might do nothing for handles, which is correct.
+    update_local_handles(it);
+}
+
+void anim::Channel::set_keyframe_handle_mode(size_t index, HandleMode handle_mode)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    it->handle_mode = handle_mode;
+    // Changing handle_mode will cause update_handles (via update_local_handles)
+    // to recalculate or re-constrain handles accordingly.
+    update_local_handles(it);
+}
 
 double Channel::evaluate(double time) const {
     if (m_keyframes.empty()) {
@@ -183,6 +263,28 @@ double Channel::end_time() const {
         return 0.0;
     }
     return m_keyframes.back().time();
+}
+
+double Channel::length() const {
+    if (m_keyframes.empty()) {
+        return 0.0;
+    }
+    return end_time() - start_time();
+}
+
+size_t anim::Channel::num_samples(double sample_rate) const
+{
+    if (sample_rate <= 0.0) {
+        throw std::invalid_argument("Sample rate must be positive");
+    }
+    
+    if (m_keyframes.empty()) {
+        return 0;
+    }
+    
+    double duration = end_time() - start_time();
+    return static_cast<size_t>(std::ceil(duration * sample_rate)) + 1; // +1 to include the start time
+    
 }
 
 const Keyframe &anim::Channel::insert_keyframe(Keyframe&& keyframe)
