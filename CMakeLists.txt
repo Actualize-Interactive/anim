@@ -76,13 +76,13 @@ if(ANIM_BUILD_TESTS)
         GIT_TAG v3.4.0
     )
     FetchContent_MakeAvailable(Catch2)    
+
+    file(GLOB_RECURSE TEST_SOURCES 
+        tests/*.cpp
+    )
+
     add_executable(anim_tests 
-        tests/test_main.cpp
-        tests/test_bezier_handle.cpp
-        tests/test_keyframe.cpp
-        tests/test_channel.cpp
-        tests/test_animation.cpp
-        tests/test_bezier_utils.cpp
+        ${TEST_SOURCES}
     )
     
     target_link_libraries(anim_tests PRIVATE Catch2::Catch2WithMain anim)

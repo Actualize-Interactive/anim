@@ -22,17 +22,17 @@ public:
     const Keyframe& create_keyframe(const Point& position, 
         const Point& in_handle = Point(), 
         const Point& out_handle = Point(),
-        FunctionType function_type = FunctionType::bezier,
-        HandleType handle_type = HandleType::smooth) {
-        return insert_keyframe(Keyframe(position, in_handle, out_handle, function_type, handle_type));
+        Function function = Function::bezier,
+        HandleMode handle_mode = HandleMode::smooth) {
+        return insert_keyframe(Keyframe(position, function, handle_mode, in_handle, out_handle));
     }
 
     const Keyframe& create_keyframe(double time, double value,
         const Point& in_handle = Point(),
         const Point& out_handle = Point(),
-        FunctionType function_type = FunctionType::bezier,
-        HandleType handle_type = HandleType::smooth) {
-        return insert_keyframe(Keyframe(time, value, in_handle, out_handle, function_type, handle_type));
+        Function function = Function::bezier,
+        HandleMode handle_mode = HandleMode::smooth) {
+        return insert_keyframe(Keyframe(time, value, function, handle_mode, in_handle, out_handle));
     }
 
     const Keyframe& emplace_keyframe(Keyframe&& keyframe) {
@@ -53,8 +53,8 @@ public:
     void set_keyframe_value(size_t index, double value);
     void set_keyframe_in_handle(size_t index, const Point& in_handle);
     void set_keyframe_out_handle(size_t index, const Point& out_handle);
-    void set_keyframe_function_type(size_t index, FunctionType function_type);
-    void set_keyframe_handle_type(size_t index, HandleType handle_type);
+    void set_keyframe_function(size_t index, Function function);
+    void set_keyframe_handle_mode(size_t index, HandleMode handle_mode);
   
     double evaluate(double time) const;
     std::vector<double> evaluate_range(double start_time, double end_time, int num_samples) const;

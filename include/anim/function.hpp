@@ -3,7 +3,7 @@
 
 namespace anim {
 
-enum class FunctionType {
+enum class Function : uint8_t {
     constant = 0,
     linear = 1,
     bezier = 2,

@@ -2,8 +2,8 @@
 #define ANIM_KEYFRAME_HPP
 
 #include "point.hpp"
-#include "handle_type.hpp"
-#include "function_type.hpp"
+#include "handle_mode.hpp"
+#include "function.hpp"
 
 
 namespace anim {
@@ -12,38 +12,35 @@ struct Keyframe {
     Point        position;
     Point        in_handle;
     Point        out_handle;
-    FunctionType function_type;
-    HandleType   handle_type;
-    Keyframe(const Point& pos, const Point& in, const Point& out,
-             FunctionType func_type = FunctionType::bezier,
-             HandleType handle_type = HandleType::smooth)
-        : position(pos),
-          in_handle(in), out_handle(out),
-          function_type(func_type), handle_type(handle_type) {}
+    Function     function;
+    HandleMode   handle_mode;
+    Keyframe(const Point& position, 
+          Function function = Function::bezier,
+          HandleMode handle_mode = HandleMode::smooth,
+          const Point& in_handle = Point(),
+          const Point& out_handle = Point())
+      : position(position),
+        in_handle(in_handle),
+        out_handle(out_handle),
+        function(function),
+        handle_mode(handle_mode) {}
 
-    Keyframe(double time, double value,
-             const Point& in_handle = Point(),
-             const Point& out_handle = Point(),
-             FunctionType function_type = FunctionType::bezier,
-             HandleType handle_type = HandleType::smooth)
-        : position(time, value),
-          in_handle(in_handle),
-          out_handle(out_handle),
-          function_type(function_type),
-          handle_type(handle_type) {}
+    Keyframe(double time, double value, 
+          Function function = Function::bezier,
+          HandleMode handle_mode = HandleMode::smooth,
+          const Point& in_handle = Point(),
+          const Point& out_handle = Point())
+      : position(time, value),
+        in_handle(in_handle),
+        out_handle(out_handle),
+        function(function),
+        handle_mode(handle_mode) {}
 
-    Keyframe(double time = 0.0, double value = 0.0,
-             double in_handle_time = 0.0, double in_handle_value = 0.0,
-             double out_handle_time = 0.0, double out_handle_value = 0.0,
-             FunctionType function_type = FunctionType::bezier,
-             HandleType handle_type = HandleType::smooth)
-        : position(time, value),
-          in_handle(in_handle_time, in_handle_value),
-          out_handle(out_handle_time, out_handle_value),
-          function_type(function_type),
-          handle_type(handle_type) {}
-
-
+    Keyframe() 
+      : position(), 
+        in_handle(), 
+        out_handle(), 
+        function(Function::bezier), handle_mode(HandleMode::smooth) {}
 
     Keyframe(const Keyframe& other) = default;
     Keyframe(Keyframe&& other) noexcept = default;
@@ -54,8 +51,8 @@ struct Keyframe {
         return position == other.position &&
                in_handle == other.in_handle &&
                out_handle == other.out_handle &&
-               function_type == other.function_type &&
-               handle_type == other.handle_type;
+               function == other.function &&
+               handle_mode == other.handle_mode;
     }
     bool operator!=(const Keyframe& other) const {
         return !(*this == other);

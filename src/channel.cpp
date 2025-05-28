@@ -1,12 +1,8 @@
 #include "anim/channel.hpp"
 #include "anim/handle_utils.hpp"
-#include "channel.hpp"
 
 namespace anim {
 
-static bool nearly_equal(double a, double b, double epsilon = 1e-6) {
-    return std::abs(a - b) < epsilon;
-}
 
 bool Channel::has_keyframe(double time) const
 {
@@ -121,10 +117,10 @@ double Channel::evaluate(double time) const {
     const Keyframe& start_kf = *lower;
     const Keyframe& end_kf = *upper;
     
-    if (start_kf.function_type == FunctionType::linear) {
+    if (start_kf.function == Function::linear) {
         double t = (time - start_kf.time()) / (end_kf.time() - start_kf.time());
         return start_kf.value() + t * (end_kf.value() - start_kf.value());
-    } else if (start_kf.function_type == FunctionType::constant) {
+    } else if (start_kf.function == Function::constant) {
         return start_kf.value();
     }
     
@@ -225,11 +221,11 @@ void anim::Channel::update_local_handles(std::vector<anim::Keyframe>::iterator i
 
 void anim::Channel::update_prev_out_handle(Keyframe &keyframe, const Keyframe &next_keyframe)
 {
-    if (keyframe.function_type == FunctionType::linear || keyframe.function_type == FunctionType::constant) {
+    if (keyframe.function == Function::linear || keyframe.function == Function::constant) {
         return;
     }
 
-    if (keyframe.handle_type == HandleType::flat) { // For flat handles, set the out handle to the keyframe position
+    if (keyframe.handle_mode == HandleMode::flat) { // For flat handles, set the out handle to the keyframe position
         keyframe.out_handle.time = std::clamp(keyframe.out_handle.time, keyframe.position.time, next_keyframe.position.time);
     } else {
         constrain_in_handle_time(keyframe, next_keyframe);
@@ -238,11 +234,11 @@ void anim::Channel::update_prev_out_handle(Keyframe &keyframe, const Keyframe &n
 
 void anim::Channel::update_next_in_handle(Keyframe &keyframe, const Keyframe &prev_keyframe)
 {
-    if (prev_keyframe.function_type == FunctionType::linear || prev_keyframe.function_type == FunctionType::constant) {
+    if (prev_keyframe.function == Function::linear || prev_keyframe.function == Function::constant) {
         return;
     }
 
-    if (keyframe.handle_type == HandleType::flat) { // For flat handles, set the in handle to the keyframe position
+    if (keyframe.handle_mode == HandleMode::flat) { // For flat handles, set the in handle to the keyframe position
         keyframe.in_handle.time = std::clamp(keyframe.in_handle.time, prev_keyframe.position.time, keyframe.position.time);
     } else {
         constrain_out_handle_time(keyframe, prev_keyframe);
@@ -251,18 +247,19 @@ void anim::Channel::update_next_in_handle(Keyframe &keyframe, const Keyframe &pr
 
 void anim::Channel::update_handles(Keyframe& keyframe, Keyframe* prev_keyframe_ptr, Keyframe* next_keyframe_ptr)
 {
-    if (keyframe.function_type == FunctionType::linear || keyframe.function_type == FunctionType::constant) {
+    if (keyframe.function == Function::linear || keyframe.function == Function::constant) {
         return;
     }
 
-    if (keyframe.handle_type == HandleType::flat) {
-        get_flat_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
-    } else if (keyframe.handle_type == HandleType::smooth) {
-        get_smooth_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
-    } else if (keyframe.handle_type == HandleType::aligned) {
-        get_aligned_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
-    } else if (keyframe.handle_type == HandleType::free) {
-        get_free_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
+    if (keyframe.handle_mode == HandleMode::flat) {
+        calculate_flat_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
+    } else if (keyframe.handle_mode == HandleMode::smooth) {
+        calculate_smooth_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
+    } else if (keyframe.handle_mode == HandleMode::aligned) {
+        enforce_aligned_handles(keyframe);
+        constrain_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
+    } else if (keyframe.handle_mode == HandleMode::free) {
+        constrain_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
     } else {
         throw std::invalid_argument("Unknown handle type");
     }

@@ -2,9 +2,10 @@
 #define ANIM_HANDLE_TYPE_HPP
 
 
+
 namespace anim {
 
-enum class HandleType {
+enum class HandleMode : uint8_t {
     flat = 0,
     smooth = 1,
     aligned = 2,

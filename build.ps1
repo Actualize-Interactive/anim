@@ -15,11 +15,11 @@ try {
     cmake --build . # --verbose 
 
     # Run tests
-    # ctest # --verbose
+    ctest # --verbose
 
     # Run example
     # Note: The example executable is expected to be in the build directory
-    .\examples\Debug\curve_visualization.exe
+    # .\examples\Debug\curve_visualization.exe
 
     Pop-Location
 } finally {
