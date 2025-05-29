@@ -2,6 +2,7 @@
 #include <catch2/catch_approx.hpp>
 #include <anim/channel.hpp>
 #include <anim/keyframe.hpp> // Required for Keyframe and Point
+#include <anim/handle_utils.hpp> // Required for GrabbedHandle enum
 
 using namespace anim;
 

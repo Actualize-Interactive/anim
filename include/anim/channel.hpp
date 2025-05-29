@@ -2,7 +2,7 @@
 #define ANIM_CHANNEL_HPP
 
 #include "anim/keyframe.hpp"
-#include "anim/bezier_utils.hpp"
+#include "anim/handle_utils.hpp"
 #include <vector>
 #include <algorithm>
 #include <optional>
@@ -52,7 +52,7 @@ public:
     void set_keyframe_function(size_t index, Function function);
     void set_keyframe_handle_mode(size_t index, HandleMode handle_mode);
   
-    double evaluate(double time) const;
+    double evaluate(double time, double* prev_t = nullptr) const;
     std::vector<double> evaluate_range(double start_time, double end_time, int num_samples) const;
     std::vector<double> evaluate_range_by_rate(double start_time, double end_time, double sample_rate) const;
     
@@ -69,14 +69,17 @@ private:
     using KeyframeIt = std::vector<Keyframe>::iterator;
 
     const Keyframe& create_default_keyframe(const Point& position, Function function, HandleMode handle_mode);
-    const Keyframe& insert_keyframe(Keyframe&& keyframe, bool source_is_out_handle = true);
-    const Keyframe& insert_keyframe(KeyframeIt it, Keyframe&& keyframe, bool source_is_out_handle = true);    
+    const Keyframe& insert_keyframe(Keyframe&& keyframe, GrabbedHandle grabbed_handle = GrabbedHandle::none);
+    const Keyframe& insert_keyframe(KeyframeIt it, Keyframe&& keyframe, GrabbedHandle grabbed_handle = GrabbedHandle::none);    
 
     void update_keyframe_position(KeyframeIt it, const Point& position);
     void clamp_keyframe_time(KeyframeIt it, double time);
     
-    void update_local_handles(KeyframeIt it, bool source_is_out_handle = true);
-    void update_handles(Keyframe& keyframe, Keyframe* prev_keyframe_ptr, Keyframe* next_keyframe_ptr, bool source_is_out_handle = true);
+    void update_local_handles(KeyframeIt it, GrabbedHandle grabbed_handle = GrabbedHandle::none);
+    void update_handles(
+        Keyframe& keyframe, 
+        Keyframe* prev_keyframe_ptr, Keyframe* next_keyframe_ptr, 
+        GrabbedHandle grabbed_handle = GrabbedHandle::none);
 };
 
 } // namespace anim

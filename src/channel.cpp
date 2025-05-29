@@ -1,5 +1,5 @@
 #include "anim/channel.hpp"
-#include "anim/handle_utils.hpp"
+#include "anim/bezier_utils.hpp"
 
 #include <iostream>
 
@@ -173,7 +173,7 @@ void Channel::set_keyframe_in_handle(size_t index, const Point& in_handle)
     }
     auto it = m_keyframes.begin() + index;
     it->in_handle = in_handle;
-    update_local_handles(it, false);
+    update_local_handles(it, GrabbedHandle::in_handle);
 }
 
 void Channel::set_keyframe_out_handle(size_t index, const Point& out_handle)
@@ -183,7 +183,7 @@ void Channel::set_keyframe_out_handle(size_t index, const Point& out_handle)
     }
     auto it = m_keyframes.begin() + index;
     it->out_handle = out_handle;
-    update_local_handles(it);
+    update_local_handles(it, GrabbedHandle::out_handle);
 }
 
 void Channel::set_keyframe_function(size_t index, Function function)
@@ -206,7 +206,7 @@ void Channel::set_keyframe_handle_mode(size_t index, HandleMode handle_mode)
     update_local_handles(it);
 }
 
-double Channel::evaluate(double time) const {
+double Channel::evaluate(double time, double* prev_t) const {
     if (m_keyframes.empty()) {
         return 0.0;
     }
@@ -239,11 +239,23 @@ double Channel::evaluate(double time) const {
     } else if (start_kf.function == Function::constant) {
         return start_kf.value();
     }
+    // auto p0 = start_kf.position;
+    // auto p1 = start_kf.out_handle;
+    // auto p2 = end_kf.in_handle;
+    // auto p3 = end_kf.position;
     
-    // auto t = bezier_utils::find_parameter_for_time(start_kf.position, start_kf.out_handle, end_kf.in_handle, end_kf.position, time);
-    double t = bezier_utils::solve_t_for_time(start_kf.position, start_kf.out_handle, end_kf.in_handle, end_kf.position, time);
+
+    double t = bezier_utils::solve_t_for_time(
+        start_kf.position, start_kf.out_handle, 
+        end_kf.in_handle, end_kf.position, 
+        time,
+        prev_t
+    );
     return bezier_utils::evaluate_cubic_bezier(start_kf.position, start_kf.out_handle, end_kf.in_handle, end_kf.position, t).value;
 }
+
+
+
 
 std::vector<double> Channel::evaluate_range(double start_time, double end_time, int num_samples) const {
     if (num_samples <= 1) {
@@ -261,9 +273,11 @@ std::vector<double> Channel::evaluate_range(double start_time, double end_time, 
     std::vector<double> result(num_samples);
     double step = (end_time - start_time) / (num_samples - 1);
     
+    double* prev_t = nullptr; 
     for (int i = 0; i < num_samples; i++) {
         double time = start_time + i * step;
-        result[i] = evaluate(time);
+        result[i] = evaluate(time, prev_t);
+        prev_t = &result[i]; // Update prev_t to point to the current value
     }
     
     return result;
@@ -346,29 +360,27 @@ const Keyframe &Channel::create_default_keyframe(const Point &position, Function
 
     // initialize the handles with smooth mode
     Keyframe new_keyframe(position, function, HandleMode::smooth);
-    update_handles(new_keyframe, prev_kf_ptr, next_kf_ptr, next_it != m_keyframes.end());
-    std::cout << "New Keyframe, time: " << new_keyframe.time() << ", value: " << new_keyframe.value()
-                << ", in_handle.time: " << new_keyframe.in_handle.time << ", in_handle.value: " << new_keyframe.in_handle.value
-                << ", out_handle.time: " << new_keyframe.out_handle.time << ", out_handle.value: " << new_keyframe.out_handle.value
-                << ", function: " << static_cast<int>(new_keyframe.function)
-                << ", handle_mode: " << static_cast<int>(new_keyframe.handle_mode) << std::endl;
-
-
+    update_handles(new_keyframe, prev_kf_ptr, next_kf_ptr);
+    // std::cout << "New Keyframe, time: " << new_keyframe.time() << ", value: " << new_keyframe.value()
+    //             << ", in_handle.time: " << new_keyframe.in_handle.time << ", in_handle.value: " << new_keyframe.in_handle.value
+    //             << ", out_handle.time: " << new_keyframe.out_handle.time << ", out_handle.value: " << new_keyframe.out_handle.value
+    //             << ", function: " << static_cast<int>(new_keyframe.function)
+    //             << ", handle_mode: " << static_cast<int>(new_keyframe.handle_mode) << std::endl;
     new_keyframe.handle_mode = handle_mode; // set to requested mode, inser_keyframe will call update_local_handles
     return insert_keyframe(next_it, std::move(new_keyframe));
 }
 
-const Keyframe &Channel::insert_keyframe(Keyframe&& keyframe, bool source_is_out_handle)
+const Keyframe &Channel::insert_keyframe(Keyframe&& keyframe, GrabbedHandle grabbed_handle)
 {
     // Find the insertion point for the new keyframe
     auto it = std::lower_bound(m_keyframes.begin(), m_keyframes.end(), keyframe.time(),
                                [](const Keyframe& kf, double t) {
                                    return kf.time() < t;
                                });
-    return insert_keyframe(it, std::move(keyframe), source_is_out_handle);
+    return insert_keyframe(it, std::move(keyframe), grabbed_handle);
 }
 
-const Keyframe &Channel::insert_keyframe(KeyframeIt it, Keyframe&& keyframe, bool source_is_out_handle)
+const Keyframe &Channel::insert_keyframe(KeyframeIt it, Keyframe&& keyframe, GrabbedHandle grabbed_handle)
 {
     // If the keyframe already exists at this time, replace it
     if (it != m_keyframes.end() && nearly_equal(it->time(), keyframe.time())) {
@@ -376,15 +388,14 @@ const Keyframe &Channel::insert_keyframe(KeyframeIt it, Keyframe&& keyframe, boo
     }
 
     it = m_keyframes.insert(it, std::move(keyframe));
-    update_local_handles(it, source_is_out_handle);
+    update_local_handles(it, grabbed_handle);
 
     auto& new_keyframe = *it; // reference to the newly inserted keyframe
-    std::cout << "Updated Keyframe, time: " << new_keyframe.time() << ", value: " << new_keyframe.value()
-                << ", in_handle.time: " << new_keyframe.in_handle.time << ", in_handle.value: " << new_keyframe.in_handle.value
-                << ", out_handle.time: " << new_keyframe.out_handle.time << ", out_handle.value: " << new_keyframe.out_handle.value
-                << ", function: " << static_cast<int>(new_keyframe.function)
-                << ", handle_mode: " << static_cast<int>(new_keyframe.handle_mode) << std::endl;
-
+    // std::cout << "Updated Keyframe, time: " << new_keyframe.time() << ", value: " << new_keyframe.value()
+    //             << ", in_handle.time: " << new_keyframe.in_handle.time << ", in_handle.value: " << new_keyframe.in_handle.value
+    //             << ", out_handle.time: " << new_keyframe.out_handle.time << ", out_handle.value: " << new_keyframe.out_handle.value
+    //             << ", function: " << static_cast<int>(new_keyframe.function)
+    //             << ", handle_mode: " << static_cast<int>(new_keyframe.handle_mode) << std::endl;
     return *it;
 }
 
@@ -422,7 +433,7 @@ void Channel::clamp_keyframe_time(KeyframeIt it, double time)
     }
 }
 
-void Channel::update_local_handles(std::vector<Keyframe>::iterator it, bool source_is_out_handle)
+void Channel::update_local_handles(std::vector<Keyframe>::iterator it, GrabbedHandle grabbed_handle)
 {
     Keyframe* prev_it = nullptr;
     if (it != m_keyframes.begin()) {
@@ -437,33 +448,24 @@ void Channel::update_local_handles(std::vector<Keyframe>::iterator it, bool sour
         Keyframe* next_it_next_it = (it + 2 != m_keyframes.end()) ? &*(it + 2) : nullptr;
         update_handles(*next_it, &*it, next_it_next_it);
     }
-    update_handles(*it, prev_it, next_it, source_is_out_handle);
+    update_handles(*it, prev_it, next_it, grabbed_handle);
 }
 
-void Channel::update_handles(Keyframe& keyframe, Keyframe* prev_keyframe_ptr, Keyframe* next_keyframe_ptr, bool source_is_out_handle)
+void Channel::update_handles(Keyframe& keyframe, Keyframe* prev_keyframe_ptr, Keyframe* next_keyframe_ptr, GrabbedHandle grabbed_handle)
 {
     if (keyframe.function == Function::linear || keyframe.function == Function::constant) {
         return;
     }
 
     if (keyframe.handle_mode == HandleMode::flat) {
-        calculate_flat_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
+        apply_flat_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
     } else if (keyframe.handle_mode == HandleMode::smooth) {
-
-        // potentially usefull but needs a flag for the initialization of the handle when creating the keyframe
-        //
-        // auto smooth_factor = get_smooth_factor_from_handle(keyframe, prev_keyframe_ptr, next_keyframe_ptr, source_is_out_handle);
-        // calculate_smooth_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr, smooth_factor);
-
-        calculate_smooth_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
-
+        apply_smooth_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
     } else if (keyframe.handle_mode == HandleMode::aligned) {
-        // apply_manual_smooth_handles_proportional(keyframe, prev_keyframe_ptr, next_keyframe_ptr, source_is_out_handle);
-        apply_manual_smooth_handles(keyframe, source_is_out_handle);
-
-        constrain_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
+        apply_manual_smooth_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr, grabbed_handle);
+        // constrain_handles_time(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
     } else if (keyframe.handle_mode == HandleMode::free) {
-        constrain_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
+        constrain_handles_time(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
     } else {
         throw std::invalid_argument("Unknown handle type");
     }
