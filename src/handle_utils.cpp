@@ -193,156 +193,224 @@ namespace anim {
         }
     }
 
+
+    /**
+     * @brief Calculates the maximum allowed magnitude along a direction.
+     *
+     * It considers the keyframe position, the handle direction, adjacent keyframes,
+     * and whether it's an 'in' or 'out' handle to find the furthest point
+     * allowed by time boundaries and returns the corresponding magnitude.
+     *
+     * @param kf_pos The keyframe's position.
+     * @param dir The normalized direction vector of the handle.
+     * @param prev_kf Pointer to the previous keyframe (can be nullptr).
+     * @param next_kf Pointer to the next keyframe (can be nullptr).
+     * @param is_out_handle True if 'dir' is for an 'out' handle, false for 'in'.
+     * @return The maximum allowed magnitude along 'dir'.
+     */
+    double calculate_max_magnitude(
+        const Point& kf_pos,
+        const Vector& dir,
+        const Keyframe* prev_kf,
+        const Keyframe* next_kf,
+        bool is_out_handle
+    ) {
+        const double infinity = std::numeric_limits<double>::infinity();
+
+        // If handle is vertical (dir.time is zero), time constraints don't limit magnitude.
+        if (nearly_equal(dir.time, 0.0)) {
+            return infinity;
+        }
+
+        double boundary_time;
+
+        if (is_out_handle) {
+            // Out handle: Must be >= kf_pos.time and <= next_kf.time.
+            // Expect dir.time > 0. If not, something's wrong -> 0 magnitude.
+            if (dir.time < 0) return 0.0;
+            boundary_time = next_kf ? next_kf->position.time : infinity;
+            // The effective boundary is the next keyframe, but no less than the current one.
+            boundary_time = std::max(kf_pos.time, boundary_time);
+        } else {
+            // In handle: Must be <= kf_pos.time and >= prev_kf.time.
+            // Expect dir.time < 0. If not, something's wrong -> 0 magnitude.
+            if (dir.time > 0) return 0.0;
+            boundary_time = prev_kf ? prev_kf->position.time : -infinity;
+            // The effective boundary is the prev keyframe, but no more than the current one.
+            boundary_time = std::min(kf_pos.time, boundary_time);
+        }
+
+        // If boundary is effectively infinite, max magnitude is infinite.
+        if (!std::isfinite(boundary_time)) {
+            return infinity;
+        }
+
+        // Calculate magnitude: M = (boundary_time - kf_pos.time) / dir.time
+        double max_mag = (boundary_time - kf_pos.time) / dir.time;
+
+        // Magnitude should always be positive. If somehow negative, return 0.
+        return std::max(0.0, max_mag);
+    }
+
+    void apply_aligned_handles(
+        Keyframe& keyframe,
+        const Keyframe* prev_keyframe_ptr,
+        const Keyframe* next_keyframe_ptr,
+        GrabbedHandle grabbed_handle
+    ) {
+        Point* source_handle_ptr;
+        Point* target_handle_ptr;
+        bool source_is_out;
+
+
+        // Determine source and target handles
+        if (grabbed_handle == GrabbedHandle::out_handle) {
+            source_handle_ptr = &(keyframe.out_handle);
+            target_handle_ptr = &(keyframe.in_handle);
+            source_is_out = true;
+        } else if (grabbed_handle == GrabbedHandle::in_handle) {
+            source_handle_ptr = &(keyframe.in_handle);
+            target_handle_ptr = &(keyframe.out_handle);
+            source_is_out = false;
+        } else { 
+            // If no handle is grabbed, we need to determine which handle to use as source.
+            // Use the one with the larger magnitude from the keyframe position.
+            double dist_out = distance(keyframe.position, keyframe.out_handle);
+            double dist_in = distance(keyframe.position, keyframe.in_handle);
+
+            if (dist_out >= dist_in) {
+                source_handle_ptr = &(keyframe.out_handle);
+                target_handle_ptr = &(keyframe.in_handle);
+                source_is_out = true;
+            } else {
+                source_handle_ptr = &(keyframe.in_handle);
+                target_handle_ptr = &(keyframe.out_handle);
+                source_is_out = false;
+            }
+            
+        }
+
+        Point& source_handle = *source_handle_ptr;
+        Point& target_handle = *target_handle_ptr;
+        const Point& kf_pos = keyframe.position;
+
+        // --- Basic Time Check (Snap if source crosses kf_pos.time) ---
+        if (source_is_out && source_handle.time < kf_pos.time) {
+            keyframe.out_handle.time = kf_pos.time;
+        }
+        if (!source_is_out && source_handle.time > kf_pos.time) {
+            keyframe.in_handle.time = kf_pos.time;
+        }
+
+        Vector vec_kf_to_source = vector(kf_pos, source_handle);
+        double L_sq_kf_to_source = length_squared(vec_kf_to_source);
+
+        Vector vec_kf_to_target = vector(kf_pos, target_handle);
+        double L_sq_kf_to_target = length_squared(vec_kf_to_target);
+
+        // --- Zero Length Check ---
+        bool source_is_zero_length = nearly_equal(L_sq_kf_to_source, 0.0);
+        bool target_is_zero_length = nearly_equal(L_sq_kf_to_target, 0.0);
+        if (source_is_zero_length || target_is_zero_length) {
+            if (source_is_zero_length) {
+                if (target_is_zero_length) {
+                    return;
+                }
+                vec_kf_to_source = invert(vec_kf_to_target); // Use target's direction
+            }
+            if (target_is_zero_length) {
+                if (source_is_zero_length) {
+                    return;
+                }
+                vec_kf_to_target = invert(vec_kf_to_source); // Use source's direction
+            }
+        }
+
+        double current_magnitude = keyframe.handle_mode != HandleMode::alignAdjustable ? length(vec_kf_to_source) : length(vec_kf_to_target);
+        Vector dir_source = normalize(vec_kf_to_source);
+        Vector dir_target = invert(dir_source);
+        const double infinity = std::numeric_limits<double>::infinity();
+
+        // --- Option 2: Maintain Symmetry ---
+        if (keyframe.handle_mode == HandleMode::alignStrict) {
+            double max_mag_source = calculate_max_magnitude(kf_pos, dir_source, prev_keyframe_ptr, next_keyframe_ptr, source_is_out);
+            double max_mag_target = calculate_max_magnitude(kf_pos, dir_target, prev_keyframe_ptr, next_keyframe_ptr, !source_is_out);
+
+            // Use the smallest of current mag, max source mag, and max target mag.
+            double final_magnitude = std::min({current_magnitude, max_mag_source, max_mag_target});
+            final_magnitude = std::max(0.0, final_magnitude); // Ensure non-negative
+
+            // Set both handles using the final, constrained magnitude.
+            keyframe.out_handle = kf_pos + ((source_is_out ? dir_source : dir_target) * final_magnitude);
+            keyframe.in_handle = kf_pos + ((source_is_out ? dir_target : dir_source) * final_magnitude);
+        }
+        // --- Option 1: Break Symmetry ---
+        else { // HandleConstraintOption::BreakSymmetry
+            // Calculate source boundaries
+            double source_min_time = source_is_out ? kf_pos.time : (prev_keyframe_ptr ? prev_keyframe_ptr->position.time : -infinity);
+            double source_max_time = source_is_out ? (next_keyframe_ptr ? next_keyframe_ptr->position.time : infinity) : kf_pos.time;
+
+            // Calculate target boundaries
+            double target_min_time = !source_is_out ? kf_pos.time : (prev_keyframe_ptr ? prev_keyframe_ptr->position.time : -infinity);
+            double target_max_time = !source_is_out ? (next_keyframe_ptr ? next_keyframe_ptr->position.time : infinity) : kf_pos.time;
+
+            Point final_source_pos = source_handle; // Start with current source
+            Point final_target_pos = kf_pos + (dir_target * current_magnitude); // Start with ideal target
+
+            // Helper function to clamp time and recalculate value if clamped.
+            auto clamp_and_recalc = [&](Point& p, const Vector& dir, double min_t, double max_t, bool is_out_handle = true) {
+                double original_time = p.time;
+                p.time = std::clamp(p.time, min_t, max_t);
+
+                // If time was actually clamped...
+                if (!nearly_equal(p.time, original_time)) {
+                    if (nearly_equal(dir.time, 0.0)) {
+                        p = kf_pos;
+                        // if (is_out_handle) {
+                        //     p.time = std::max(p.time, kf_pos.time + 1e-6); // Avoid zero-length by nudging time slightly forward
+                        // } else {
+                        //     p.time = std::min(p.time, kf_pos.time - 1e-6); // Avoid zero-length by nudging time slightly backward
+                        // }
+                    } else if (nearly_equal(p.time, kf_pos.time)) {
+                        p = kf_pos;
+                        // if (is_out_handle) {
+                        //     p.time = std::max(p.time, kf_pos.time + 1e-6); // Avoid zero-length by nudging time slightly forward
+                        // } else {
+                        //     p.time = std::min(p.time, kf_pos.time - 1e-6); // Avoid zero-length by nudging time slightly backward
+                        // }
+                    } else {
+                        // Recalculate value to maintain slope: V = V_kf + (dV/dT) * (T_clamped - T_kf)
+                        double slope = dir.value / dir.time;
+                        p.value = kf_pos.value + slope * (p.time - kf_pos.time);
+                    }
+                }
+            };
+
+            // Clamp source and target independently
+            clamp_and_recalc(final_source_pos, dir_source, source_min_time, source_max_time, source_is_out);
+            clamp_and_recalc(final_target_pos, dir_target, target_min_time, target_max_time, !source_is_out);
+            *source_handle_ptr = final_source_pos;
+            *target_handle_ptr = final_target_pos;
+        }
+    }
+
+
     void apply_manual_smooth_handles(            
             Keyframe& keyframe, 
             const Keyframe* prev_keyframe_ptr, 
             const Keyframe* next_keyframe_ptr,
             GrabbedHandle grabbed_handle
     ) {
+        apply_aligned_handles(
+            keyframe, 
+            prev_keyframe_ptr, 
+            next_keyframe_ptr, 
+            grabbed_handle
+        );
 
-        Point* source_handle_actual_ptr;
-        Point* target_handle_actual_ptr;
 
-        if (prev_keyframe_ptr) {
-            if (grabbed_handle == GrabbedHandle::none && prev_keyframe_ptr->position.time >= keyframe.in_handle.time) {
-                grabbed_handle = GrabbedHandle::in_handle; // Force in_handle if prev keyframe is before or at the same time
-            }
-            keyframe.in_handle.time = std::clamp(keyframe.in_handle.time, 
-                prev_keyframe_ptr->position.time, 
-                keyframe.position.time
-            );
-        } else {
-            keyframe.in_handle.time = std::min(
-                keyframe.in_handle.time, 
-                keyframe.position.time
-            );
-        }
 
-        if (next_keyframe_ptr) {
-            if (grabbed_handle == GrabbedHandle::none && next_keyframe_ptr->position.time <= keyframe.out_handle.time) {
-                grabbed_handle = GrabbedHandle::out_handle; // Force out_handle if next keyframe is after or at the same time
-            }
-            keyframe.out_handle.time = std::clamp(keyframe.out_handle.time, 
-                keyframe.position.time, 
-                next_keyframe_ptr->position.time
-            );
-        } else {
-            keyframe.out_handle.time = std::max(
-                keyframe.out_handle.time, 
-                keyframe.position.time
-            );
-        }
-
-        if (grabbed_handle == GrabbedHandle::out_handle || grabbed_handle == GrabbedHandle::none) {
-            source_handle_actual_ptr = &(keyframe.out_handle);
-            target_handle_actual_ptr = &(keyframe.in_handle);
-
-        } else {
-            source_handle_actual_ptr = &(keyframe.in_handle);
-            target_handle_actual_ptr = &(keyframe.out_handle);
-
-        }
-
-        const Point& source_handle_current_pos = *source_handle_actual_ptr;
-        Vector vec_kf_to_source = vector(keyframe.position, source_handle_current_pos);
-        double L_sq_kf_to_source = length_squared(vec_kf_to_source);
-
-        if (nearly_equal(L_sq_kf_to_source, 0.0)) {
-            keyframe.in_handle  = keyframe.position;
-            keyframe.out_handle = keyframe.position;
-        } else {
-            Vector dir_kf_to_source_normalized = normalize(vec_kf_to_source);
-            Vector dir_kf_to_target_normalized = invert(dir_kf_to_source_normalized);
-            double magnitude_kf_to_source = length(vec_kf_to_source);
-            *target_handle_actual_ptr = keyframe.position + (dir_kf_to_target_normalized * magnitude_kf_to_source);
-
-        }
     }
 
-    void apply_manual_smooth_handles_proportional(
-        Keyframe& keyframe, 
-        const Keyframe* prev_keyframe_ptr, 
-        const Keyframe* next_keyframe_ptr,
-        GrabbedHandle grabbed_handle) 
-    {
-        Point* source_handle_ptr = grabbed_handle == GrabbedHandle::out_handle ? &(keyframe.out_handle) : &(keyframe.in_handle);
-        const Point& source_handle_pos = *source_handle_ptr;
-
-        // Vector from keyframe to the manually set handle
-        Vector vec_kf_to_source = vector(keyframe.position, source_handle_pos);
-        double L_sq_kf_to_source = length_squared(vec_kf_to_source);
-
-        // --- Handle Zero-Length Drag (Set flat handles) ---
-        if (nearly_equal(L_sq_kf_to_source, 0.0)) {
-            keyframe.in_handle  = keyframe.position;
-            keyframe.out_handle = keyframe.position;
-            return;
-        }
-
-        double handle_dist = std::sqrt(L_sq_kf_to_source);
-
-        // --- Calculate Base Tangent Direction (always points "out" or forward in time/value) ---
-        Vector base_tangent;
-        if (grabbed_handle == GrabbedHandle::out_handle) {
-            base_tangent = vec_kf_to_source * (1.0 / handle_dist); // Normalize
-        } else {
-            // Source is IN handle, so its vector points "in". 
-            // We want the opposite direction for the base tangent.
-            base_tangent = vector(source_handle_pos, keyframe.position) * (1.0 / handle_dist); // Normalize
-        }
-
-        // Handle degenerate tangents (shouldn't happen due to L_sq check, but be safe)
-        if (nearly_equal(length_squared(base_tangent), 0.0)) {
-            keyframe.in_handle = Point(keyframe.position.time - 1.0, keyframe.position.value);
-            keyframe.out_handle = Point(keyframe.position.time + 1.0, keyframe.position.value);
-            return;
-        }
-
-        // --- Calculate Distances to Neighbors ---
-        double dist_prev = 0.0;
-        double dist_next = 0.0;
-        bool has_prev = prev_keyframe_ptr != nullptr;
-        bool has_next = next_keyframe_ptr != nullptr;
-
-        if (has_prev) {
-            dist_prev = length(vector(prev_keyframe_ptr->position, keyframe.position));
-        }
-        if (has_next) {
-            dist_next = length(vector(keyframe.position, next_keyframe_ptr->position));
-        }
-
-        // --- Calculate Smooth Factor based on source handle and distances ---
-        double smooth_factor = 0.333; // Default factor (e.g., Catmull-Rom like)
-
-        if (has_prev && has_next) { // Middle keyframe
-            if (grabbed_handle == GrabbedHandle::out_handle) {
-                // If dist_next is ~0, keyframes overlap; factor can be 1 or any other default.
-                smooth_factor = (dist_next > 1e-6) ? (handle_dist / dist_next) : 1.0;
-            } else {
-                smooth_factor = (dist_prev > 1e-6) ? (handle_dist / dist_prev) : 1.0;
-            }
-        } else if (has_prev) { // Last keyframe
-            smooth_factor = (dist_prev > 1e-6) ? (handle_dist / dist_prev) : 1.0;
-            dist_next = dist_prev; // Use dist_prev for both sides for symmetry
-        } else if (has_next) { // First keyframe
-            smooth_factor = (dist_next > 1e-6) ? (handle_dist / dist_next) : 1.0;
-            dist_prev = dist_next; // Use dist_next for both sides for symmetry
-        } else { // Single keyframe - Just mirror the drag (Symmetrical magnitude)
-            keyframe.out_handle = keyframe.position + (base_tangent * handle_dist);
-            keyframe.in_handle  = keyframe.position - (base_tangent * handle_dist);
-            return; // We're done for the single keyframe case.
-        }
-
-        // Optional: Clamp smooth_factor if needed (e.g., to prevent extreme overshoots)
-        // smooth_factor = std::max(0.0, std::min(smooth_factor, 2.0)); 
-
-        // --- Calculate Handle Offsets and Set Handles ---
-        // The key change: Magnitudes are scaled by *their* respective distances.
-        Vector out_handle_offset = base_tangent * (dist_next * smooth_factor);
-        Vector in_handle_offset  = base_tangent * (dist_prev * smooth_factor);
-
-        keyframe.out_handle = keyframe.position + out_handle_offset;
-        keyframe.in_handle  = keyframe.position - in_handle_offset;
-    }
 } // namespace anim
 

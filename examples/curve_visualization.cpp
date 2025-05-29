@@ -51,7 +51,7 @@ double eval_step = 0.01;
 
 // Enum string mappers - ensure these match your anim::Function and anim::HandleMode enum order and values
 const char* const c_func_items[] = { "Constant", "Linear", "Bezier" }; // Assuming anim::Function::constant=0, linear=1, bezier=2
-const char* const c_hmode_items[] = { "Flat", "Smooth", "Aligned", "Free" }; // anim::HandleMode::flat=0, smooth=1, aligned=2, free=3
+const char* const c_hmode_items[] = { "Flat", "Smooth", "Aligned", "Free", "AlignStrict", "AlignFlex", "AlignAdjustable" }; // anim::HandleMode::flat=0, smooth=1, aligned=2, free=3
 
 
 void CreateExampleCurves() {

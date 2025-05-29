@@ -461,9 +461,11 @@ void Channel::update_handles(Keyframe& keyframe, Keyframe* prev_keyframe_ptr, Ke
         apply_flat_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
     } else if (keyframe.handle_mode == HandleMode::smooth) {
         apply_smooth_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
-    } else if (keyframe.handle_mode == HandleMode::aligned) {
-        apply_manual_smooth_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr, grabbed_handle);
-        // constrain_handles_time(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
+    } else if (keyframe.handle_mode == HandleMode::aligned || 
+               keyframe.handle_mode == HandleMode::alignStrict || 
+               keyframe.handle_mode == HandleMode::alignFlex || 
+               keyframe.handle_mode == HandleMode::alignAdjustable) {
+        apply_aligned_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr, grabbed_handle);
     } else if (keyframe.handle_mode == HandleMode::free) {
         constrain_handles_time(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
     } else {

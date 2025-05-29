@@ -10,8 +10,15 @@ enum class HandleMode : uint8_t {
     smooth = 1,
     aligned = 2,
     free = 3,
-    count = 4
+    alignStrict = 4,
+    alignFlex = 5,
+    alignAdjustable = 6,
+    count = 7
 };
+
+
+
+
 
 } // namespace anim
 

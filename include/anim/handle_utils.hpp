@@ -64,18 +64,12 @@ namespace anim {
         const Keyframe* next_keyframe_ptr, 
         double smooth_factor = 1.0/3.0);
 
-    void apply_manual_smooth_handles(
+    void apply_aligned_handles(
             Keyframe& keyframe, 
             const Keyframe* prev_keyframe_ptr, 
             const Keyframe* next_keyframe_ptr,
             GrabbedHandle grabbed_handle = GrabbedHandle::none);
 
-    
-    void apply_manual_smooth_handles_proportional(
-            Keyframe& keyframe, 
-            const Keyframe* prev_keyframe_ptr, 
-            const Keyframe* next_keyframe_ptr,
-            GrabbedHandle grabbed_handle = GrabbedHandle::none);
 
 } // namespace anim
 

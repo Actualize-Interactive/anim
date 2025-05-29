@@ -254,12 +254,12 @@ TEST_CASE("Handle mode functions", "[handle_utils]") {
         REQUIRE(handle_distance > 0.0);
     }
 
-    SECTION("apply_manual_smooth_handles function") {
+    SECTION("apply_aligned_handles function") {
         Keyframe kf(5.0, 5.0);
         kf.out_handle = Point(7.0, 7.0);
         kf.in_handle = Point(3.0, 4.0);
         
-        apply_manual_smooth_handles(kf, nullptr, nullptr, GrabbedHandle::out_handle); // out_handle is source
+        apply_aligned_handles(kf, nullptr, nullptr, GrabbedHandle::out_handle); // out_handle is source
         
         // in_handle should be aligned with out_handle
         Vector in_vec = vector(kf.in_handle, kf.position);
