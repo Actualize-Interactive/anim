@@ -1,312 +1,273 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include <anim/animation.hpp>
+#include <anim/channel.hpp>
+
 
 using namespace anim;
 
-TEST_CASE("Animation empty state", "[animation]") {
-    Animation anim;
-    
-    SECTION("Animation is empty") {
-        REQUIRE(anim.is_empty());
-        REQUIRE(anim.has_no_keyframes());
+TEST_CASE("Animation Constructors and Name", "[Animation]") {
+    SECTION("Default constructor") {
+        Animation anim;
+        REQUIRE(anim.name().empty());
+        REQUIRE(anim.empty());
+        REQUIRE(anim.num_channels() == 0);
+        REQUIRE(anim.start_time() == Catch::Approx(0.0));
+        REQUIRE(anim.end_time() == Catch::Approx(30.0));
     }
-    
-    SECTION("No start or end time") {
-        REQUIRE_FALSE(anim.get_start_time().has_value());
-        REQUIRE_FALSE(anim.get_end_time().has_value());
+
+    SECTION("Named constructor") {
+        Animation anim("TestAnim");
+        REQUIRE(anim.name() == "TestAnim");
+        REQUIRE(anim.empty());
+        REQUIRE(anim.num_channels() == 0);
     }
-    
-    SECTION("Empty channel list") {
-        REQUIRE(anim.get_channel_names().empty());
-    }
-    
-    SECTION("Evaluating empty animation returns empty map") {
-        auto results = anim.evaluate_channels(0.0);
-        REQUIRE(results.empty());
-    }
-    
-    SECTION("Clearing empty animation has no effect") {
-        REQUIRE(anim.is_empty());
-        anim.clear_channels();
-        REQUIRE(anim.is_empty());
-        REQUIRE(anim.get_channel_count() == 0);
+
+    SECTION("Set and get name") {
+        Animation anim;
+        anim.set_name("NewName");
+        REQUIRE(anim.name() == "NewName");
     }
 }
 
-TEST_CASE("Animation with multiple channels", "[animation]") {
-    Animation anim;
-    // Create and add channels
-    Channel channel1("position.x");
-    channel1.set_keyframe_at_time(1.0, 10.0, BezierHandle(0.9, 10.0), BezierHandle(1.1, 10.0), TangentMode::linear);
-    channel1.set_keyframe_at_time(3.0, 30.0, BezierHandle(2.9, 30.0), BezierHandle(3.1, 30.0), TangentMode::linear);
-    
-    Channel channel2("position.y");
-    channel2.set_keyframe_at_time(2.0, 20.0, BezierHandle(1.9, 20.0), BezierHandle(2.1, 20.0), TangentMode::linear);
-    channel2.set_keyframe_at_time(4.0, 40.0, BezierHandle(3.9, 40.0), BezierHandle(4.1, 40.0), TangentMode::linear);
-    
-    anim.append_channel(channel1);
-    anim.append_channel(channel2);
-    
-    SECTION("Animation is not empty") {
-        REQUIRE_FALSE(anim.is_empty());
-        REQUIRE_FALSE(anim.has_no_keyframes());
-    }
-    
-    SECTION("Channel names are correct") {
-        auto names = anim.get_channel_names();
-        REQUIRE(names.size() == 2);
-        REQUIRE(std::find(names.begin(), names.end(), "position.x") != names.end());
-        REQUIRE(std::find(names.begin(), names.end(), "position.y") != names.end());
-    }
-    
-    SECTION("Start and end times span all channels") {
-        REQUIRE(anim.get_start_time().value() == Catch::Approx(1.0)); // Earliest keyframe
-        REQUIRE(anim.get_end_time().value() == Catch::Approx(4.0));   // Latest keyframe
-    }
-    
-    SECTION("Channel retrieval by name") {
-        const Channel* ch1 = anim.get_channel("position.x");
-        REQUIRE(ch1 != nullptr);
-        REQUIRE(ch1->get_all_keyframes().size() == 2);
-        
-        Channel* ch2 = anim.get_channel("position.y");
-        REQUIRE(ch2 != nullptr);
-        REQUIRE(ch2->get_all_keyframes().size() == 2);
-        
-        const Channel* missing = anim.get_channel("nonexistent");
-        REQUIRE(missing == nullptr);
-    }
-    
-    SECTION("Channel retrieval by index") {
-        const Channel* ch1 = anim.get_channel(0);
-        REQUIRE(ch1 != nullptr);
-        REQUIRE(ch1->name() == "position.x");
-        
-        Channel* ch2 = anim.get_channel(1);
-        REQUIRE(ch2 != nullptr);
-        REQUIRE(ch2->name() == "position.y");
-        
-        const Channel* invalid = anim.get_channel(999);
-        REQUIRE(invalid == nullptr);
-    }
-    
-    SECTION("Channel count") {
+TEST_CASE("Animation Channel Management", "[Animation]") {
+    Animation anim("ChannelTestAnim");
+
+    SECTION("Create channel") {
+        Channel& ch1 = anim.create_channel("Chan1");
+        REQUIRE(anim.num_channels() == 1);
+        REQUIRE(anim.has_channel("Chan1"));
+        REQUIRE(ch1.name() == "Chan1");
+        REQUIRE(&anim.channel(0) == &ch1);
+        REQUIRE(&anim.channel("Chan1") == &ch1);
+
+        Channel& ch2 = anim.create_channel("Chan2", 0);
         REQUIRE(anim.num_channels() == 2);
-    }
-    
-    SECTION("Evaluate all channels at specific time") {
-        auto results = anim.evaluate_channels(2.0);
-        REQUIRE(results.size() == 2);
-        REQUIRE(results["position.x"] == Catch::Approx(20.0)); // Linear interpolation
-        REQUIRE(results["position.y"] == Catch::Approx(20.0)); // At keyframe
-    }
-    
-    SECTION("Evaluate range across all channels") {
-        auto results = anim.evaluate_channels_range(1.0, 4.0, 4);
-        REQUIRE(results.size() == 2);
-        REQUIRE(results["position.x"].size() == 4);
-        REQUIRE(results["position.y"].size() == 4);
-        
-        // Check first and last values
-        REQUIRE(results["position.x"][0] == Catch::Approx(10.0));
-        REQUIRE(results["position.x"][3] == Catch::Approx(30.0));
-        REQUIRE(results["position.y"][0] == Catch::Approx(20.0/1.0)); // Linear interp from 20->40 over 2->4
-        REQUIRE(results["position.y"][3] == Catch::Approx(40.0));
-    }
-    
-    SECTION("Animation length") {
-        REQUIRE(anim.length() == Catch::Approx(3.0)); // 4.0 - 1.0
-    }
-    
-    SECTION("Number of samples") {
-        REQUIRE(anim.num_samples(10.0) == 31); // (4-1)*10 + 1
-    }
-    
-    SECTION("Remove channel by name") {
-        REQUIRE(anim.remove_channel("position.x"));
-        REQUIRE(anim.get_channel_names().size() == 1);
-        REQUIRE_FALSE(anim.remove_channel("nonexistent"));
-    }
-    
-    SECTION("Remove channel by index") {
-        REQUIRE(anim.remove_channel(0));
-        REQUIRE(anim.num_channels() == 1);
-        REQUIRE_FALSE(anim.remove_channel(999));
-    }
-    
-    SECTION("Clear all channels") {
-        REQUIRE_FALSE(anim.is_empty());
-        anim.clear_channels();
-        REQUIRE(anim.is_empty());
-        REQUIRE(anim.get_channel_count() == 0);
-        REQUIRE(anim.get_channel_names().empty());
-    }
-}
+        REQUIRE(anim.size() == 2);
+        REQUIRE(anim.has_channel("Chan2"));
+        REQUIRE(ch2.name() == "Chan2");
+        REQUIRE(anim.channel(0).name() == "Chan2");
+        REQUIRE(anim.channel(1).name() == "Chan1");
 
-TEST_CASE("Animation with empty channel", "[animation]") {
-    Animation anim;
-    
-    // Add an empty channel
-    Channel empty_channel("empty");
-    anim.append_channel(empty_channel);
-    
-    // Add a non-empty channel
-    Channel channel("non_empty");
-    channel.set_keyframe_at_time(1.0, 10.0, BezierHandle(0.9, 10.0), BezierHandle(1.1, 10.0), TangentMode::linear);
-    anim.append_channel(channel);
-    
-    SECTION("Animation is not empty") {
-        REQUIRE_FALSE(anim.is_empty());
+        REQUIRE_THROWS_AS(anim.create_channel("Chan3", 5), std::out_of_range);
     }
-    
-    SECTION("Animation has keyframes") {
-        REQUIRE_FALSE(anim.has_no_keyframes());
-    }
-    
-    SECTION("Start and end times only consider non-empty channels") {
-        REQUIRE(anim.get_start_time().value() == Catch::Approx(1.0));
-        REQUIRE(anim.get_end_time().value() == Catch::Approx(1.0));
-    }
-    
-    SECTION("Evaluation includes empty channels") {
-        auto results = anim.evaluate_channels(1.0);
-        REQUIRE(results.size() == 2);
-        REQUIRE(results["empty"] == Catch::Approx(0.0));
-        REQUIRE(results["non_empty"] == Catch::Approx(10.0));
-    }
-}
 
-TEST_CASE("Animation channel creation", "[animation]") {
-    Animation anim;
-    
-    SECTION("Creating channels directly") {
-        Channel* ch1 = anim.create_channel("position.x");
-        REQUIRE(ch1 != nullptr);
-        REQUIRE(ch1->name() == "position.x");
+    SECTION("Emplace channel") {
+        anim.emplace_channel(Channel("EmplacedChan"));
         REQUIRE(anim.num_channels() == 1);
-        
-        // Set a keyframe on the created channel
-        ch1->set_keyframe_at_time(1.0, 5.0, BezierHandle(0.9, 5.0), BezierHandle(1.1, 5.0), TangentMode::linear);
-        REQUIRE_FALSE(ch1->is_empty());
-        
-        // Channel should be accessible through both index and name
-        REQUIRE(anim.get_channel(0) == ch1);
-        REQUIRE(anim.get_channel("position.x") == ch1);
-        REQUIRE(anim.has_channel("position.x"));
+        REQUIRE(anim.has_channel("EmplacedChan"));
+        REQUIRE(anim.channel(0).name() == "EmplacedChan");
+    }
+
+    SECTION("Insert channel") {
+        Channel ch_const("ConstInsertedChan");
+        anim.insert_channel(0, ch_const);
+        REQUIRE(anim.num_channels() == 1);
+        REQUIRE(anim.size() == 1);
+        REQUIRE(anim.has_channel("ConstInsertedChan"));
+        REQUIRE(anim.channel(0).name() == "ConstInsertedChan");
+
+        anim.insert_channel(1, Channel("RValInsertedChan"));
+        REQUIRE(anim.num_channels() == 2);
+        REQUIRE(anim.has_channel("RValInsertedChan"));
+        REQUIRE(anim.channel(1).name() == "RValInsertedChan");
+
+        REQUIRE_THROWS_AS(anim.insert_channel(5, ch_const), std::out_of_range);
+        REQUIRE_THROWS_AS(anim.insert_channel(5, Channel("RVal")), std::out_of_range);
+    }
+
+    SECTION("Access channels") {
+        anim.create_channel("Ch1");
+        anim.create_channel("Ch2");
+
+        REQUIRE(anim.channel(0).name() == "Ch1");
+        REQUIRE(anim[0].name() == "Ch1");
+        REQUIRE(anim.channel("Ch2").name() == "Ch2");
+        REQUIRE(anim["Ch2"].name() == "Ch2");
+
+        const Animation& const_anim = anim;
+        REQUIRE(const_anim.channel(0).name() == "Ch1");
+        REQUIRE(const_anim[0].name() == "Ch1");
+        REQUIRE(const_anim.channel("Ch2").name() == "Ch2");
+        REQUIRE(const_anim["Ch2"].name() == "Ch2");
+
+        REQUIRE_THROWS_AS(anim.channel(5), std::out_of_range);
+        REQUIRE_THROWS_AS(anim.channel("NonExistent"), std::out_of_range);
+        REQUIRE_THROWS_AS(const_anim.channel(5), std::out_of_range);
+        REQUIRE_THROWS_AS(const_anim.channel("NonExistent"), std::out_of_range);
     }
     
-    SECTION("Creating multiple channels") {
-        anim.create_channel("position.x");
-        anim.create_channel("position.y");
-        anim.create_channel("position.z");
-        
+    SECTION("Modify accessed channel") {
+        anim.create_channel("ModCh");
+        anim.channel("ModCh").create_keyframe(0.0, 1.0f);
+        REQUIRE(anim.channel("ModCh").size() == 1);
+        anim[0].create_keyframe(1.0, 2.0f);
+        REQUIRE(anim[0].size() == 2);
+    }
+
+
+    SECTION("Channel information") {
+        REQUIRE(anim.empty());
+        REQUIRE(anim.size() == 0);
+        REQUIRE(anim.num_channels() == 0);
+
+        anim.create_channel("InfoCh1");
+        anim.create_channel("InfoCh2");
+
+        REQUIRE_FALSE(anim.empty());
+        REQUIRE(anim.size() == 2);
+        REQUIRE(anim.num_channels() == 2);
+        REQUIRE(anim.has_channel("InfoCh1"));
+        REQUIRE(anim.has_channel("InfoCh2"));
+        REQUIRE_FALSE(anim.has_channel("NonExistent"));
+
+        std::vector<std::string> names = anim.channel_names();
+        REQUIRE(names.size() == 2);
+        REQUIRE(std::find(names.begin(), names.end(), "InfoCh1") != names.end());
+        REQUIRE(std::find(names.begin(), names.end(), "InfoCh2") != names.end());
+    }
+
+    SECTION("Remove channels") {
+        anim.create_channel("RemCh1");
+        anim.create_channel("RemCh2");
+        anim.create_channel("RemCh3");
         REQUIRE(anim.num_channels() == 3);
-        REQUIRE(anim.has_channel("position.x"));
-        REQUIRE(anim.has_channel("position.y"));
-        REQUIRE(anim.has_channel("position.z"));
-        REQUIRE_FALSE(anim.has_channel("rotation"));
+
+        anim.remove_channel(1); // Removes RemCh2
+        REQUIRE(anim.num_channels() == 2);
+        REQUIRE_FALSE(anim.has_channel("RemCh2"));
+        REQUIRE(anim.channel(0).name() == "RemCh1");
+        REQUIRE(anim.channel(1).name() == "RemCh3");
+        REQUIRE_THROWS_AS(anim.remove_channel(5), std::out_of_range);
+
+        anim.remove_channel("RemCh1");
+        REQUIRE(anim.num_channels() == 1);
+        REQUIRE_FALSE(anim.has_channel("RemCh1"));
+        REQUIRE(anim.channel(0).name() == "RemCh3");
+        REQUIRE_THROWS_AS(anim.remove_channel("NonExistent"), std::out_of_range);
+
+        anim.clear();
+        REQUIRE(anim.empty());
+        REQUIRE(anim.num_channels() == 0);
+    }
+    
+    SECTION("Channels accessor") {
+        anim.create_channel("C1");
+        anim.create_channel("C2");
+        
+        std::vector<Channel>& channels_ref = anim.channels();
+        REQUIRE(channels_ref.size() == 2);
+        channels_ref[0].set_name("NewC1");
+        REQUIRE(anim.channel(0).name() == "NewC1");
+
+        const Animation& const_anim = anim;
+        const std::vector<Channel>& const_channels_ref = const_anim.channels();
+        REQUIRE(const_channels_ref.size() == 2);
+        REQUIRE(const_channels_ref[0].name() == "NewC1");
     }
 }
 
-TEST_CASE("Animation channel modification", "[animation]") {
+TEST_CASE("Animation Time Management", "[Animation]") {
     Animation anim;
-    
-    // Set up animation with multiple channels
-    Channel* ch1 = anim.create_channel("channel1");
-    ch1->set_keyframe_at_time(1.0, 10.0, BezierHandle(0.9, 10.0), BezierHandle(1.1, 10.0), TangentMode::linear);
-    
-    Channel* ch2 = anim.create_channel("channel2");
-    ch2->set_keyframe_at_time(2.0, 20.0, BezierHandle(1.9, 20.0), BezierHandle(2.1, 20.0), TangentMode::linear);
-    
-    SECTION("Modifying channel through the animation pointer") {
-        Channel* ch = anim.get_channel("channel1");
-        REQUIRE(ch != nullptr);
-        
-        // Add a new keyframe
-        ch->set_keyframe_at_time(3.0, 30.0, BezierHandle(2.9, 30.0), BezierHandle(3.1, 30.0), TangentMode::linear);
-        
-        // Verify the keyframe was added
-        REQUIRE(ch->get_all_keyframes().size() == 2);
-        
-        // Verify evaluation works with the new keyframe
-        REQUIRE(anim.evaluate_channels(3.0)["channel1"] == Catch::Approx(30.0));
+
+    SECTION("Default times") {
+        REQUIRE(anim.start_time() == Catch::Approx(0.0));
+        REQUIRE(anim.end_time() == Catch::Approx(30.0));
+        REQUIRE(anim.length() == Catch::Approx(30.0));
+    }
+
+    SECTION("Set start time") {
+        anim.set_start_time(5.0);
+        REQUIRE(anim.start_time() == Catch::Approx(5.0));
+        REQUIRE(anim.end_time() == Catch::Approx(30.0)); // End time should remain
+        REQUIRE(anim.length() == Catch::Approx(25.0));
+
+        anim.set_start_time(35.0); // Should be capped by end_time
+        REQUIRE(anim.start_time() == Catch::Approx(30.0));
+        REQUIRE(anim.end_time() == Catch::Approx(30.0));
+        REQUIRE(anim.length() == Catch::Approx(0.0));
+    }
+
+    SECTION("Set end time") {
+        anim.set_start_time(0.0); // Reset for clarity
+        anim.set_end_time(10.0);
+        REQUIRE(anim.start_time() == Catch::Approx(0.0));
+        REQUIRE(anim.end_time() == Catch::Approx(10.0));
+        REQUIRE(anim.length() == Catch::Approx(10.0));
+
+        anim.set_end_time(-5.0); // Should be capped by start_time
+        REQUIRE(anim.start_time() == Catch::Approx(0.0));
+        REQUIRE(anim.end_time() == Catch::Approx(0.0));
+        REQUIRE(anim.length() == Catch::Approx(0.0));
+    }
+
+    SECTION("Set length") {
+        anim.set_start_time(10.0);
+        anim.set_end_time(20.0); // length is 10
+
+        anim.set_length(15.0);
+        REQUIRE(anim.start_time() == Catch::Approx(10.0));
+        REQUIRE(anim.end_time() == Catch::Approx(25.0));
+        REQUIRE(anim.length() == Catch::Approx(15.0));
+
+        REQUIRE_THROWS_AS(anim.set_length(-5.0), std::invalid_argument);
     }
     
-    SECTION("Has channel checks") {
-        REQUIRE(anim.has_channel("channel1"));
-        REQUIRE(anim.has_channel("channel2"));
-        REQUIRE_FALSE(anim.has_channel("channel3"));
-        
-        // After removing a channel
-        anim.remove_channel("channel1");
-        REQUIRE_FALSE(anim.has_channel("channel1"));
-        REQUIRE(anim.has_channel("channel2"));
-    }
-    
-    SECTION("Evaluating channels after modification") {
-        // Original evaluation
-        auto results1 = anim.evaluate_channels(1.5);
-        REQUIRE(results1["channel1"] == Catch::Approx(10.0));
-        REQUIRE(results1["channel2"] == Catch::Approx(20.0));
-        
-        // Modify channel1
-        Channel* ch = anim.get_channel("channel1");
-        ch->set_keyframe_at_time(1.0, 100.0, BezierHandle(0.9, 100.0), BezierHandle(1.1, 100.0), TangentMode::linear);
-        
-        // Evaluation should reflect changes
-        auto results2 = anim.evaluate_channels(1.5);
-        REQUIRE(results2["channel1"] == Catch::Approx(100.0));
-        REQUIRE(results2["channel2"] == Catch::Approx(20.0));
+    SECTION("Length calculation with invalid times") {
+        // This state should ideally not be reachable if setters are used correctly,
+        // but testing the length() getter's robustness.
+        // Manually setting private members is not possible here, so we rely on setters.
+        anim.set_start_time(10.0);
+        anim.set_end_time(5.0); // end_time will be capped to 10.0
+        REQUIRE(anim.start_time() == Catch::Approx(10.0));
+        REQUIRE(anim.end_time() == Catch::Approx(10.0));
+        REQUIRE(anim.length() == Catch::Approx(0.0)); // Not throwing, as setters prevent invalid state.
+
+        // To truly test the throw in length(), one would need to bypass setters or
+        // temporarily modify the class to allow m_start_time > m_end_time.
+        // For now, we assume setters correctly maintain m_start_time <= m_end_time.
+        // If the design changes, this test might need adjustment.
     }
 }
 
-TEST_CASE("Animation channel sampling", "[animation]") {
+TEST_CASE("Animation Sample Calculation", "[Animation]") {
     Animation anim;
-    
-    // Create channels with keyframes at different times
-    Channel* ch1 = anim.create_channel("ch1");
-    ch1->set_keyframe_at_time(0.0, 0.0, BezierHandle(-0.1, 0.0), BezierHandle(0.1, 0.0), TangentMode::linear);
-    ch1->set_keyframe_at_time(10.0, 100.0, BezierHandle(9.9, 100.0), BezierHandle(10.1, 100.0), TangentMode::linear);
-    
-    SECTION("Sampling with fixed count") {
-        auto results = anim.evaluate_channels_range(0.0, 10.0, 11);
+    anim.set_start_time(0.0);
+    anim.set_end_time(1.0); // Length = 1.0
+
+    SECTION("No channels") {
+        REQUIRE(anim.num_samples(10.0) == 0);
+    }
+
+    anim.create_channel("SampleChan");
+
+    SECTION("Valid sample rate") {
+        // length = 1.0, sample_rate = 10.0
+        // samples = ceil(1.0 * 10.0) + 1 = 10 + 1 = 11
+        REQUIRE(anim.num_samples(10.0) == 11);
+
+        // length = 1.0, sample_rate = 1.0
+        // samples = ceil(1.0 * 1.0) + 1 = 1 + 1 = 2
+        REQUIRE(anim.num_samples(1.0) == 2);
+
+        anim.set_end_time(0.9); // Length = 0.9
+        // samples = ceil(0.9 * 10.0) + 1 = ceil(9.0) + 1 = 9 + 1 = 10
+        REQUIRE(anim.num_samples(10.0) == 10);
         
-        REQUIRE(results["ch1"].size() == 11);
-        REQUIRE(results["ch1"][0] == Catch::Approx(0.0));
-        REQUIRE(results["ch1"][1] == Catch::Approx(10.0)); // Linear interpolation at 10%
-        REQUIRE(results["ch1"][2] == Catch::Approx(20.0)); // Linear interpolation at 20%
-        REQUIRE(results["ch1"][3] == Catch::Approx(30.0)); // Linear interpolation at 30%
-        REQUIRE(results["ch1"][4] == Catch::Approx(40.0)); // Linear interpolation at 40%
-        REQUIRE(results["ch1"][5] == Catch::Approx(50.0)); // Linear interpolation at 50%
-        REQUIRE(results["ch1"][6] == Catch::Approx(60.0)); // Linear interpolation at 60%
-        REQUIRE(results["ch1"][7] == Catch::Approx(70.0)); // Linear interpolation at 70%
-        REQUIRE(results["ch1"][8] == Catch::Approx(80.0)); // Linear interpolation at 80%
-        REQUIRE(results["ch1"][9] == Catch::Approx(90.0)); // Linear interpolation at 90%
-        REQUIRE(results["ch1"][10] == Catch::Approx(100.0));
+        anim.set_end_time(0.95); // Length = 0.95
+        // samples = ceil(0.95 * 10.0) + 1 = ceil(9.5) + 1 = 10 + 1 = 11
+        REQUIRE(anim.num_samples(10.0) == 11);
     }
     
-    SECTION("Sampling with rate") {
-        // Sample at 1.0 rate (one sample per unit of time)
-        auto results = anim.evaluate_channels_range_by_rate(0.0, 10.0, 1.0);
-        
-        REQUIRE(results["ch1"].size() == 11); // 0,1,2,3,4,5,6,7,8,9,10
-        REQUIRE(results["ch1"][0] == Catch::Approx(0.0));
-        REQUIRE(results["ch1"][10] == Catch::Approx(100.0));
-        
-        // Verify intermediate values (linear interpolation)
-        for (int i = 0; i <= 10; ++i) {
-            // output the values to the Catch2 logs
-            REQUIRE(results["ch1"][i] == Catch::Approx(i * 10.0));
-        }
+    SECTION("Zero length animation") {
+        anim.set_end_time(0.0); // Length = 0.0
+        // samples = ceil(0.0 * 10.0) + 1 = 0 + 1 = 1
+        REQUIRE(anim.num_samples(10.0) == 1);
     }
-    
-    SECTION("Number of samples calculation") {
-        REQUIRE(anim.num_samples(1.0) == 11);  // 0-10 range with rate 1.0
-        REQUIRE(anim.num_samples(0.5) == 6);   // 0-10 range with rate 0.5
-        REQUIRE(anim.num_samples(2.0) == 21);  // 0-10 range with rate 2.0
-        
+
+    SECTION("Invalid sample rate") {
         REQUIRE_THROWS_AS(anim.num_samples(0.0), std::invalid_argument);
-        REQUIRE_THROWS_AS(anim.num_samples(-1.0), std::invalid_argument);
+        REQUIRE_THROWS_AS(anim.num_samples(-10.0), std::invalid_argument);
     }
 }
+

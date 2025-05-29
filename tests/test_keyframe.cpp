@@ -1,117 +1,198 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include <anim/keyframe.hpp>
-#include <algorithm> // Added for std::sort
 
 using namespace anim;
 
-TEST_CASE("Keyframe constructor and accessors", "[keyframe]") {
-    BezierHandle in_tangent(1.5, 2.5);
-    BezierHandle out_tangent(2.5, 3.5);
-    TangentMode mode = TangentMode::smooth;
+TEST_CASE("Keyframe construction with Point objects", "[keyframe]") {
+    Point pos(1.0, 2.0);
+    Point in_handle(0.5, 1.5);
+    Point out_handle(1.5, 2.5);
     
-    Keyframe kf(2.0, 3.0, in_tangent, out_tangent, mode);
+    SECTION("Full constructor with all parameters") {
+        Keyframe kf(pos, Function::linear, HandleMode::free, in_handle, out_handle);
+        
+        REQUIRE(kf.position == pos);
+        REQUIRE(kf.in_handle == in_handle);
+        REQUIRE(kf.out_handle == out_handle);
+        REQUIRE(kf.function == Function::linear);
+        REQUIRE(kf.handle_mode == HandleMode::free);
+    }
     
-    SECTION("Getter methods") {
-        REQUIRE(kf.time() == Catch::Approx(2.0));
-        REQUIRE(kf.value() == Catch::Approx(3.0));
-        REQUIRE(kf.in_handle().time == Catch::Approx(1.5));
-        REQUIRE(kf.in_handle().value == Catch::Approx(2.5));
-        REQUIRE(kf.out_handle().time == Catch::Approx(2.5));
-        REQUIRE(kf.out_handle().value == Catch::Approx(3.5));
-        REQUIRE(kf.mode() == TangentMode::smooth);
+    SECTION("Constructor with default function and handle mode") {
+        Keyframe kf(pos);
+        
+        REQUIRE(kf.position == pos);
+        REQUIRE(kf.in_handle.is_zero());
+        REQUIRE(kf.out_handle.is_zero());
+        REQUIRE(kf.function == Function::bezier);
+        REQUIRE(kf.handle_mode == HandleMode::smooth);
+    }
+}
+
+TEST_CASE("Keyframe construction with time/value and Point handles", "[keyframe]") {
+    Point in_handle(0.5, 1.5);
+    Point out_handle(1.5, 2.5);
+    
+    SECTION("Full constructor") {
+        Keyframe kf(1.0, 2.0, Function::constant, HandleMode::aligned, in_handle, out_handle);
+        
+        REQUIRE(kf.position.time == 1.0);
+        REQUIRE(kf.position.value == 2.0);
+        REQUIRE(kf.in_handle == in_handle);
+        REQUIRE(kf.out_handle == out_handle);
+        REQUIRE(kf.function == Function::constant);
+        REQUIRE(kf.handle_mode == HandleMode::aligned);
+    }
+    
+    SECTION("Constructor with default handles and types") {
+        Keyframe kf(1.0, 2.0);
+        
+        REQUIRE(kf.position.time == 1.0);
+        REQUIRE(kf.position.value == 2.0);
+        REQUIRE(kf.in_handle.is_zero());
+        REQUIRE(kf.out_handle.is_zero());
+        REQUIRE(kf.function == Function::bezier);
+        REQUIRE(kf.handle_mode == HandleMode::smooth);
+    }
+}
+
+TEST_CASE("Keyframe construction with simplified constructor", "[keyframe]") {
+    SECTION("Constructor with function type only") {
+        Keyframe kf(1.0, 2.0, Function::linear);
+        
+        REQUIRE(kf.position.time == 1.0);
+        REQUIRE(kf.position.value == 2.0);
+        REQUIRE(kf.in_handle.is_zero());
+        REQUIRE(kf.out_handle.is_zero());
+        REQUIRE(kf.function == Function::linear);
+        REQUIRE(kf.handle_mode == HandleMode::smooth);
+    }
+    
+    SECTION("Default constructor") {
+        Keyframe kf;
+        
+        REQUIRE(kf.position.is_zero());
+        REQUIRE(kf.in_handle.is_zero());
+        REQUIRE(kf.out_handle.is_zero());
+        REQUIRE(kf.function == Function::bezier);
+        REQUIRE(kf.handle_mode == HandleMode::smooth);
     }
 }
 
 TEST_CASE("Keyframe comparison operators", "[keyframe]") {
-    BezierHandle in_tangent1(1.5, 2.5);
-    BezierHandle out_tangent1(2.5, 3.5);
-    TangentMode mode1 = TangentMode::smooth;
+    Point pos(1.0, 2.0);
+    Point in_handle(0.5, 1.5);
+    Point out_handle(1.5, 2.5);
     
-    Keyframe kf1(2.0, 3.0, in_tangent1, out_tangent1, mode1);
-    Keyframe kf2(2.0, 3.0, in_tangent1, out_tangent1, mode1);
+    Keyframe kf1(pos, Function::linear, HandleMode::free, in_handle, out_handle);
+    Keyframe kf2(pos, Function::linear, HandleMode::free, in_handle, out_handle);
+    Keyframe kf3(Point(2.0, 3.0), Function::bezier, HandleMode::smooth, Point(1.0, 2.0), Point(2.0, 3.0));
     
     SECTION("Equality") {
         REQUIRE(kf1 == kf2);
+        REQUIRE_FALSE(kf1 == kf3);
     }
     
-    SECTION("Inequality - different time") {
-        Keyframe kf3(2.1, 3.0, in_tangent1, out_tangent1, mode1);
+    SECTION("Inequality") {
         REQUIRE(kf1 != kf3);
+        REQUIRE_FALSE(kf1 != kf2);
     }
     
-    SECTION("Inequality - different value") {
-        Keyframe kf3(2.0, 3.1, in_tangent1, out_tangent1, mode1);
-        REQUIRE(kf1 != kf3);
+    SECTION("Different functions are not equal") {
+        Keyframe kf_diff_func(pos, Function::constant, HandleMode::free, in_handle, out_handle);
+        REQUIRE(kf1 != kf_diff_func);
     }
     
-    SECTION("Inequality - different in_tangent") {
-        BezierHandle in_tangent2(1.6, 2.5);
-        Keyframe kf3(2.0, 3.0, in_tangent2, out_tangent1, mode1);
-        REQUIRE(kf1 != kf3);
-    }
-    
-    SECTION("Inequality - different out_tangent") {
-        BezierHandle out_tangent2(2.6, 3.5);
-        Keyframe kf3(2.0, 3.0, in_tangent1, out_tangent2, mode1);
-        REQUIRE(kf1 != kf3);
-    }
-    
-    SECTION("Inequality - different mode") {
-        Keyframe kf3(2.0, 3.0, in_tangent1, out_tangent1, TangentMode::flat);
-        REQUIRE(kf1 != kf3);
+    SECTION("Different handle modes are not equal") {
+        Keyframe kf_diff_handle(pos, Function::linear, HandleMode::aligned, in_handle, out_handle);
+        REQUIRE(kf1 != kf_diff_handle);
     }
 }
 
-TEST_CASE("Keyframe comparison for sorting", "[keyframe]") {
-    BezierHandle in_tangent(1.5, 2.5);
-    BezierHandle out_tangent(2.5, 3.5);
-    TangentMode mode = TangentMode::smooth;
+TEST_CASE("Keyframe copy and move semantics", "[keyframe]") {
+    Point pos(1.0, 2.0);
+    Point in_handle(0.5, 1.5);
+    Point out_handle(1.5, 2.5);
+    Keyframe original(pos, Function::linear, HandleMode::free, in_handle, out_handle);
     
-    Keyframe kf1(1.0, 3.0, in_tangent, out_tangent, mode);
-    Keyframe kf2(2.0, 3.0, in_tangent, out_tangent, mode);
-    
-    SECTION("Less than operator") {
-        REQUIRE(kf1 < kf2);
-        REQUIRE_FALSE(kf2 < kf1);
+    SECTION("Copy constructor") {
+        Keyframe copy(original);
+        REQUIRE(copy == original);
+        REQUIRE(copy.position == original.position);
+        REQUIRE(copy.function == original.function);
+        REQUIRE(copy.handle_mode == original.handle_mode);
     }
     
-    SECTION("Time-based sorting") {
-        std::vector<Keyframe> keyframes = {kf2, kf1};
-        std::sort(keyframes.begin(), keyframes.end());
-        REQUIRE(keyframes[0].time() == Catch::Approx(1.0));
-        REQUIRE(keyframes[1].time() == Catch::Approx(2.0));
+    SECTION("Copy assignment") {
+        Keyframe copy;
+        copy = original;
+        REQUIRE(copy == original);
+    }
+    
+    SECTION("Move constructor") {
+        Keyframe original_copy = original;
+        Keyframe moved(std::move(original_copy));
+        REQUIRE(moved == original);
+    }
+    
+    SECTION("Move assignment") {
+        Keyframe original_copy = original;
+        Keyframe moved;
+        moved = std::move(original_copy);
+        REQUIRE(moved == original);
     }
 }
 
-TEST_CASE("Keyframe mutability", "[keyframe]") {
-    BezierHandle in_tangent(1.5, 2.5);
-    BezierHandle out_tangent(2.5, 3.5);
-    TangentMode mode = TangentMode::smooth;
-    Keyframe kf(2.0, 3.0, in_tangent, out_tangent, mode);
+TEST_CASE("Keyframe accessor methods", "[keyframe]") {
+    Keyframe kf(5.5, 10.25);
+    
+    SECTION("time() method") {
+        REQUIRE(kf.time() == 5.5);
+        REQUIRE(kf.time() == kf.position.time);
+    }
+    
+    SECTION("value() method") {
+        REQUIRE(kf.value() == 10.25);
+        REQUIRE(kf.value() == kf.position.value);
+    }
+}
 
-    SECTION("Set time") {
-        kf.set_time(4.0);
-        REQUIRE(kf.time() == Catch::Approx(4.0));
+TEST_CASE("Keyframe with different enum values", "[keyframe]") {
+    SECTION("All Function values") {
+        Point pos(1.0, 1.0);
+        Point handle;
+        
+        Keyframe constant_kf(pos, Function::constant);
+        Keyframe linear_kf(pos, Function::linear);
+        Keyframe bezier_kf(pos, Function::bezier);
+        
+        REQUIRE(constant_kf.function == Function::constant);
+        REQUIRE(linear_kf.function == Function::linear);
+        REQUIRE(bezier_kf.function == Function::bezier);
+        
+        REQUIRE(constant_kf != linear_kf);
+        REQUIRE(linear_kf != bezier_kf);
+        REQUIRE(bezier_kf != constant_kf);
     }
-    SECTION("Set value") {
-        kf.set_value(7.5);
-        REQUIRE(kf.value() == Catch::Approx(7.5));
-    }
-    SECTION("Set in_handle") {
-        BezierHandle new_in(9.0, 8.0);
-        kf.set_in_handle(new_in);
-        REQUIRE(kf.in_handle().time == Catch::Approx(9.0));
-        REQUIRE(kf.in_handle().value == Catch::Approx(8.0));
-    }
-    SECTION("Set out_handle") {
-        BezierHandle new_out(10.0, 11.0);
-        kf.set_out_handle(new_out);
-        REQUIRE(kf.out_handle().time == Catch::Approx(10.0));
-        REQUIRE(kf.out_handle().value == Catch::Approx(11.0));
-    }
-    SECTION("Set mode") {
-        kf.set_mode(TangentMode::flat);
-        REQUIRE(kf.mode() == TangentMode::flat);
+    
+    SECTION("All HandleMode values") {
+        Point pos(1.0, 1.0);
+        Point handle;
+        
+        Keyframe flat_kf(pos, Function::bezier, HandleMode::flat);
+        Keyframe smooth_kf(pos, Function::bezier, HandleMode::smooth);
+        Keyframe aligned_kf(pos, Function::bezier, HandleMode::aligned);
+        Keyframe free_kf(pos, Function::bezier, HandleMode::free);
+        
+        REQUIRE(flat_kf.handle_mode == HandleMode::flat);
+        REQUIRE(smooth_kf.handle_mode == HandleMode::smooth);
+        REQUIRE(aligned_kf.handle_mode == HandleMode::aligned);
+        REQUIRE(free_kf.handle_mode == HandleMode::free);
+        
+        REQUIRE(flat_kf != smooth_kf);
+        REQUIRE(smooth_kf != aligned_kf);
+        REQUIRE(aligned_kf != free_kf);
+        REQUIRE(free_kf != flat_kf);
     }
 }

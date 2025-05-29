@@ -20,23 +20,14 @@ option(ANIM_BUILD_STATIC "Build static library" ON)
 option(ANIM_BUILD_SHARED "Build shared library" OFF)
 
 # Source files
-set(ANIM_SOURCES
-    src/bezier_handle.cpp
-    src/keyframe.cpp
-    src/bezier_utils.cpp
-    src/channel.cpp
-    src/animation.cpp
+file(GLOB_RECURSE ANIM_SOURCES 
+    src/*.cpp
 )
 
 # Header files (for IDE organization)
-set(ANIM_HEADERS
-    include/anim.hpp
-    include/anim/bezier_handle.hpp
-    include/anim/tangent_mode.hpp
-    include/anim/keyframe.hpp
-    include/anim/bezier_utils.hpp
-    include/anim/channel.hpp
-    include/anim/animation.hpp
+file(GLOB_RECURSE ANIM_HEADERS 
+    "include/*.hpp"
+
 )
 
 # Static library (default)
@@ -85,13 +76,13 @@ if(ANIM_BUILD_TESTS)
         GIT_TAG v3.4.0
     )
     FetchContent_MakeAvailable(Catch2)    
+
+    file(GLOB_RECURSE TEST_SOURCES 
+        tests/*.cpp
+    )
+
     add_executable(anim_tests 
-        tests/test_main.cpp
-        tests/test_bezier_handle.cpp
-        tests/test_keyframe.cpp
-        tests/test_channel.cpp
-        tests/test_animation.cpp
-        tests/test_bezier_utils.cpp
+        ${TEST_SOURCES}
     )
     
     target_link_libraries(anim_tests PRIVATE Catch2::Catch2WithMain anim)
