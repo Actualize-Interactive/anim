@@ -366,18 +366,8 @@ namespace anim {
                 if (!nearly_equal(p.time, original_time)) {
                     if (nearly_equal(dir.time, 0.0)) {
                         p = kf_pos;
-                        // if (is_out_handle) {
-                        //     p.time = std::max(p.time, kf_pos.time + 1e-6); // Avoid zero-length by nudging time slightly forward
-                        // } else {
-                        //     p.time = std::min(p.time, kf_pos.time - 1e-6); // Avoid zero-length by nudging time slightly backward
-                        // }
                     } else if (nearly_equal(p.time, kf_pos.time)) {
                         p = kf_pos;
-                        // if (is_out_handle) {
-                        //     p.time = std::max(p.time, kf_pos.time + 1e-6); // Avoid zero-length by nudging time slightly forward
-                        // } else {
-                        //     p.time = std::min(p.time, kf_pos.time - 1e-6); // Avoid zero-length by nudging time slightly backward
-                        // }
                     } else {
                         // Recalculate value to maintain slope: V = V_kf + (dV/dT) * (T_clamped - T_kf)
                         double slope = dir.value / dir.time;
