@@ -29,10 +29,10 @@ const Keyframe& Channel::emplace_keyframe(Keyframe&& keyframe) {
     }
 
 bool Channel::has_keyframe(double time) const
-{
+{   // Check if a keyframe exists with in 1/200th of a second toleranc
     return std::any_of(m_keyframes.begin(), m_keyframes.end(),
                        [time](const Keyframe& kf) {
-                         return nearly_equal(kf.time(), time); 
+                         return nearly_equal(kf.time(), time, 0.005); 
                         });
 }
 
@@ -382,8 +382,8 @@ const Keyframe &Channel::insert_keyframe(Keyframe&& keyframe, GrabbedHandle grab
 
 const Keyframe &Channel::insert_keyframe(KeyframeIt it, Keyframe&& keyframe, GrabbedHandle grabbed_handle)
 {
-    // If the keyframe already exists at this time, replace it
-    if (it != m_keyframes.end() && nearly_equal(it->time(), keyframe.time())) {
+    // If the keyframe already with 1 / 200th of a second, replace it
+    if (it != m_keyframes.end() && nearly_equal(it->time(), keyframe.time(), 0.005)) {
         *it = std::move(keyframe);
     }
 
