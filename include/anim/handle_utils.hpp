@@ -50,6 +50,18 @@ namespace anim {
 
     void constrain_handles_time(Keyframe& keyframe, const Keyframe* prev_keyframe_ptr, const Keyframe* next_keyframe_ptr);
 
+    void ensure_handle_time_boundary(
+        const Point& keyframe_pos,
+        Point& handle_to_adjust,
+        const Point& boundary_pos,
+        bool is_in_handle
+    );
+
+    void ensure_linear_handles_time_boundary(
+        Keyframe& keyframe, 
+        const Keyframe* prev_keyframe_ptr, 
+        const Keyframe* next_keyframe_ptr);
+
     // HandleMode::flat
     // Handles have the same 'value' as the keyframe's position (parallel to the time axis).
     // Their 'time' values are independently adjustable but clamped.

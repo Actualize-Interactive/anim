@@ -121,20 +121,67 @@ namespace anim {
         }
     }
 
+    // Adjusts a handle so its time does not go past a boundary keyframe's time.
+    // The handle is kept on the line defined by the keyframe and the original handle position.
+    void ensure_handle_time_boundary(
+        const Point& keyframe_pos,
+        Point& handle_to_adjust,
+        const Point& boundary_pos,
+        bool is_in_handle
+    ) {
+        bool violation = false;
+        if (is_in_handle) {
+            if (handle_to_adjust.time < boundary_pos.time) {
+                violation = true;
+            }
+        } else {
+            if (handle_to_adjust.time > boundary_pos.time) {
+                violation = true;
+            }
+        }
+
+        if (violation) {
+            Vector vec_kf_to_handle = vector(keyframe_pos, handle_to_adjust);
+            if (nearly_equal(vec_kf_to_handle.time, 0.0)) {
+                return;
+            }
+            double scale_factor = (boundary_pos.time - keyframe_pos.time) / vec_kf_to_handle.time;
+            handle_to_adjust = keyframe_pos + (vec_kf_to_handle * scale_factor);
+        }
+    }
+
+    void ensure_linear_handles_time_boundary(Keyframe& keyframe, const Keyframe* prev_keyframe_ptr, const Keyframe* next_keyframe_ptr) {
+        if (prev_keyframe_ptr && next_keyframe_ptr) { // keyframe is in the middle of two keyframes
+            ensure_handle_time_boundary(keyframe.position, keyframe.in_handle, prev_keyframe_ptr->position, true);
+            ensure_handle_time_boundary(keyframe.position, keyframe.out_handle, next_keyframe_ptr->position, false);
+        } else if (prev_keyframe_ptr) { // keyframe is the last keyframe
+            ensure_handle_time_boundary(keyframe.position, keyframe.in_handle, prev_keyframe_ptr->position, true);
+        } else if (next_keyframe_ptr) { // keyframe is the first keyframe
+            ensure_handle_time_boundary(keyframe.position, keyframe.out_handle, next_keyframe_ptr->position, false);
+        } else { // keyframe is the only keyframe
+            // No handles to adjust
+        }
+    }
+
+
     void apply_flat_handles(Keyframe& keyframe, const Keyframe* prev_keyframe_ptr, const Keyframe* next_keyframe_ptr) {
         if (prev_keyframe_ptr && next_keyframe_ptr) { // keyframe is in the middle of two keyframes
             double in_time_offset = (prev_keyframe_ptr->position.time - keyframe.position.time) / 3.0;
             keyframe.in_handle  = Point(keyframe.position.time + in_time_offset, keyframe.position.value);
             double out_time_offset = (next_keyframe_ptr->position.time - keyframe.position.time) / 3.0;
             keyframe.out_handle = Point(keyframe.position.time + out_time_offset, keyframe.position.value);
+            ensure_handle_time_boundary(keyframe.position, keyframe.in_handle, prev_keyframe_ptr->position, true);
+            ensure_handle_time_boundary(keyframe.position, keyframe.out_handle, next_keyframe_ptr->position, false);
         } else if (prev_keyframe_ptr) { // keyframe is the last keyframe
             double time_offset = (prev_keyframe_ptr->position.time - keyframe.position.time) / 3.0;
             keyframe.in_handle  = Point(keyframe.position.time + time_offset, keyframe.position.value);
             keyframe.out_handle = Point(keyframe.position.time - time_offset, keyframe.position.value);
+            ensure_handle_time_boundary(keyframe.position, keyframe.in_handle, prev_keyframe_ptr->position, true);
         } else if (next_keyframe_ptr) { // keyframe is the first keyframe
             double time_offset = (next_keyframe_ptr->position.time - keyframe.position.time) / 3.0;
             keyframe.in_handle = Point(keyframe.position.time + time_offset, keyframe.position.value);
             keyframe.out_handle = Point(keyframe.position.time + time_offset, keyframe.position.value);
+            ensure_handle_time_boundary(keyframe.position, keyframe.out_handle, next_keyframe_ptr->position, false);
         } else { // keyframe is the only keyframe
             keyframe.in_handle = Point(keyframe.position.time - 1.0, keyframe.position.value);
             keyframe.out_handle = Point(keyframe.position.time + 1.0, keyframe.position.value);
@@ -161,6 +208,9 @@ namespace anim {
             keyframe.in_handle  = keyframe.position - in_handle_offset;
             keyframe.out_handle = keyframe.position + out_handle_offset;
 
+            ensure_handle_time_boundary(keyframe.position, keyframe.in_handle, prev_keyframe_ptr->position, true);
+            ensure_handle_time_boundary(keyframe.position, keyframe.out_handle, next_keyframe_ptr->position, false);
+
         } else if (prev_keyframe_ptr) { // keyframe is the last keyframe
             Vector vec_prev_to_curr = vector(prev_keyframe_ptr->position, keyframe.position);
             if (nearly_equal(length_squared(vec_prev_to_curr), 0.0)) {
@@ -174,6 +224,10 @@ namespace anim {
             keyframe.in_handle  = keyframe.position - handle_offset;
             keyframe.out_handle = keyframe.position + handle_offset;
 
+            ensure_handle_time_boundary(keyframe.position, keyframe.in_handle, prev_keyframe_ptr->position, true);
+        
+
+
         } else if (next_keyframe_ptr) { // keyframe is the first keyframe
             Vector vec_curr_to_next = vector(keyframe.position, next_keyframe_ptr->position);
             if (nearly_equal(length_squared(vec_curr_to_next), 0.0)) {
@@ -186,6 +240,8 @@ namespace anim {
             Vector handle_offset = normalized_tangent * (dist_next * smooth_factor);
             keyframe.in_handle  = keyframe.position - handle_offset;
             keyframe.out_handle = keyframe.position + handle_offset;
+
+            ensure_handle_time_boundary(keyframe.position, keyframe.out_handle, next_keyframe_ptr->position, false);
             
         } else { // keyframe is the only keyframe
             keyframe.in_handle  = Point(keyframe.position.time - 1.0, keyframe.position.value);

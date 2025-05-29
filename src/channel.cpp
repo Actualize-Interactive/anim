@@ -454,10 +454,8 @@ void Channel::update_local_handles(std::vector<Keyframe>::iterator it, GrabbedHa
 void Channel::update_handles(Keyframe& keyframe, Keyframe* prev_keyframe_ptr, Keyframe* next_keyframe_ptr, GrabbedHandle grabbed_handle)
 {
     if (keyframe.function == Function::linear || keyframe.function == Function::constant) {
-        return;
-    }
-
-    if (keyframe.handle_mode == HandleMode::flat) {
+        ensure_linear_handles_time_boundary(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
+    } else if (keyframe.handle_mode == HandleMode::flat) {
         apply_flat_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
     } else if (keyframe.handle_mode == HandleMode::smooth) {
         apply_smooth_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
