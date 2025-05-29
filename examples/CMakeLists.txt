@@ -88,30 +88,9 @@ add_executable(test_anim_integration test_anim_integration.cpp)
 target_include_directories(curve_visualization PRIVATE ../include)
 target_include_directories(test_anim_integration PRIVATE ../include)
 
-# Create a simple anim library target from the built library
-add_library(anim_lib STATIC IMPORTED)
-
-# Determine the correct library path based on configuration
-if(CMAKE_CONFIGURATION_TYPES)
-    # Multi-config generators (Visual Studio, Xcode)
-    set_target_properties(anim_lib PROPERTIES
-        IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/../build/Debug/anim.lib"
-        IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/../build/Release/anim.lib"
-        IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_SOURCE_DIR}/../build/RelWithDebInfo/anim.lib"
-        IMPORTED_LOCATION_MINSIZEREL "${CMAKE_CURRENT_SOURCE_DIR}/../build/MinSizeRel/anim.lib"
-    )
-else()
-    # Single-config generators (Makefiles, Ninja)
-    set_target_properties(anim_lib PROPERTIES
-        IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/../build/${CMAKE_BUILD_TYPE}/anim.lib"
-    )
-endif()
-
-target_include_directories(anim_lib INTERFACE "../include")
-
-# Link with the anim library, ImGui, and ImPlot
-target_link_libraries(curve_visualization PRIVATE anim_lib imgui_lib implot_lib)
-target_link_libraries(test_anim_integration PRIVATE anim_lib)
+# Link with the anim library (using the target from parent CMakeLists.txt), ImGui, and ImPlot
+target_link_libraries(curve_visualization PRIVATE anim imgui_lib implot_lib)
+target_link_libraries(test_anim_integration PRIVATE anim)
 
 # Platform-specific settings
 if (WIN32)
