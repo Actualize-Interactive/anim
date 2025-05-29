@@ -1,265 +1,212 @@
 #include "anim/channel.hpp"
+#include "anim/bezier_utils.hpp"
+
+#include <iostream>
 
 namespace anim {
 
-void Channel::upsert_keyframe(double time, double value, 
-                     const BezierHandle& in_handle, 
-                     const BezierHandle& out_handle, 
-                     TangentMode mode) {
-    auto it = std::find_if(m_keyframes.begin(), m_keyframes.end(), 
-                          [time](const Keyframe& kf) {
-                              constexpr double epsilon = 1e-10;
-                              return std::abs(kf.time() - time) < epsilon;
-                          });
-    if (it != m_keyframes.end()) {
-        it->set_value(value);
-        it->set_in_handle(in_handle);
-        it->set_out_handle(out_handle);
-        it->set_mode(mode);
-    } else {
-        m_keyframes.emplace_back(time, value, in_handle, out_handle, mode);
-        sort_keyframes_internal();
-    }
-    recalculate_dependent_tangents_internal();
+const Keyframe& Channel::create_keyframe(double time, 
+    double value, Function function, HandleMode handle_mode) 
+{
+    return create_default_keyframe(Point(time, value), function, handle_mode);
 }
 
-void Channel::set_keyframe_at_time(double time, double value, 
-                     const BezierHandle& in_handle, 
-                     const BezierHandle& out_handle, 
-                     TangentMode mode) {
-    // Maintain backward compatibility
-    upsert_keyframe(time, value, in_handle, out_handle, mode);
+const Keyframe& Channel::create_keyframe(const Point& position, 
+    Function function, HandleMode handle_mode) 
+{
+    return create_default_keyframe(position, function, handle_mode);
 }
 
-bool Channel::insert_keyframe(double time, double value, 
-                    const BezierHandle& in_handle, 
-                    const BezierHandle& out_handle, 
-                    TangentMode mode) {
-    // Check if keyframe already exists at the given time
-    if (has_keyframe_at_time(time)) {
-        return false;
-    }
-    
-    m_keyframes.emplace_back(time, value, in_handle, out_handle, mode);
-    sort_keyframes_internal();
-    recalculate_dependent_tangents_internal();
-    return true;
+const Keyframe& Channel::create_keyframe(double time, double value,
+    const Point& in_handle, const Point& out_handle,
+    Function function, HandleMode handle_mode) 
+{
+    return insert_keyframe(Keyframe(time, value, function, handle_mode, in_handle, out_handle));
 }
 
-bool Channel::append_keyframe(double time, double value, 
-                    const BezierHandle& in_handle, 
-                    const BezierHandle& out_handle, 
-                    TangentMode mode) {
-    // Check if keyframe already exists at the given time
-    if (has_keyframe_at_time(time)) {
-        return false;
+const Keyframe& Channel::emplace_keyframe(Keyframe&& keyframe) {
+        return insert_keyframe(std::move(keyframe));
     }
-    
-    // Check if time is greater than all existing keyframe times
-    if (!m_keyframes.empty() && time <= m_keyframes.back().time()) {
-        throw std::invalid_argument("Append time must be greater than all existing keyframe times");
-    }
-    
-    m_keyframes.emplace_back(time, value, in_handle, out_handle, mode);
-    recalculate_dependent_tangents_internal();
-    return true;
-}
 
-void Channel::update_keyframe(size_t index, double time, double value, 
-                         const BezierHandle& in_handle, 
-                         const BezierHandle& out_handle, 
-                         TangentMode mode) {
-    if (index >= m_keyframes.size()) {
-        throw std::out_of_range("Keyframe index out of range");
-    }
-    
-    m_keyframes[index].set_time(time);
-    m_keyframes[index].set_value(value);
-    m_keyframes[index].set_in_handle(in_handle);
-    m_keyframes[index].set_out_handle(out_handle);
-    m_keyframes[index].set_mode(mode);
-    
-    sort_keyframes_internal();
-    recalculate_dependent_tangents_internal();
-}
-
-void Channel::update_keyframe(size_t index, 
-                         const std::optional<double>& time, 
-                         const std::optional<double>& value, 
-                         const std::optional<BezierHandle>& in_handle, 
-                         const std::optional<BezierHandle>& out_handle, 
-                         const std::optional<TangentMode>& mode) {
-    if (index >= m_keyframes.size()) {
-        throw std::out_of_range("Keyframe index out of range");
-    }
-    
-    // Only update fields that are provided
-    if (time) {
-        m_keyframes[index].set_time(*time);
-    }
-    
-    if (value) {
-        m_keyframes[index].set_value(*value);
-    }
-    
-    if (in_handle) {
-        m_keyframes[index].set_in_handle(*in_handle);
-    }
-    
-    if (out_handle) {
-        m_keyframes[index].set_out_handle(*out_handle);
-    }
-    
-    if (mode) {
-        m_keyframes[index].set_mode(*mode);
-    }
-    
-    sort_keyframes_internal();
-    recalculate_dependent_tangents_internal();
-}
-
-bool Channel::update_keyframe_at_time(double time, 
-                                 double new_value, 
-                                 const BezierHandle& new_in_handle, 
-                                 const BezierHandle& new_out_handle, 
-                                 TangentMode new_mode) {
-    auto it = std::find_if(m_keyframes.begin(), m_keyframes.end(), 
-                          [time](const Keyframe& kf) {
-                              constexpr double epsilon = 1e-10;
-                              return std::abs(kf.time() - time) < epsilon;
-                          });
-    
-    if (it == m_keyframes.end()) {
-        return false;
-    }
-    
-    it->set_value(new_value);
-    it->set_in_handle(new_in_handle);
-    it->set_out_handle(new_out_handle);
-    it->set_mode(new_mode);
-    
-    recalculate_dependent_tangents_internal();
-    return true;
-}
-
-bool Channel::update_keyframe_at_time(double time, 
-                                 const std::optional<double>& new_value, 
-                                 const std::optional<BezierHandle>& new_in_handle, 
-                                 const std::optional<BezierHandle>& new_out_handle, 
-                                 const std::optional<TangentMode>& new_mode) {
-    auto it = std::find_if(m_keyframes.begin(), m_keyframes.end(), 
-                          [time](const Keyframe& kf) {
-                              constexpr double epsilon = 1e-10;
-                              return std::abs(kf.time() - time) < epsilon;
-                          });
-    
-    if (it == m_keyframes.end()) {
-        return false;
-    }
-    
-    // Only update fields that are provided
-    if (new_value) {
-        it->set_value(*new_value);
-    }
-    
-    if (new_in_handle) {
-        it->set_in_handle(*new_in_handle);
-    }
-    
-    if (new_out_handle) {
-        it->set_out_handle(*new_out_handle);
-    }
-    
-    if (new_mode) {
-        it->set_mode(*new_mode);
-    }
-    
-    recalculate_dependent_tangents_internal();
-    return true;
-}
-
-void Channel::set_keyframe(size_t index, double time, double new_value, 
-                          const BezierHandle& new_in_handle, 
-                          const BezierHandle& new_out_handle, 
-                          TangentMode new_mode) {
-    // Maintain backward compatibility
-    if (index >= m_keyframes.size()) {
-        throw std::out_of_range("Keyframe index out of range");
-    }
-    m_keyframes[index].set_time(time);
-    m_keyframes[index].set_value(new_value);
-    m_keyframes[index].set_in_handle(new_in_handle);
-    m_keyframes[index].set_out_handle(new_out_handle);
-    m_keyframes[index].set_mode(new_mode);
-    
-    recalculate_dependent_tangents_internal();
-}
-
-bool Channel::has_keyframe_at_time(double time) const {
-    return std::any_of(m_keyframes.begin(), m_keyframes.end(), 
+bool Channel::has_keyframe(double time) const
+{
+    return std::any_of(m_keyframes.begin(), m_keyframes.end(),
                        [time](const Keyframe& kf) {
-                           constexpr double epsilon = 1e-10;
-                           return std::abs(kf.time() - time) < epsilon;
-                       });
+                         return nearly_equal(kf.time(), time); 
+                        });
 }
 
-bool Channel::has_keyframe(size_t index) const {
-    return index < m_keyframes.size();
-}
-
-bool Channel::remove_keyframe_at_time(double time) {
-    size_t original_size = m_keyframes.size();
-    
-    m_keyframes.erase(
-        std::remove_if(m_keyframes.begin(), m_keyframes.end(),
-                      [time](const Keyframe& kf) {
-                          constexpr double epsilon = 1e-10;
-                          return std::abs(kf.time() - time) < epsilon;
-                      }),
-        m_keyframes.end()
-    );
-    
-    bool removed = m_keyframes.size() < original_size;
-    if (removed) {
-        recalculate_dependent_tangents_internal();
+void Channel::delete_keyframe(size_t index)
+{
+    if (index < 0 || index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
     }
-    return removed;
-}
-
-bool Channel::remove_keyframe(size_t index) {
-    if (index >= m_keyframes.size()) {
-        return false;
-    }
-    
     m_keyframes.erase(m_keyframes.begin() + index);
-    recalculate_dependent_tangents_internal();
-    return true;
 }
 
-std::optional<Keyframe> Channel::get_keyframe_at_time(double time) const {
-    auto it = std::find_if(m_keyframes.begin(), m_keyframes.end(), 
-                          [time](const Keyframe& kf) {
-                              constexpr double epsilon = 1e-10;
-                              return std::abs(kf.time() - time) < epsilon;
-                          });
-    if (it != m_keyframes.end()) {
-        return *it;
-    }
-    return std::nullopt;
-}
-
-Keyframe& Channel::get_keyframe(size_t index) {
-    if (index >= m_keyframes.size()) {
+const Keyframe &Channel::keyframe(size_t index) const
+{
+    if (index < 0 || index >= m_keyframes.size()) {
         throw std::out_of_range("Keyframe index out of range");
     }
     return m_keyframes[index];
 }
 
-const std::vector<Keyframe>& Channel::get_all_keyframes() const {
-    return m_keyframes;
+const Keyframe &Channel::prev_keyframe(double time) const
+{
+    if (m_keyframes.empty()) {
+        throw std::out_of_range("No keyframes available");
+    }
+    
+    auto it = std::lower_bound(m_keyframes.begin(), m_keyframes.end(), time,
+                               [](const Keyframe& kf, double t) {
+                                   return kf.time() < t;
+                               });
+    
+    if (it == m_keyframes.begin()) {
+        throw std::out_of_range("No previous keyframe available");
+    }
+    
+    return *(--it);
 }
 
-double Channel::evaluate(double time) const {
+const Keyframe &Channel::next_keyframe(double time) const
+{
+    if (m_keyframes.empty()) {
+        throw std::out_of_range("No keyframes available");
+    }
+    
+    auto it = std::upper_bound(m_keyframes.begin(), m_keyframes.end(), time,
+                               [](double t, const Keyframe& kf) {
+                                   return t < kf.time();
+                               });
+    
+    if (it == m_keyframes.end()) {
+        throw std::out_of_range("No next keyframe available");
+    }
+    
+    return *it;
+}
+
+const Keyframe &Channel::closest_keyframe(double time) const
+{
+    if (m_keyframes.empty()) {
+        throw std::out_of_range("No keyframes available");
+    }
+    
+    auto it = std::lower_bound(m_keyframes.begin(), m_keyframes.end(), time,
+                               [](const Keyframe& kf, double t) {
+                                   return kf.time() < t;
+                               });
+    
+    if (it == m_keyframes.begin()) {
+        return *it; // Closest is the first keyframe
+    }
+    
+    if (it == m_keyframes.end()) {
+        return *(--it); // Closest is the last keyframe
+    }
+    
+    // Compare distances to the previous and current keyframes
+    auto prev_it = it - 1;
+    return (std::abs(prev_it->time() - time) <= std::abs(it->time() - time)) ? *prev_it : *it;
+}
+
+void Channel::update_keyframe(size_t index, const Keyframe& keyframe)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    if (*it == keyframe) {
+        return; // No change, no need to update
+    }
+    // Update the keyframe at the specified index
+    it = m_keyframes.erase(it);
+    it = m_keyframes.insert(it, keyframe);
+    clamp_keyframe_time(it, keyframe.time());
+    update_local_handles(it);
+}
+
+void Channel::set_keyframe_time(size_t index, double new_time)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    Point new_position(new_time, it->position.value);
+    update_keyframe_position(it, new_position);
+}
+        
+void Channel::set_keyframe_value(size_t index, double value)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    update_keyframe_position(it, Point(it->position.time, value));
+}
+
+void Channel::set_keyframe_position(size_t index, const Point& position)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    update_keyframe_position(it, position);
+}
+
+
+void Channel::set_keyframe_position(size_t index, double time, double value)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    update_keyframe_position(it, Point(time, value));
+}
+
+void Channel::set_keyframe_in_handle(size_t index, const Point& in_handle)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    it->in_handle = in_handle;
+    update_local_handles(it, GrabbedHandle::in_handle);
+}
+
+void Channel::set_keyframe_out_handle(size_t index, const Point& out_handle)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    it->out_handle = out_handle;
+    update_local_handles(it, GrabbedHandle::out_handle);
+}
+
+void Channel::set_keyframe_function(size_t index, Function function)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    it->function = function;
+    update_local_handles(it);
+}
+
+void Channel::set_keyframe_handle_mode(size_t index, HandleMode handle_mode)
+{
+    if (index >= m_keyframes.size()) {
+        throw std::out_of_range("Keyframe index out of range");
+    }
+    auto it = m_keyframes.begin() + index;
+    it->handle_mode = handle_mode;
+    update_local_handles(it);
+}
+
+double Channel::evaluate(double time, double* prev_t) const {
     if (m_keyframes.empty()) {
         return 0.0;
     }
@@ -286,28 +233,29 @@ double Channel::evaluate(double time) const {
     const Keyframe& start_kf = *lower;
     const Keyframe& end_kf = *upper;
     
-    // Handle linear tangent mode
-    if (start_kf.mode() == TangentMode::linear) {
+    if (start_kf.function == Function::linear) {
         double t = (time - start_kf.time()) / (end_kf.time() - start_kf.time());
         return start_kf.value() + t * (end_kf.value() - start_kf.value());
-    }
-
-    // Handle constant tangent mode
-    if (start_kf.mode() == TangentMode::constant) {
+    } else if (start_kf.function == Function::constant) {
         return start_kf.value();
     }
+    // auto p0 = start_kf.position;
+    // auto p1 = start_kf.out_handle;
+    // auto p2 = end_kf.in_handle;
+    // auto p3 = end_kf.position;
     
-    double start_time = start_kf.time();
-    double end_time = end_kf.time();
-    double t = (time - start_time) / (end_time - start_time);
-    
-    BezierHandle p0(start_kf.time(), start_kf.value());
-    BezierHandle p1(start_kf.out_handle().time, start_kf.out_handle().value);
-    BezierHandle p2(end_kf.in_handle().time, end_kf.in_handle().value);
-    BezierHandle p3(end_kf.time(), end_kf.value());
-    
-    return bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, t).value;
+
+    double t = bezier_utils::solve_t_for_time(
+        start_kf.position, start_kf.out_handle, 
+        end_kf.in_handle, end_kf.position, 
+        time,
+        prev_t
+    );
+    return bezier_utils::evaluate_cubic_bezier(start_kf.position, start_kf.out_handle, end_kf.in_handle, end_kf.position, t).value;
 }
+
+
+
 
 std::vector<double> Channel::evaluate_range(double start_time, double end_time, int num_samples) const {
     if (num_samples <= 1) {
@@ -325,9 +273,11 @@ std::vector<double> Channel::evaluate_range(double start_time, double end_time, 
     std::vector<double> result(num_samples);
     double step = (end_time - start_time) / (num_samples - 1);
     
+    double* prev_t = nullptr; 
     for (int i = 0; i < num_samples; i++) {
         double time = start_time + i * step;
-        result[i] = evaluate(time);
+        result[i] = evaluate(time, prev_t);
+        prev_t = &result[i]; // Update prev_t to point to the current value
     }
     
     return result;
@@ -350,239 +300,176 @@ std::vector<double> Channel::evaluate_range_by_rate(double start_time, double en
     return evaluate_range(start_time, end_time, num_samples);
 }
 
-bool Channel::is_empty() const {
-    return m_keyframes.empty();
-}
-
-std::optional<double> Channel::get_start_time() const {
+double Channel::start_time() const {
     if (m_keyframes.empty()) {
-        return std::nullopt;
+        return 0.0;
     }
     return m_keyframes.front().time();
 }
 
-std::optional<double> Channel::get_end_time() const {
+double Channel::end_time() const {
     if (m_keyframes.empty()) {
-        return std::nullopt;
+        return 0.0;
     }
     return m_keyframes.back().time();
 }
 
-bool Channel::set_keyframe_time(double old_time, double new_time) {
-    auto it = std::find_if(m_keyframes.begin(), m_keyframes.end(), 
-                          [old_time](const Keyframe& kf) {
-                              constexpr double epsilon = 1e-10;
-                              return std::abs(kf.time() - old_time) < epsilon;
-                          });
-    
-    if (it == m_keyframes.end()) {
-        return false;
+double Channel::length() const {
+    if (m_keyframes.empty()) {
+        return 0.0;
     }
-    
-    it->set_time(new_time);
-    sort_keyframes_internal();
-    recalculate_dependent_tangents_internal();
-    return true;
+    return end_time() - start_time();
 }
 
-bool Channel::set_keyframe_value(double time, double new_value) {
-    auto it = std::find_if(m_keyframes.begin(), m_keyframes.end(), 
-                          [time](const Keyframe& kf) {
-                              constexpr double epsilon = 1e-10;
-                              return std::abs(kf.time() - time) < epsilon;
-                          });
-    
-    if (it == m_keyframes.end()) {
-        return false;
+size_t Channel::num_samples(double sample_rate) const
+{
+    if (sample_rate <= 0.0) {
+        throw std::invalid_argument("Sample rate must be positive");
     }
     
-    it->set_value(new_value);
-    recalculate_dependent_tangents_internal();
-    return true;
+    if (m_keyframes.empty()) {
+        return 0;
+    }
+    
+    double duration = end_time() - start_time();
+    return static_cast<size_t>(std::ceil(duration * sample_rate)) + 1; // +1 to include the start time
+    
 }
 
-bool Channel::set_keyframe_in_handle(double time, const BezierHandle& new_in_handle) {
-    auto it = std::find_if(m_keyframes.begin(), m_keyframes.end(), 
-                          [time](const Keyframe& kf) {
-                              constexpr double epsilon = 1e-10;
-                              return std::abs(kf.time() - time) < epsilon;
-                          });
-    
-    if (it == m_keyframes.end()) {
-        return false;
+const Keyframe &Channel::create_default_keyframe(const Point &position, Function function, HandleMode handle_mode)
+{
+    if (function == Function::constant || function == Function::linear) {
+        return insert_keyframe(Keyframe(position, function, handle_mode));
     }
-    
-    it->set_in_handle(new_in_handle);
-    recalculate_dependent_tangents_internal();
-    return true;
+
+    // Find the insertion point for the new keyframe
+    auto next_it = std::lower_bound(m_keyframes.begin(), m_keyframes.end(), position.time,
+                            [](const Keyframe& kf, double t) {
+                                return kf.time() < t;
+                            });
+
+    Keyframe* prev_kf_ptr = nullptr;
+    if (next_it != m_keyframes.begin()) {
+        prev_kf_ptr = &*(next_it - 1);
+    }
+
+    Keyframe* next_kf_ptr = nullptr; // Initialize to nullptr
+    if (next_it != m_keyframes.end()) { // Check before dereferencing
+        next_kf_ptr = &*next_it;
+    }
+
+    // initialize the handles with smooth mode
+    Keyframe new_keyframe(position, function, HandleMode::smooth);
+    update_handles(new_keyframe, prev_kf_ptr, next_kf_ptr);
+    // std::cout << "New Keyframe, time: " << new_keyframe.time() << ", value: " << new_keyframe.value()
+    //             << ", in_handle.time: " << new_keyframe.in_handle.time << ", in_handle.value: " << new_keyframe.in_handle.value
+    //             << ", out_handle.time: " << new_keyframe.out_handle.time << ", out_handle.value: " << new_keyframe.out_handle.value
+    //             << ", function: " << static_cast<int>(new_keyframe.function)
+    //             << ", handle_mode: " << static_cast<int>(new_keyframe.handle_mode) << std::endl;
+    new_keyframe.handle_mode = handle_mode; // set to requested mode, inser_keyframe will call update_local_handles
+    return insert_keyframe(next_it, std::move(new_keyframe));
 }
 
-bool Channel::set_keyframe_out_handle(double time, const BezierHandle& new_out_handle) {
-    auto it = std::find_if(m_keyframes.begin(), m_keyframes.end(), 
-                          [time](const Keyframe& kf) {
-                              constexpr double epsilon = 1e-10;
-                              return std::abs(kf.time() - time) < epsilon;
-                          });
-    
-    if (it == m_keyframes.end()) {
-        return false;
-    }
-    
-    it->set_out_handle(new_out_handle);
-    recalculate_dependent_tangents_internal();
-    return true;
+const Keyframe &Channel::insert_keyframe(Keyframe&& keyframe, GrabbedHandle grabbed_handle)
+{
+    // Find the insertion point for the new keyframe
+    auto it = std::lower_bound(m_keyframes.begin(), m_keyframes.end(), keyframe.time(),
+                               [](const Keyframe& kf, double t) {
+                                   return kf.time() < t;
+                               });
+    return insert_keyframe(it, std::move(keyframe), grabbed_handle);
 }
 
-bool Channel::set_keyframe_tangent_mode(double time, TangentMode new_mode) {
-    auto it = std::find_if(m_keyframes.begin(), m_keyframes.end(), 
-                          [time](const Keyframe& kf) {
-                              constexpr double epsilon = 1e-10;
-                              return std::abs(kf.time() - time) < epsilon;
-                          });
-    
-    if (it == m_keyframes.end()) {
-        return false;
+const Keyframe &Channel::insert_keyframe(KeyframeIt it, Keyframe&& keyframe, GrabbedHandle grabbed_handle)
+{
+    // If the keyframe already exists at this time, replace it
+    if (it != m_keyframes.end() && nearly_equal(it->time(), keyframe.time())) {
+        *it = std::move(keyframe);
     }
-    
-    it->set_mode(new_mode);
-    recalculate_dependent_tangents_internal();
-    return true;
+
+    it = m_keyframes.insert(it, std::move(keyframe));
+    update_local_handles(it, grabbed_handle);
+
+    auto& new_keyframe = *it; // reference to the newly inserted keyframe
+    // std::cout << "Updated Keyframe, time: " << new_keyframe.time() << ", value: " << new_keyframe.value()
+    //             << ", in_handle.time: " << new_keyframe.in_handle.time << ", in_handle.value: " << new_keyframe.in_handle.value
+    //             << ", out_handle.time: " << new_keyframe.out_handle.time << ", out_handle.value: " << new_keyframe.out_handle.value
+    //             << ", function: " << static_cast<int>(new_keyframe.function)
+    //             << ", handle_mode: " << static_cast<int>(new_keyframe.handle_mode) << std::endl;
+    return *it;
 }
 
-void Channel::sort_keyframes_internal() {
-    std::sort(m_keyframes.begin(), m_keyframes.end(),
-             [](const Keyframe& a, const Keyframe& b) {
-                 return a.time() < b.time();
-             });
+void Channel::update_keyframe_position(KeyframeIt it, const Point& position)
+{
+    auto in_handle_delta = it->in_handle - it->position;
+    auto out_handle_delta = it->out_handle - it->position;
+
+    clamp_keyframe_time(it, position.time);
+    it->position.value = position.value;
+    
+    it->in_handle = it->position + in_handle_delta;
+    it->out_handle = it->position + out_handle_delta;
+
+    update_local_handles(it);
 }
 
-void Channel::recalculate_dependent_tangents_internal() {
-    if (m_keyframes.size() < 2) {
-        return;
-    }
+void Channel::clamp_keyframe_time(KeyframeIt it, double time)
+{
+    bool has_prev = (it != m_keyframes.begin());
+    bool has_next = (it + 1 != m_keyframes.end());
     
-    for (size_t i = 0; i < m_keyframes.size(); i++) {
-        Keyframe& current = m_keyframes[i];
-          if (current.mode() == TangentMode::flat) {
-            // For flat tangents, use horizontal handles
-            BezierHandle current_point(current.time(), current.value());
-            double time_offset = 0.1; // Default offset
-            
-            // Adjust offset based on neighbors if available
-            if (i > 0) {
-                time_offset = std::min(time_offset, (current.time() - m_keyframes[i-1].time()) / 3.0);
-            }
-            if (i < m_keyframes.size() - 1) {
-                time_offset = std::min(time_offset, (m_keyframes[i+1].time() - current.time()) / 3.0);
-            }
-            
-            // Use very small time offset for flat tangents to make curve flatter near the keyframe
-            time_offset *= 0.1;
-            
-            BezierHandle in_handle(current.time() - time_offset, current.value());
-            BezierHandle out_handle(current.time() + time_offset, current.value());
-            
-            current.set_in_handle(in_handle);
-            current.set_out_handle(out_handle);
-        }
-        else if (current.mode() == TangentMode::manual) {
-            // For manual, we ensure the handles are colinear and of equal magnitude
-            // Get the current handles
-            BezierHandle in_handle = current.in_handle();
-            BezierHandle out_handle = current.out_handle();
-            
-            // Calculate vectors from keyframe to handles
-            BezierHandle kf_point(current.time(), current.value());
-            BezierHandle in_vec = in_handle - kf_point;
-            BezierHandle out_vec = out_handle - kf_point;
-            
-            // Calculate magnitudes of both vectors
-            double in_mag = std::sqrt(in_vec.time * in_vec.time + in_vec.value * in_vec.value);
-            double out_mag = std::sqrt(out_vec.time * out_vec.time + out_vec.value * out_vec.value);
-            
-            // If either handle is very close to the keyframe, keep it as is
-            if (in_mag < 1e-6 || out_mag < 1e-6) {
-                continue;
-            }
-            
-            // Use the average magnitude for both handles
-            double avg_mag = (in_mag + out_mag) / 2.0;
-            
-            // Normalize and rescale vectors
-            in_vec = in_vec * (avg_mag / in_mag);
-            out_vec = out_vec * (avg_mag / out_mag);
-            
-            // Make out_vec opposite to in_vec to ensure collinearity
-            out_vec = in_vec * -1;
-            
-            // Update the handles
-            in_handle = kf_point + in_vec;
-            out_handle = kf_point + out_vec;
-            
-            current.set_in_handle(in_handle);
-            current.set_out_handle(out_handle);
-        }
-        else if (current.mode() == TangentMode::smooth) {
-            BezierHandle current_point(current.time(), current.value());
-            
-            // Default handles point horizontally
-            BezierHandle in_handle(current.time() - 0.1, current.value());
-            BezierHandle out_handle(current.time() + 0.1, current.value());
-            
-            // Adjust handles based on previous and next keyframes if they exist
-            if (i > 0 && i < m_keyframes.size() - 1) {
-                const Keyframe& prev = m_keyframes[i-1];
-                const Keyframe& next = m_keyframes[i+1];
-                
-                BezierHandle prev_point(prev.time(), prev.value());
-                BezierHandle next_point(next.time(), next.value());
-                
-                // Calculate the slope as the average of the slopes to previous and next
-                double in_slope = (current.value() - prev.value()) / (current.time() - prev.time());
-                double out_slope = (next.value() - current.value()) / (next.time() - current.time());
-                double avg_slope = (in_slope + out_slope) / 2.0;
-                
-                double tangent_length_in = (current.time() - prev.time()) / 3.0;
-                double tangent_length_out = (next.time() - current.time()) / 3.0;
-                
-                in_handle.time = current.time() - tangent_length_in;
-                in_handle.value = current.value() - tangent_length_in * avg_slope;
-                
-                out_handle.time = current.time() + tangent_length_out;
-                out_handle.value = current.value() + tangent_length_out * avg_slope;
-            }
-            else if (i == 0 && m_keyframes.size() > 1) {
-                // First keyframe - only use next
-                const Keyframe& next = m_keyframes[i+1];
-                
-                double slope = (next.value() - current.value()) / (next.time() - current.time());
-                double tangent_length = (next.time() - current.time()) / 3.0;
-                
-                in_handle.time = current.time() - tangent_length;
-                in_handle.value = current.value() - tangent_length * slope;
-                
-                out_handle.time = current.time() + tangent_length;
-                out_handle.value = current.value() + tangent_length * slope;
-            }
-            else if (i == m_keyframes.size() - 1 && m_keyframes.size() > 1) {
-                // Last keyframe - only use previous
-                const Keyframe& prev = m_keyframes[i-1];
-                
-                double slope = (current.value() - prev.value()) / (current.time() - prev.time());
-                double tangent_length = (current.time() - prev.time()) / 3.0;
-                
-                in_handle.time = current.time() - tangent_length;
-                in_handle.value = current.value() - tangent_length * slope;
-                
-                out_handle.time = current.time() + tangent_length;
-                out_handle.value = current.value() + tangent_length * slope;
-            }
-            
-            current.set_in_handle(in_handle);
-            current.set_out_handle(out_handle);
-        }
-        // For BROKEN mode, no special handling needed as handles can be independently adjusted
+    if (!has_prev && !has_next) { // no neighbors, no clamping
+        it->position.time = time;
+    } else if (!has_prev) { // if no previous keyframe, clamp to next
+        auto next_it = it + 1;
+        it->position.time = std::min(time, next_it->time());
+    } else if (!has_next) { // if no next keyframe, clamp to previous
+        auto prev_it = it - 1;
+        it->position.time = std::max(time, prev_it->time());
+    } else {
+        auto prev_it = it - 1;
+        auto next_it = it + 1;
+        it->position.time = std::clamp(time, prev_it->time(), next_it->time());
     }
 }
+
+void Channel::update_local_handles(std::vector<Keyframe>::iterator it, GrabbedHandle grabbed_handle)
+{
+    Keyframe* prev_it = nullptr;
+    if (it != m_keyframes.begin()) {
+        prev_it = &*(it - 1);
+        Keyframe* prev_it_prev_it = (it - 1 != m_keyframes.begin()) ? &*(it - 2) : nullptr;
+        update_handles(*prev_it, prev_it_prev_it, &*it);
+    }
+    
+    Keyframe* next_it = nullptr;
+    if (it + 1 != m_keyframes.end()) {
+        next_it = &*(it + 1);
+        Keyframe* next_it_next_it = (it + 2 != m_keyframes.end()) ? &*(it + 2) : nullptr;
+        update_handles(*next_it, &*it, next_it_next_it);
+    }
+    update_handles(*it, prev_it, next_it, grabbed_handle);
+}
+
+void Channel::update_handles(Keyframe& keyframe, Keyframe* prev_keyframe_ptr, Keyframe* next_keyframe_ptr, GrabbedHandle grabbed_handle)
+{
+    if (keyframe.function == Function::linear || keyframe.function == Function::constant) {
+        ensure_linear_handles_time_boundary(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
+    } else if (keyframe.handle_mode == HandleMode::flat) {
+        apply_flat_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
+    } else if (keyframe.handle_mode == HandleMode::smooth) {
+        apply_smooth_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
+    } else if (keyframe.handle_mode == HandleMode::aligned || 
+               keyframe.handle_mode == HandleMode::alignStrict || 
+               keyframe.handle_mode == HandleMode::alignFlex || 
+               keyframe.handle_mode == HandleMode::alignAdjustable) {
+        apply_aligned_handles(keyframe, prev_keyframe_ptr, next_keyframe_ptr, grabbed_handle);
+    } else if (keyframe.handle_mode == HandleMode::free) {
+        constrain_handles_time(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
+    } else {
+        throw std::invalid_argument("Unknown handle type");
+    }
+}
+
 
 } // namespace anim

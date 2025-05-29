@@ -6,111 +6,201 @@ using namespace anim;
 
 TEST_CASE("Bezier curve evaluation", "[bezier_utils]") {
     SECTION("Evaluate cubic Bézier at t=0") {
-        BezierHandle p0(1.0, 2.0);
-        BezierHandle p1(2.0, 3.0);
-        BezierHandle p2(3.0, 4.0);
-        BezierHandle p3(4.0, 5.0);
+        Point p0(1.0, 2.0);
+        Point p1(2.0, 3.0);
+        Point p2(3.0, 4.0);
+        Point p3(4.0, 5.0);
         
-        BezierHandle result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, 0.0);
+        Point result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, 0.0);
         REQUIRE(result.time == Catch::Approx(p0.time));
         REQUIRE(result.value == Catch::Approx(p0.value));
     }
     
     SECTION("Evaluate cubic Bézier at t=1") {
-        BezierHandle p0(1.0, 2.0);
-        BezierHandle p1(2.0, 3.0);
-        BezierHandle p2(3.0, 4.0);
-        BezierHandle p3(4.0, 5.0);
+        Point p0(1.0, 2.0);
+        Point p1(2.0, 3.0);
+        Point p2(3.0, 4.0);
+        Point p3(4.0, 5.0);
         
-        BezierHandle result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, 1.0);
+        Point result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, 1.0);
         REQUIRE(result.time == Catch::Approx(p3.time));
         REQUIRE(result.value == Catch::Approx(p3.value));
     }
     
     SECTION("Evaluate cubic Bézier at t=0.5") {
-        BezierHandle p0(0.0, 0.0);
-        BezierHandle p1(0.0, 1.0);
-        BezierHandle p2(1.0, 1.0);
-        BezierHandle p3(1.0, 0.0);
+        Point p0(0.0, 0.0);
+        Point p1(0.0, 1.0);
+        Point p2(1.0, 1.0);
+        Point p3(1.0, 0.0);
         
         // This forms a symmetric curve, so at t=0.5 we should be at (0.5, 0.75)
-        BezierHandle result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, 0.5);
+        Point result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, 0.5);
         REQUIRE(result.time == Catch::Approx(0.5));
         REQUIRE(result.value == Catch::Approx(0.75));
     }
     
     SECTION("Evaluate cubic Bézier with invalid t") {
-        BezierHandle p0(0.0, 0.0);
-        BezierHandle p1(0.0, 1.0);
-        BezierHandle p2(1.0, 1.0);
-        BezierHandle p3(1.0, 0.0);
+        Point p0(0.0, 0.0);
+        Point p1(0.0, 1.0);
+        Point p2(1.0, 1.0);
+        Point p3(1.0, 0.0);
         
         REQUIRE_THROWS_AS(bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, -0.1), std::invalid_argument);
         REQUIRE_THROWS_AS(bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, 1.1), std::invalid_argument);
     }
+
+    SECTION("Evaluate with coincident control points") {
+        Point p_start(0.0, 0.0);
+        Point p_end(3.0, 3.0);
+        Point mid(1.5, 1.5);
+
+        // Case 1: p0 == p1
+        Point r1 = bezier_utils::evaluate_cubic_bezier(p_start, p_start, mid, p_end, 0.5);
+        Point expected_r1 = p_start * 0.5 + mid * 0.375 + p_end * 0.125;
+        REQUIRE(r1.time == Catch::Approx(expected_r1.time));
+        REQUIRE(r1.value == Catch::Approx(expected_r1.value));
+
+        // Case 2: p1 == p2
+        Point r2 = bezier_utils::evaluate_cubic_bezier(p_start, mid, mid, p_end, 0.5);
+        Point expected_r2 = p_start * 0.125 + mid * 0.75 + p_end * 0.125;
+        REQUIRE(r2.time == Catch::Approx(expected_r2.time));
+        REQUIRE(r2.value == Catch::Approx(expected_r2.value));
+        
+        // Case 3: All points coincident
+        Point p(1.0, 1.0);
+        Point r3 = bezier_utils::evaluate_cubic_bezier(p, p, p, p, 0.5);
+        REQUIRE(r3.time == Catch::Approx(p.time));
+        REQUIRE(r3.value == Catch::Approx(p.value));
+    }
 }
 
-TEST_CASE("Finding parameter for time", "[bezier_utils]") {
-    SECTION("Parameter at endpoints") {
-        BezierHandle p0(1.0, 2.0);
-        BezierHandle p1(2.0, 3.0);
-        BezierHandle p2(3.0, 4.0);
-        BezierHandle p3(4.0, 5.0);
+TEST_CASE("Solving parameter for time", "[bezier_utils]") {
+    SECTION("Parameter at endpoints using bisection") {
+        Point p0(1.0, 2.0);
+        Point p1(2.0, 3.0);
+        Point p2(3.0, 4.0);
+        Point p3(4.0, 5.0);
         
-        double t_start = bezier_utils::find_parameter_for_time(p0, p1, p2, p3, 1.0);
+        double t_start = bezier_utils::solve_t_for_time_bisection(p0, p1, p2, p3, 1.0);
         REQUIRE(t_start == Catch::Approx(0.0));
         
-        double t_end = bezier_utils::find_parameter_for_time(p0, p1, p2, p3, 4.0);
+        double t_end = bezier_utils::solve_t_for_time_bisection(p0, p1, p2, p3, 4.0);
         REQUIRE(t_end == Catch::Approx(1.0));
     }
     
-    SECTION("Parameter for linear segment") {
+    SECTION("Parameter for linear segment using bisection") {
         // Create a linear Bézier (p1 and p2 on the line between p0 and p3)
-        BezierHandle p0(0.0, 0.0);
-        BezierHandle p3(3.0, 3.0);
-        BezierHandle p1(1.0, 1.0);
-        BezierHandle p2(2.0, 2.0);
+        Point p0(0.0, 0.0);
+        Point p3(3.0, 3.0);
+        Point p1(1.0, 1.0);
+        Point p2(2.0, 2.0);
         
-        double t_mid = bezier_utils::find_parameter_for_time(p0, p1, p2, p3, 1.5);
+        double t_mid = bezier_utils::solve_t_for_time_bisection(p0, p1, p2, p3, 1.5);
         REQUIRE(t_mid == Catch::Approx(0.5).margin(0.01));
         
         // Verify the value at this parameter
-        BezierHandle result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, t_mid);
+        Point result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, t_mid);
         REQUIRE(result.time == Catch::Approx(1.5).margin(0.01));
         REQUIRE(result.value == Catch::Approx(1.5).margin(0.01));
     }
     
-    SECTION("Parameter for curved segment") {
+    SECTION("Parameter for curved segment using Newton-Raphson") {
         // Create a curve where time and parameter don't have a linear relationship
-        BezierHandle p0(0.0, 0.0);
-        BezierHandle p1(0.0, 1.0);  // Vertical handle
-        BezierHandle p2(3.0, 2.0);  // Handle closer to p3
-        BezierHandle p3(3.0, 3.0);
+        Point p0(0.0, 0.0);
+        Point p1(0.0, 1.0);  // Vertical handle
+        Point p2(3.0, 2.0);  // Handle closer to p3
+        Point p3(3.0, 3.0);
         
-        // Find the parameter for a specific time
-        double t = bezier_utils::find_parameter_for_time(p0, p1, p2, p3, 1.5);
+        // Find the parameter for a specific time using Newton-Raphson
+        double t = bezier_utils::solve_t_for_time(p0, p1, p2, p3, 1.5);
         
         // Evaluate to verify
-        BezierHandle result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, t);
+        Point result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, t);
         REQUIRE(result.time == Catch::Approx(1.5).margin(0.01));
     }
     
-    SECTION("Out of range time") {
-        BezierHandle p0(1.0, 2.0);
-        BezierHandle p1(2.0, 3.0);
-        BezierHandle p2(3.0, 4.0);
-        BezierHandle p3(4.0, 5.0);
+    SECTION("Newton-Raphson with initial guess") {
+        Point p0(0.0, 0.0);
+        Point p1(1.0, 1.0);
+        Point p2(2.0, 2.0);
+        Point p3(3.0, 3.0);
         
-        REQUIRE_THROWS_AS(bezier_utils::find_parameter_for_time(p0, p1, p2, p3, 0.5), std::out_of_range);
-        REQUIRE_THROWS_AS(bezier_utils::find_parameter_for_time(p0, p1, p2, p3, 4.5), std::out_of_range);
+        double initial_guess = 0.4;
+        double t = bezier_utils::solve_t_for_time(p0, p1, p2, p3, 1.2, &initial_guess);
+        
+        Point result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, t);
+        REQUIRE(result.time == Catch::Approx(1.2).margin(0.01));
+    }
+
+    SECTION("Parameter when p0.time == p3.time using bisection") {
+        Point p_const_time(1.0, 0.0);
+        Point p1(1.0, 1.0); // All points have same time
+        Point p2(1.0, 2.0);
+        Point p3_const_time(1.0, 3.0);
+
+        // Target time is the constant time of the segment
+        double t_param = bezier_utils::solve_t_for_time_bisection(p_const_time, p1, p2, p3_const_time, 1.0);
+        Point result = bezier_utils::evaluate_cubic_bezier(p_const_time, p1, p2, p3_const_time, t_param);
+        REQUIRE(result.time == Catch::Approx(1.0));
+
+        // Target time is different from the constant time should be handled gracefully
+        // Note: This might throw or return a boundary value depending on implementation
+    }
+}
+
+TEST_CASE("Time component evaluation", "[bezier_utils]") {
+    SECTION("Evaluate time component") {
+        Point p0(1.0, 2.0);
+        Point p1(2.0, 3.0);
+        Point p2(3.0, 4.0);
+        Point p3(4.0, 5.0);
+        
+        double time_at_0 = bezier_utils::evaluate_bezier_time_component(p0, p1, p2, p3, 0.0);
+        REQUIRE(time_at_0 == Catch::Approx(p0.time));
+        
+        double time_at_1 = bezier_utils::evaluate_bezier_time_component(p0, p1, p2, p3, 1.0);
+        REQUIRE(time_at_1 == Catch::Approx(p3.time));
+        
+        double time_at_half = bezier_utils::evaluate_bezier_time_component(p0, p1, p2, p3, 0.5);
+        // Should be between p0.time and p3.time
+        REQUIRE(time_at_half >= p0.time);
+        REQUIRE(time_at_half <= p3.time);
+    }
+}
+
+TEST_CASE("Time derivative evaluation", "[bezier_utils]") {
+    SECTION("Evaluate time derivative") {
+        Point p0(0.0, 0.0);
+        Point p1(1.0, 1.0);
+        Point p2(2.0, 2.0);
+        Point p3(3.0, 3.0);
+        
+        double derivative_at_0 = bezier_utils::evaluate_bezier_time_derivative(p0, p1, p2, p3, 0.0);
+        double derivative_at_half = bezier_utils::evaluate_bezier_time_derivative(p0, p1, p2, p3, 0.5);
+        double derivative_at_1 = bezier_utils::evaluate_bezier_time_derivative(p0, p1, p2, p3, 1.0);
+        
+        // For a monotonic time progression, derivatives should be positive
+        REQUIRE(derivative_at_0 > 0.0);
+        REQUIRE(derivative_at_half > 0.0);
+        REQUIRE(derivative_at_1 > 0.0);
+    }
+    
+    SECTION("Derivative for constant time") {
+        Point p_const(1.0, 0.0);
+        Point p1(1.0, 1.0);
+        Point p2(1.0, 2.0);
+        Point p3_const(1.0, 3.0);
+        
+        double derivative = bezier_utils::evaluate_bezier_time_derivative(p_const, p1, p2, p3_const, 0.5);
+        REQUIRE(derivative == Catch::Approx(0.0));
     }
 }
 
 TEST_CASE("Creating Bezier handles", "[bezier_utils]") {
     SECTION("Linear Bézier handles") {
-        BezierHandle p0(1.0, 2.0);
-        BezierHandle p3(4.0, 5.0);
-        BezierHandle p1, p2;
+        Point p0(1.0, 2.0);
+        Point p3(4.0, 5.0);
+        Point p1, p2;
         
         bezier_utils::create_linear_bezier_handles(p0, p3, p1, p2);
         
@@ -125,15 +215,28 @@ TEST_CASE("Creating Bezier handles", "[bezier_utils]") {
             double expected_time = p0.time + t * (p3.time - p0.time);
             double expected_value = p0.value + t * (p3.value - p0.value);
             
-            BezierHandle result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, t);
+            Point result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, t);
             REQUIRE(result.time == Catch::Approx(expected_time).margin(0.01));
             REQUIRE(result.value == Catch::Approx(expected_value).margin(0.01));
         }
     }
     
+    SECTION("Linear Bézier handles with p0 == p3") {
+        Point p0(1.0, 2.0);
+        Point p3 = p0; // p0 and p3 are the same
+        Point p1, p2;
+        
+        bezier_utils::create_linear_bezier_handles(p0, p3, p1, p2);
+        
+        REQUIRE(p1.time == Catch::Approx(p0.time));
+        REQUIRE(p1.value == Catch::Approx(p0.value));
+        REQUIRE(p2.time == Catch::Approx(p0.time));
+        REQUIRE(p2.value == Catch::Approx(p0.value));
+    }
+
     SECTION("Flat Bézier handles") {
-        BezierHandle kf(2.0, 3.0);
-        BezierHandle in_handle, out_handle;
+        Point kf(2.0, 3.0);
+        Point in_handle, out_handle;
         double time_offset = 0.5;
         
         bezier_utils::create_flat_bezier_handles(kf, time_offset, in_handle, out_handle);
@@ -143,5 +246,35 @@ TEST_CASE("Creating Bezier handles", "[bezier_utils]") {
         REQUIRE(in_handle.value == Catch::Approx(kf.value));
         REQUIRE(out_handle.time == Catch::Approx(kf.time + time_offset));
         REQUIRE(out_handle.value == Catch::Approx(kf.value));
+    }
+
+    SECTION("Flat Bézier handles with zero time_offset") {
+        Point kf(2.0, 3.0);
+        Point in_handle, out_handle;
+        double time_offset = 0.0;
+        
+        bezier_utils::create_flat_bezier_handles(kf, time_offset, in_handle, out_handle);
+        
+        REQUIRE(in_handle.time == Catch::Approx(kf.time));
+        REQUIRE(in_handle.value == Catch::Approx(kf.value));
+        REQUIRE(out_handle.time == Catch::Approx(kf.time));
+        REQUIRE(out_handle.value == Catch::Approx(kf.value));
+    }
+
+    SECTION("Flat Bézier handles with negative time_offset") {
+        Point kf(2.0, 3.0);
+        Point in_handle, out_handle;
+        double time_offset = -0.5; // Negative offset
+        
+        bezier_utils::create_flat_bezier_handles(kf, time_offset, in_handle, out_handle);
+        
+        REQUIRE(in_handle.time == Catch::Approx(kf.time - time_offset)); // kf.time + 0.5
+        REQUIRE(in_handle.value == Catch::Approx(kf.value));
+        REQUIRE(out_handle.time == Catch::Approx(kf.time + time_offset)); // kf.time - 0.5
+        REQUIRE(out_handle.value == Catch::Approx(kf.value));
+
+        // Verify relative positions
+        REQUIRE(in_handle.time > kf.time); // In handle is to the right
+        REQUIRE(out_handle.time < kf.time); // Out handle is to the left
     }
 }

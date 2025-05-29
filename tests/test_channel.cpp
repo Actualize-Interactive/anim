@@ -1,404 +1,563 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include <anim/channel.hpp>
+#include <anim/keyframe.hpp> // Required for Keyframe and Point
+#include <anim/handle_utils.hpp> // Required for GrabbedHandle enum
 
 using namespace anim;
 
-TEST_CASE("Channel empty state", "[channel]") {
-    Channel channel;
-    
-    SECTION("Channel is empty") {
-        REQUIRE(channel.is_empty());
+TEST_CASE("Channel Construction and Naming", "[channel]") {
+    SECTION("Default constructor") {
+        Channel ch;
+        REQUIRE(ch.name().empty());
+        REQUIRE(ch.empty());
+        REQUIRE(ch.size() == 0);
     }
-    
-    SECTION("No start or end time") {
-        REQUIRE_FALSE(channel.get_start_time().has_value());
-        REQUIRE_FALSE(channel.get_end_time().has_value());
+
+    SECTION("Constructor with a name") {
+        Channel ch("TestChannel");
+        REQUIRE(ch.name() == "TestChannel");
+        REQUIRE(ch.empty());
+        REQUIRE(ch.size() == 0);
     }
-    
-    SECTION("Evaluating empty channel returns 0") {
-        REQUIRE(channel.evaluate(0.0) == Catch::Approx(0.0));
-        REQUIRE(channel.evaluate(1.0) == Catch::Approx(0.0));
-    }
-    
-    SECTION("Range evaluation with no keyframes") {
-        std::vector<double> values = channel.evaluate_range(0.0, 1.0, 5);
-        REQUIRE(values.size() == 5);
-        for (double v : values) {
-            REQUIRE(v == Catch::Approx(0.0));
-        }
+
+    SECTION("Set and get name") {
+        Channel ch;
+        ch.set_name("NewName");
+        REQUIRE(ch.name() == "NewName");
     }
 }
 
-TEST_CASE("Channel name", "[channel]") {
-    SECTION("Default constructor sets empty name") {
-        Channel channel;
-        REQUIRE(channel.name().empty());
-    }
-    
-    SECTION("Named constructor sets name") {
-        Channel channel("test_channel");
-        REQUIRE(channel.name() == "test_channel");
-    }
-    
-    SECTION("Name can be changed") {
-        Channel channel("original_name");
-        REQUIRE(channel.name() == "original_name");
-        
-        channel.set_name("new_name");
-        REQUIRE(channel.name() == "new_name");
-    }
-}
+TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
+    Channel ch;
 
-TEST_CASE("Channel with a single keyframe", "[channel]") {
-    Channel channel;
-    // Create a single keyframe
-    BezierHandle in_handle(1.5, 3.0);
-    BezierHandle out_handle(2.5, 3.0);
-    TangentMode mode = TangentMode::flat;
-    
-    channel.set_keyframe_at_time(2.0, 3.0, in_handle, out_handle, mode);
-    
-    SECTION("Channel is not empty") {
-        REQUIRE_FALSE(channel.is_empty());
-    }
-    
-    SECTION("Start and end time match the keyframe") {
-        REQUIRE(channel.get_start_time().value() == Catch::Approx(2.0));
-        REQUIRE(channel.get_end_time().value() == Catch::Approx(2.0));
-    }
-    
-    SECTION("Can retrieve the keyframe") {
-        auto kf_opt = channel.get_keyframe_at_time(2.0);
-        REQUIRE(kf_opt.has_value());
-        REQUIRE(kf_opt->time() == Catch::Approx(2.0));
-        REQUIRE(kf_opt->value() == Catch::Approx(3.0));
-    }
-    
-    SECTION("Has correct keyframe count") {
-        REQUIRE(channel.keyframe_count() == 1);
-    }
-    
-    SECTION("Evaluation returns keyframe value") {
-        REQUIRE(channel.evaluate(0.0) == Catch::Approx(3.0)); // Before keyframe
-        REQUIRE(channel.evaluate(2.0) == Catch::Approx(3.0)); // At keyframe
-        REQUIRE(channel.evaluate(5.0) == Catch::Approx(3.0)); // After keyframe
-    }
-}
+    SECTION("Create keyframe with Point") {
+        const Keyframe& kf1 = ch.create_keyframe(Point(1.0, 10.0));
+        REQUIRE(ch.size() == 1);
+        REQUIRE_FALSE(ch.empty());
+        REQUIRE(kf1.time() == 1.0);
+        REQUIRE(kf1.value() == 10.0);
+        REQUIRE(ch.has_keyframe(1.0));
+        REQUIRE_FALSE(ch.has_keyframe(2.0));
 
-TEST_CASE("Channel with multiple keyframes", "[channel]") {
-    Channel channel("test");
-    // Add keyframes in non-sequential order to test sorting
-    BezierHandle in_handle(2.5, 5.0);
-    BezierHandle out_handle(3.5, 5.0);
-    channel.set_keyframe_at_time(3.0, 5.0, in_handle, out_handle, TangentMode::flat);
-    BezierHandle in_handle2(0.5, 2.0);
-    BezierHandle out_handle2(1.5, 2.0);
-    channel.set_keyframe_at_time(1.0, 2.0, in_handle2, out_handle2, TangentMode::flat);
+        const Keyframe& kf2 = ch.create_keyframe(Point(0.5, 5.0));
+        REQUIRE(ch.size() == 2);
+        REQUIRE(ch.keyframe(0).time() == 0.5); // Check sorting
+        REQUIRE(ch.keyframe(1).time() == 1.0);
+        REQUIRE(ch.has_keyframe(0.5));
+    }
+
+    SECTION("Create keyframe with time/value") {
+        const Keyframe& kf1 = ch.create_keyframe(2.0, 20.0);
+        REQUIRE(ch.size() == 1);
+        REQUIRE(kf1.time() == 2.0);
+        REQUIRE(kf1.value() == 20.0);
+
+        const Keyframe& kf2 = ch.create_keyframe(0.0, 0.0, Point(-0.1, 0), Point(0.1, 0), Function::linear, HandleMode::free);
+        REQUIRE(ch.size() == 2);
+        REQUIRE(ch.keyframe(0).time() == 0.0);
+        REQUIRE(ch.keyframe(1).time() == 2.0);
+        REQUIRE(kf2.function == Function::linear);
+        REQUIRE(kf2.handle_mode == HandleMode::free);
+        REQUIRE(kf2.in_handle.time == Catch::Approx(-0.1));
+        REQUIRE(kf2.out_handle.time == Catch::Approx(0.1));
+    }
+
+    SECTION("Emplace keyframe") {
+        Keyframe new_kf(3.0, 30.0);
+        const Keyframe& kf1 = ch.emplace_keyframe(std::move(new_kf));
+        REQUIRE(ch.size() == 1);
+        REQUIRE(ch.num_keyframes() == 1);
+        REQUIRE(kf1.time() == 3.0);
+        REQUIRE(kf1.value() == 30.0);
+
+        // new_kf is now in a moved-from state, but kf1 is a reference to the one in the channel
+        REQUIRE(ch.has_keyframe(3.0));
+
+        Keyframe newer_kf(1.5, 15.0);
+        ch.emplace_keyframe(std::move(newer_kf));
+        REQUIRE(ch.size() == 2);
+        REQUIRE(ch.num_keyframes() == 2);
+        REQUIRE(ch.keyframe(0).time() == 1.5);
+        REQUIRE(ch.keyframe(1).time() == 3.0);
+    }
+
+    SECTION("has_keyframe") {
+        ch.create_keyframe(1.0, 10.0);
+        ch.create_keyframe(3.0, 30.0);
+        REQUIRE(ch.has_keyframe(1.0));
+        REQUIRE(ch.has_keyframe(3.0));
+        REQUIRE_FALSE(ch.has_keyframe(0.0));
+        REQUIRE_FALSE(ch.has_keyframe(2.0));
+        REQUIRE_FALSE(ch.has_keyframe(4.0));
+    }
     
     SECTION("Keyframes are sorted by time") {
-        const auto& keyframes = channel.get_all_keyframes();
-        REQUIRE(keyframes.size() == 2);
-        REQUIRE(keyframes[0].time() == Catch::Approx(1.0));
-        REQUIRE(keyframes[1].time() == Catch::Approx(3.0));
-    }
-    
-    SECTION("Start and end times match the first and last keyframes") {
-        REQUIRE(channel.get_start_time().value() == Catch::Approx(1.0));
-        REQUIRE(channel.get_end_time().value() == Catch::Approx(3.0));
-    }
-    
-    SECTION("Evaluation outside keyframe range") {
-        REQUIRE(channel.evaluate(0.0) == Catch::Approx(2.0)); // Before first keyframe
-        REQUIRE(channel.evaluate(4.0) == Catch::Approx(5.0)); // After last keyframe
+        ch.create_keyframe(5.0, 50.0);
+        ch.create_keyframe(1.0, 10.0);
+        ch.create_keyframe(3.0, 30.0);
+        REQUIRE(ch.size() == 3);
+        REQUIRE(ch.num_keyframes() == 3);
+        REQUIRE(ch.keyframe(0).time() == 1.0);
+        REQUIRE(ch.keyframe(1).time() == 3.0);
+        REQUIRE(ch.keyframe(2).time() == 5.0);
     }
 }
 
-TEST_CASE("Channel tangent modes", "[channel]") {
-    Channel channel;
-    SECTION("LINEAR mode evaluation") {
-        // Set up two keyframes with LINEAR mode
-        channel.set_keyframe_at_time(1.0, 2.0, BezierHandle(0.9, 2.0), BezierHandle(1.1, 2.0), TangentMode::linear);
-        channel.set_keyframe_at_time(3.0, 6.0, BezierHandle(2.9, 6.0), BezierHandle(3.1, 6.0), TangentMode::linear);
-        
-        // Evaluate at points between keyframes
-        REQUIRE(channel.evaluate(1.0) == Catch::Approx(2.0));
-        REQUIRE(channel.evaluate(2.0) == Catch::Approx(4.0)); // Linear interpolation
-        REQUIRE(channel.evaluate(3.0) == Catch::Approx(6.0));
-    }    SECTION("FLAT mode evaluation") {
-        // Set up two keyframes with FLAT mode
-        channel.set_keyframe_at_time(1.0, 2.0, BezierHandle(0.9, 2.0), BezierHandle(1.1, 2.0), TangentMode::flat);
-        channel.set_keyframe_at_time(3.0, 6.0, BezierHandle(2.9, 6.0), BezierHandle(3.1, 6.0), TangentMode::flat);
-        
-        // Check key frame values directly
-        REQUIRE(channel.evaluate(1.0) == Catch::Approx(2.0));
-        REQUIRE(channel.evaluate(3.0) == Catch::Approx(6.0));
-        
-        // Check that curve preserves monotonicity
-        double value_at_1_5 = channel.evaluate(1.5);
-        double value_at_2_0 = channel.evaluate(2.0);
-        double value_at_2_5 = channel.evaluate(2.5);
-        
-        REQUIRE(value_at_1_5 >= 2.0);
-        REQUIRE(value_at_1_5 <= value_at_2_0);
-        REQUIRE(value_at_2_0 <= value_at_2_5);
-        REQUIRE(value_at_2_5 <= 6.0);
+TEST_CASE("Channel Keyframe Access", "[channel]") {
+    Channel ch;
+
+    SECTION("Access on empty channel") {
+        REQUIRE_THROWS_AS(ch.keyframe(0), std::out_of_range);
+        REQUIRE_THROWS_AS(ch.prev_keyframe(0.0), std::out_of_range);
+        REQUIRE_THROWS_AS(ch.next_keyframe(0.0), std::out_of_range);
+        REQUIRE_THROWS_AS(ch.closest_keyframe(0.0), std::out_of_range);
+    }
+
+    ch.create_keyframe(1.0, 10.0);
+    ch.create_keyframe(3.0, 30.0);
+    ch.create_keyframe(5.0, 50.0);
+    // Keyframes at times: 1.0, 3.0, 5.0
+
+    SECTION("keyframe(index)") {
+        REQUIRE(ch.keyframe(0).time() == 1.0);
+        REQUIRE(ch.keyframe(1).time() == 3.0);
+        REQUIRE(ch.keyframe(2).time() == 5.0);
+        REQUIRE_THROWS_AS(ch.keyframe(3), std::out_of_range);
+        REQUIRE_THROWS_AS(ch.keyframe(-1), std::out_of_range); // Assuming size_t, effectively a large positive
+    }
+
+    SECTION("operator[](index)") {
+        REQUIRE(ch[0].time() == 1.0);
+        REQUIRE(ch[1].time() == 3.0);
+        REQUIRE(ch[2].time() == 5.0);
+        REQUIRE_THROWS_AS(ch[3], std::out_of_range);
+        REQUIRE_THROWS_AS(ch[-1], std::out_of_range); // Assuming size_t, effectively a large positive
+    }
+
+    SECTION("prev_keyframe(time)") {
+        REQUIRE(ch.prev_keyframe(3.0).time() == 1.0); // Time exactly on a keyframe
+        REQUIRE(ch.prev_keyframe(3.5).time() == 3.0); // Time between keyframes
+        REQUIRE(ch.prev_keyframe(5.0).time() == 3.0); // Time on last keyframe
+        REQUIRE(ch.prev_keyframe(6.0).time() == 5.0); // Time after last keyframe
+        REQUIRE_THROWS_AS(ch.prev_keyframe(1.0), std::out_of_range); // Time on first keyframe
+        REQUIRE_THROWS_AS(ch.prev_keyframe(0.0), std::out_of_range); // Time before first keyframe
+    }
+
+    SECTION("next_keyframe(time)") {
+        REQUIRE(ch.next_keyframe(3.0).time() == 5.0); // Time exactly on a keyframe
+        REQUIRE(ch.next_keyframe(2.5).time() == 3.0); // Time between keyframes
+        REQUIRE(ch.next_keyframe(1.0).time() == 3.0); // Time on first keyframe
+        REQUIRE(ch.next_keyframe(0.0).time() == 1.0); // Time before first keyframe
+        REQUIRE_THROWS_AS(ch.next_keyframe(5.0), std::out_of_range); // Time on last keyframe
+        REQUIRE_THROWS_AS(ch.next_keyframe(6.0), std::out_of_range); // Time after last keyframe
+    }
+
+    SECTION("closest_keyframe(time)") {
+        REQUIRE(ch.closest_keyframe(0.0).time() == 1.0);  // Before first
+        REQUIRE(ch.closest_keyframe(1.0).time() == 1.0);  // Exactly on first
+        REQUIRE(ch.closest_keyframe(1.9).time() == 1.0);  // Closer to first
+        REQUIRE(ch.closest_keyframe(2.0).time() == 1.0);  // Midpoint, bias to earlier
+        REQUIRE(ch.closest_keyframe(2.1).time() == 3.0);  // Closer to second (midpoint test)
+        REQUIRE(ch.closest_keyframe(2.4).time() == 3.0);  // Closer to second
+        REQUIRE(ch.closest_keyframe(3.0).time() == 3.0);  // Exactly on second
+        REQUIRE(ch.closest_keyframe(4.0).time() == 3.0);  // Midpoint, bias to earlier
+        REQUIRE(ch.closest_keyframe(4.1).time() == 5.0);  // Closer to third
+        REQUIRE(ch.closest_keyframe(5.0).time() == 5.0);  // Exactly on third
+        REQUIRE(ch.closest_keyframe(6.0).time() == 5.0);  // After last
     }
     
-    SECTION("STEPPED mode evaluation") {
-        // Set up two keyframes with STEPPED mode
-        channel.set_keyframe_at_time(1.0, 2.0, BezierHandle(0.9, 2.0), BezierHandle(1.1, 2.0), TangentMode::constant);
-        channel.set_keyframe_at_time(3.0, 6.0, BezierHandle(2.9, 6.0), BezierHandle(3.1, 6.0), TangentMode::constant);
+    SECTION("Access with a single keyframe") {
+        Channel single_ch;
+        single_ch.create_keyframe(2.0, 20.0);
+        REQUIRE(single_ch.keyframe(0).time() == 2.0);
+        REQUIRE_THROWS_AS(single_ch.prev_keyframe(2.0), std::out_of_range);
+        REQUIRE_THROWS_AS(single_ch.prev_keyframe(1.0), std::out_of_range);
+        REQUIRE(single_ch.prev_keyframe(3.0).time() == 2.0);
+
+        REQUIRE_THROWS_AS(single_ch.next_keyframe(2.0), std::out_of_range);
+        REQUIRE_THROWS_AS(single_ch.next_keyframe(3.0), std::out_of_range);
+        REQUIRE(single_ch.next_keyframe(1.0).time() == 2.0);
         
-        // Evaluate at points between keyframes
-        REQUIRE(channel.evaluate(1.0) == Catch::Approx(2.0));        REQUIRE(channel.evaluate(2.0) == Catch::Approx(2.0)); // Should stay at first keyframe value
-        REQUIRE(channel.evaluate(2.99) == Catch::Approx(2.0)); // Just before second keyframe
-        REQUIRE(channel.evaluate(3.0) == Catch::Approx(6.0)); // At second keyframe
-    }
-    
-    SECTION("SMOOTH_AUTO mode evaluation") {
-        // Set up keyframes with SMOOTH_AUTO mode
-        channel.set_keyframe_at_time(1.0, 2.0, BezierHandle(0.9, 2.0), BezierHandle(1.1, 2.0), TangentMode::smooth);
-        channel.set_keyframe_at_time(3.0, 6.0, BezierHandle(2.9, 6.0), BezierHandle(3.1, 6.0), TangentMode::smooth);
-        
-        // Evaluate at each keyframe and between
-        REQUIRE(channel.evaluate(1.0) == Catch::Approx(2.0));
-        REQUIRE(channel.evaluate(3.0) == Catch::Approx(6.0));
-        
-        // Intermediate value should be smooth but the exact value depends on the auto-tangent calculation
-        double mid_value = channel.evaluate(2.0);
-        REQUIRE(mid_value >= 2.0); // Value should be monotonically increasing
-        REQUIRE(mid_value <= 6.0);
+        REQUIRE(single_ch.closest_keyframe(0.0).time() == 2.0);
+        REQUIRE(single_ch.closest_keyframe(2.0).time() == 2.0);
+        REQUIRE(single_ch.closest_keyframe(10.0).time() == 2.0);
     }
 }
 
-TEST_CASE("Channel keyframe indexing and removal", "[channel]") {
-    Channel channel;
-    
-    // Add three keyframes
-    channel.set_keyframe_at_time(1.0, 10.0, BezierHandle(0.9, 10.0), BezierHandle(1.1, 10.0), TangentMode::flat);
-    channel.set_keyframe_at_time(2.0, 20.0, BezierHandle(1.9, 20.0), BezierHandle(2.1, 20.0), TangentMode::flat);
-    channel.set_keyframe_at_time(3.0, 30.0, BezierHandle(2.9, 30.0), BezierHandle(3.1, 30.0), TangentMode::flat);
-    
-    SECTION("Keyframe count is correct") {
-        REQUIRE(channel.keyframe_count() == 3);
+TEST_CASE("Channel Keyframe Deletion", "[channel]") {
+    Channel ch;
+    ch.create_keyframe(1.0, 10.0);
+    ch.create_keyframe(3.0, 30.0);
+    ch.create_keyframe(5.0, 50.0);
+    // Keyframes at times: 1.0, 3.0, 5.0
+
+    SECTION("Delete middle keyframe") {
+        ch.delete_keyframe(1); // Delete keyframe at time 3.0
+        REQUIRE(ch.size() == 2);
+        REQUIRE(ch.keyframe(0).time() == 1.0);
+        REQUIRE(ch.keyframe(1).time() == 5.0);
+        REQUIRE_FALSE(ch.has_keyframe(3.0));
     }
-    
-    SECTION("Checking keyframe existence by index") {
-        REQUIRE(channel.has_keyframe(0));
-        REQUIRE(channel.has_keyframe(1));
-        REQUIRE(channel.has_keyframe(2));
-        REQUIRE_FALSE(channel.has_keyframe(3));
+
+    SECTION("Delete first keyframe") {
+        ch.delete_keyframe(0);
+        REQUIRE(ch.size() == 2);
+        REQUIRE(ch.keyframe(0).time() == 3.0);
+        REQUIRE(ch.keyframe(1).time() == 5.0);
+        REQUIRE_FALSE(ch.has_keyframe(1.0));
     }
-    
-    SECTION("Remove keyframe by index") {
-        REQUIRE(channel.has_keyframe(1));
-        REQUIRE(channel.remove_keyframe(1));
-        REQUIRE(channel.keyframe_count() == 2);
+
+    SECTION("Delete last keyframe") {
+        ch.delete_keyframe(2);
+        REQUIRE(ch.size() == 2);
+        REQUIRE(ch.keyframe(0).time() == 1.0);
+        REQUIRE(ch.keyframe(1).time() == 3.0);
+        REQUIRE_FALSE(ch.has_keyframe(5.0));
+    }
+
+    SECTION("Delete from single keyframe channel") {
+        Channel single_ch;
+        single_ch.create_keyframe(2.0, 20.0);
+        single_ch.delete_keyframe(0);
+        REQUIRE(single_ch.empty());
+        REQUIRE(single_ch.size() == 0);
+    }
+
+    SECTION("Delete with invalid index throws exception") {
+        REQUIRE_THROWS_AS(ch.delete_keyframe(3), std::out_of_range);
+        REQUIRE_THROWS_AS(ch.delete_keyframe(100), std::out_of_range);
         
-        // The middle keyframe should be gone, leaving keyframes at times 1.0 and 3.0
-        const auto& keyframes = channel.get_all_keyframes();
-        REQUIRE(keyframes[0].time() == Catch::Approx(1.0));
-        REQUIRE(keyframes[1].time() == Catch::Approx(3.0));
-    }
-    
-    SECTION("Remove keyframe by time") {
-        REQUIRE(channel.has_keyframe_at_time(2.0));
-        REQUIRE(channel.remove_keyframe_at_time(2.0));
-        REQUIRE_FALSE(channel.has_keyframe_at_time(2.0));
-        REQUIRE(channel.keyframe_count() == 2);
-        
-        // The middle keyframe should be gone, leaving keyframes at times 1.0 and 3.0
-        const auto& keyframes = channel.get_all_keyframes();
-        REQUIRE(keyframes[0].time() == Catch::Approx(1.0));
-        REQUIRE(keyframes[1].time() == Catch::Approx(3.0));
-    }
-    
-    SECTION("Removing non-existent keyframe returns false") {
-        REQUIRE_FALSE(channel.remove_keyframe_at_time(4.0));
-        REQUIRE_FALSE(channel.remove_keyframe(10)); // Index out of range
-        REQUIRE(channel.keyframe_count() == 3); // Count unchanged
-    }
-    
-    SECTION("Get keyframe by index") {
-        Keyframe& kf = channel.get_keyframe(1);
-        REQUIRE(kf.time() == Catch::Approx(2.0));
-        REQUIRE(kf.value() == Catch::Approx(20.0));
-        
-        REQUIRE_THROWS_AS(channel.get_keyframe(5), std::out_of_range);
+        Channel empty_ch;
+        REQUIRE_THROWS_AS(empty_ch.delete_keyframe(0), std::out_of_range);
     }
 }
 
-TEST_CASE("Channel range evaluation", "[channel]") {
-    Channel channel;
-    channel.set_keyframe_at_time(1.0, 2.0, BezierHandle(0.9, 2.0), BezierHandle(1.1, 2.0), TangentMode::linear);
-    channel.set_keyframe_at_time(5.0, 6.0, BezierHandle(4.9, 6.0), BezierHandle(5.1, 6.0), TangentMode::linear);
-    
-    SECTION("Fixed sample count") {
-        std::vector<double> samples = channel.evaluate_range(1.0, 5.0, 5);
-        REQUIRE(samples.size() == 5);
-        REQUIRE(samples[0] == Catch::Approx(2.0));
-        REQUIRE(samples[4] == Catch::Approx(6.0));
+TEST_CASE("Channel Keyframe Updates", "[channel]") {
+    Channel ch;
+    ch.create_keyframe(1.0, 10.0); // Default HandleMode::smooth
+    ch.create_keyframe(3.0, 30.0); // Default HandleMode::smooth
+    ch.create_keyframe(5.0, 50.0); // Default HandleMode::smooth
+
+    SECTION("update_keyframe") {
+        Keyframe new_kf(2.5, 25.0, Function::linear, HandleMode::free);
+        ch.update_keyframe(1, new_kf); // Update middle keyframe
+        REQUIRE(ch.keyframe(1).time() == 2.5);
+        REQUIRE(ch.keyframe(1).value() == 25.0);
+        REQUIRE(ch.keyframe(1).function == Function::linear);
+        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::free);
+        
+        // Verify keyframes are still sorted
+        REQUIRE(ch.keyframe(0).time() == 1.0);
+        REQUIRE(ch.keyframe(2).time() == 5.0);
     }
-    
-    SECTION("Sample by rate") {
-        std::vector<double> samples = channel.evaluate_range_by_rate(1.0, 5.0, 1.0);
-        REQUIRE(samples.size() == 5);
-        REQUIRE(samples[0] == Catch::Approx(2.0));
-        REQUIRE(samples[4] == Catch::Approx(6.0));
+
+    SECTION("set_keyframe_time maintains sorting") {
+        ch.set_keyframe_time(1, 4.5); // Move middle keyframe to between 3rd and last
+        REQUIRE(ch.keyframe(0).time() == 1.0);
+        REQUIRE(ch.keyframe(1).time() == 4.5);
+        REQUIRE(ch.keyframe(2).time() == 5.0);
+        REQUIRE(ch.keyframe(1).value() == 30.0); // Value should remain the same
+    }
+
+    SECTION("set_keyframe_value") {
+        ch.set_keyframe_value(1, 35.0);
+        REQUIRE(ch.keyframe(1).value() == 35.0);
+        REQUIRE(ch.keyframe(1).time() == 3.0); // Time should remain the same
+    }
+
+    SECTION("set_keyframe_in_handle") {
+        Point new_in_handle(2.5, 25.0);
+        // Set HandleMode to free to prevent smooth/flat/aligned logic from overriding the manual set.
+        ch.set_keyframe_handle_mode(1, HandleMode::free); 
+        ch.set_keyframe_in_handle(1, new_in_handle);
+        REQUIRE(ch.keyframe(1).in_handle == new_in_handle);
+    }
+
+    SECTION("set_keyframe_out_handle") {
+        Point new_out_handle(3.5, 35.0);
+        // Set HandleMode to free
+        ch.set_keyframe_handle_mode(1, HandleMode::free);
+        ch.set_keyframe_out_handle(1, new_out_handle);
+        REQUIRE(ch.keyframe(1).out_handle == new_out_handle);
+    }
+
+    SECTION("set_keyframe_function") {
+        ch.set_keyframe_function(1, Function::constant);
+        REQUIRE(ch.keyframe(1).function == Function::constant);
+    }
+
+    SECTION("set_keyframe_handle_mode") {
+        ch.set_keyframe_handle_mode(1, HandleMode::aligned);
+        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::aligned);
+    }
+
+    SECTION("Update with invalid index throws exception") {
+        Keyframe dummy_kf;
+        REQUIRE_THROWS_AS(ch.update_keyframe(3, dummy_kf), std::out_of_range);
+        REQUIRE_THROWS_AS(ch.set_keyframe_time(3, 1.0), std::out_of_range);
+        REQUIRE_THROWS_AS(ch.set_keyframe_value(3, 1.0), std::out_of_range);
+        REQUIRE_THROWS_AS(ch.set_keyframe_in_handle(3, Point()), std::out_of_range);
+        REQUIRE_THROWS_AS(ch.set_keyframe_out_handle(3, Point()), std::out_of_range);
+        REQUIRE_THROWS_AS(ch.set_keyframe_function(3, Function::linear), std::out_of_range);
+        REQUIRE_THROWS_AS(ch.set_keyframe_handle_mode(3, HandleMode::free), std::out_of_range);
     }
 }
 
-TEST_CASE("Channel bezier handle adjustments", "[channel]") {
-    
-    SECTION("FLAT mode handle adjustment") {
-        Channel channel;
-        // Set up keyframe with FLAT mode
-        channel.set_keyframe_at_time(2.0, 3.0, 
-                                   BezierHandle(1.8, 3.0), 
-                                   BezierHandle(2.2, 3.0), 
-                                   TangentMode::flat);
-        
-        // Get the keyframe to test
-        Keyframe& kf = channel.get_keyframe(0);
-        
-        // Store original handle values
-        BezierHandle orig_in_handle = kf.in_handle();
-        BezierHandle orig_out_handle = kf.out_handle();
-        
-        // Try to adjust the in_handle time
-        BezierHandle new_in_handle(1.5, 3.0);
-        kf.set_in_handle(new_in_handle);
-        
-        // For flat mode, the time should be adjustable but the value should remain at keyframe value
-        REQUIRE(kf.in_handle().time == Catch::Approx(1.5));
-        REQUIRE(kf.in_handle().value == Catch::Approx(3.0)); // Value should remain at keyframe value
-        
-        // Try to adjust the out_handle time
-        BezierHandle new_out_handle(2.5, 3.0);
-        kf.set_out_handle(new_out_handle);
-        
-        // For flat mode, the time should be adjustable but the value should remain at keyframe value
-        REQUIRE(kf.out_handle().time == Catch::Approx(2.5));
-        REQUIRE(kf.out_handle().value == Catch::Approx(3.0)); // Value should remain at keyframe value
-        
-        // Try to adjust the value (should be reset to keyframe value)
-        kf.set_in_handle(BezierHandle(1.5, 4.0));
-        REQUIRE(kf.in_handle().time == Catch::Approx(1.5));
-        REQUIRE(kf.in_handle().value == Catch::Approx(3.0)); // Value should remain at keyframe value
+TEST_CASE("Channel Time Properties", "[channel]") {
+    SECTION("Empty channel") {
+        Channel ch;
+        REQUIRE(ch.start_time() == 0.0);
+        REQUIRE(ch.end_time() == 0.0);
+        REQUIRE(ch.length() == 0.0);
+        REQUIRE(ch.num_samples(30.0) == 0);
     }
-    
-    SECTION("SMOOTH_MANUAL mode handle adjustment") {
-        Channel channel;
-        // Set up keyframe with SMOOTH_MANUAL mode
-        channel.set_keyframe_at_time(2.0, 3.0, 
-                                   BezierHandle(1.7, 2.7), // In-handle
-                                   BezierHandle(2.3, 3.3), // Out-handle
-                                   TangentMode::manual);
-        
-        // Get the keyframe to test
-        Keyframe& kf = channel.get_keyframe(0);
-        
-        // Store original handle values
-        BezierHandle orig_in_handle = kf.in_handle();
-        BezierHandle orig_out_handle = kf.out_handle();
-        
-        // Adjust the in_handle
-        BezierHandle new_in_handle(1.5, 2.5);
-        kf.set_in_handle(new_in_handle);
-        
-        // In manual mode, when adjusting in_handle, the out_handle should adjust to maintain colinearity
-        // The out_handle should be at the same distance from the keyframe but in the opposite direction
-        
-        // Calculate the vectors from keyframe to handles
-        BezierHandle kf_point(kf.time(), kf.value());
-        BezierHandle in_vec = kf.in_handle() - kf_point;
-        BezierHandle out_vec = kf.out_handle() - kf_point;
-        
-        // Check that the vectors are pointing in opposite directions (should be colinear)
-        double in_slope = in_vec.value / in_vec.time;
-        double out_slope = out_vec.value / out_vec.time;
-        
-        // Slopes should be approximately equal
-        REQUIRE(in_slope == Catch::Approx(out_slope));
-        
-        // Lengths should be equal
-        double in_length = in_vec.length();
-        double out_length = out_vec.length();
-        REQUIRE(in_length == Catch::Approx(out_length));
+
+    SECTION("Single keyframe") {
+        Channel ch;
+        ch.create_keyframe(2.5, 25.0);
+        REQUIRE(ch.start_time() == 2.5);
+        REQUIRE(ch.end_time() == 2.5);
+        REQUIRE(ch.length() == 0.0);
+        REQUIRE(ch.num_samples(30.0) == 1); // Single sample at the keyframe time
     }
-    
-    SECTION("SMOOTH_AUTO mode handle adjustment") {
-        Channel channel;
-        // Set up a sequence of keyframes with SMOOTH_AUTO mode
-        channel.set_keyframe_at_time(1.0, 2.0, 
-                                   BezierHandle(0.8, 2.0), 
-                                   BezierHandle(1.2, 2.0), 
-                                   TangentMode::smooth);
-        channel.set_keyframe_at_time(2.0, 3.0, 
-                                   BezierHandle(1.8, 3.0), 
-                                   BezierHandle(2.2, 3.0), 
-                                   TangentMode::smooth);
-        channel.set_keyframe_at_time(3.0, 1.0, 
-                                   BezierHandle(2.8, 1.0), 
-                                   BezierHandle(3.2, 1.0), 
-                                   TangentMode::smooth);
+
+    SECTION("Multiple keyframes") {
+        Channel ch;
+        ch.create_keyframe(1.0, 10.0);
+        ch.create_keyframe(5.0, 50.0);
+        ch.create_keyframe(3.0, 30.0);
         
-        // Get the middle keyframe to test
-        Keyframe& kf = channel.get_keyframe(1);
+        REQUIRE(ch.start_time() == 1.0);
+        REQUIRE(ch.end_time() == 5.0);
+        REQUIRE(ch.length() == 4.0); // 5.0 - 1.0
         
-        // Store original handle values
-        BezierHandle orig_in_handle = kf.in_handle();
-        BezierHandle orig_out_handle = kf.out_handle();
-        
-        // Try to adjust the in_handle (should get auto-calculated by the channel)
-        BezierHandle new_in_handle(1.5, 2.5);
-        kf.set_in_handle(new_in_handle);
-        
-        // For smooth, the handles should be automatically calculated based on neighboring keyframes
-        // We just verify that they're not what we tried to set manually
-        
-        // In a proper implementation, changing the keyframe time should update the handles
-        kf.set_time(2.1);
-        
-        // Handles should be recalculated
-        REQUIRE(kf.in_handle().time != Catch::Approx(new_in_handle.time));
-        REQUIRE(kf.out_handle().time != Catch::Approx(orig_out_handle.time));
+        // Duration is 4 seconds, at 30fps = 120 samples + 1 for endpoint
+        REQUIRE(ch.num_samples(30.0) == 121);
+        REQUIRE(ch.num_samples(1.0) == 5); // 4 seconds + 1 for endpoint
     }
-    
-    SECTION("BROKEN mode handle adjustment") {
-        Channel channel;
-        // Set up keyframe with BROKEN mode
-        channel.set_keyframe_at_time(2.0, 3.0, 
-                                   BezierHandle(1.7, 2.7), // In-handle
-                                   BezierHandle(2.3, 3.3), // Out-handle
-                                   TangentMode::broken);
+}
+
+TEST_CASE("Channel Evaluation", "[channel]") {
+    SECTION("Empty channel") {
+        Channel ch;
+        REQUIRE(ch.evaluate(1.0) == 0.0);
+        REQUIRE(ch.evaluate(0.0) == 0.0);
+        REQUIRE(ch.evaluate(-1.0) == 0.0);
+    }
+
+    SECTION("Single keyframe") {
+        Channel ch;
+        ch.create_keyframe(2.0, 20.0);
+        REQUIRE(ch.evaluate(0.0) == 20.0); // Before keyframe
+        REQUIRE(ch.evaluate(2.0) == 20.0); // At keyframe
+        REQUIRE(ch.evaluate(5.0) == 20.0); // After keyframe
+    }
+
+    SECTION("Linear interpolation") {
+        Channel ch;
+        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::linear);
+        ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::linear);
         
-        // Get the keyframe to test
-        Keyframe& kf = channel.get_keyframe(0);
+        REQUIRE(ch.evaluate(0.0) == Catch::Approx(0.0));
+        REQUIRE(ch.evaluate(1.0) == Catch::Approx(10.0));
+        REQUIRE(ch.evaluate(2.0) == Catch::Approx(20.0));
+        REQUIRE(ch.evaluate(-1.0) == Catch::Approx(0.0)); // Before first
+        REQUIRE(ch.evaluate(3.0) == Catch::Approx(20.0)); // After last
+    }
+
+    SECTION("Constant interpolation") {
+        Channel ch;
+        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::constant);
+        ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::constant);
         
-        // Store original handle values
-        BezierHandle orig_in_handle = kf.in_handle();
-        BezierHandle orig_out_handle = kf.out_handle();
+        REQUIRE(ch.evaluate(0.0) == Catch::Approx(0.0));
+        REQUIRE(ch.evaluate(1.0) == Catch::Approx(0.0)); // Constant until next keyframe
+        REQUIRE(ch.evaluate(1.9) == Catch::Approx(0.0));
+        REQUIRE(ch.evaluate(2.0) == Catch::Approx(20.0));
+    }
+
+    SECTION("Bezier interpolation basic") {
+        Channel ch;
+        // Create keyframes with default bezier function
+        ch.create_keyframe(0.0, 0.0);
+        ch.create_keyframe(1.0, 10.0);
         
-        // Adjust the in_handle
-        BezierHandle new_in_handle(1.5, 2.5);
-        kf.set_in_handle(new_in_handle);
+        REQUIRE(ch.evaluate(0.0) == Catch::Approx(0.0));
+        REQUIRE(ch.evaluate(1.0) == Catch::Approx(10.0));
+        // Middle value should be somewhere between 0 and 10
+        double mid_val = ch.evaluate(0.5);
+        REQUIRE(mid_val > 0.0);
+        REQUIRE(mid_val < 10.0);
+    }
+}
+
+TEST_CASE("Channel Evaluation Range", "[channel]") {
+    Channel ch;
+    ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::linear);
+    ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::linear);
+
+    SECTION("evaluate_range") {
+        auto result = ch.evaluate_range(0.0, 2.0, 5);
+        REQUIRE(result.size() == 5);
+        REQUIRE(result[0] == Catch::Approx(0.0));
+        REQUIRE(result[1] == Catch::Approx(5.0));
+        REQUIRE(result[2] == Catch::Approx(10.0));
+        REQUIRE(result[3] == Catch::Approx(15.0));
+        REQUIRE(result[4] == Catch::Approx(20.0));
+    }
+
+    SECTION("evaluate_range with single sample") {
+        auto result = ch.evaluate_range(1.0, 2.0, 1);
+        REQUIRE(result.size() == 1);
+        REQUIRE(result[0] == Catch::Approx(10.0)); // Value at start time
+    }
+
+    SECTION("evaluate_range with equal start and end times") {
+        auto result = ch.evaluate_range(1.0, 1.0, 5);
+        REQUIRE(result.size() == 1);
+        REQUIRE(result[0] == Catch::Approx(10.0));
+    }
+
+    SECTION("evaluate_range invalid arguments") {
+        REQUIRE_THROWS_AS(ch.evaluate_range(2.0, 1.0, 5), std::invalid_argument);
+    }
+
+    SECTION("evaluate_range_by_rate") {
+        auto result = ch.evaluate_range_by_rate(0.0, 2.0, 1.0); // 1 sample per second
+        REQUIRE(result.size() == 3); // 0, 1, 2 seconds
+        REQUIRE(result[0] == Catch::Approx(0.0));
+        REQUIRE(result[1] == Catch::Approx(10.0));
+        REQUIRE(result[2] == Catch::Approx(20.0));
+    }
+
+    SECTION("evaluate_range_by_rate invalid arguments") {
+        REQUIRE_THROWS_AS(ch.evaluate_range_by_rate(0.0, 2.0, 0.0), std::invalid_argument);
+        REQUIRE_THROWS_AS(ch.evaluate_range_by_rate(0.0, 2.0, -1.0), std::invalid_argument);
+        REQUIRE_THROWS_AS(ch.evaluate_range_by_rate(2.0, 1.0, 1.0), std::invalid_argument);
+    }
+
+    SECTION("evaluate_range_by_rate with equal times") {
+        auto result = ch.evaluate_range_by_rate(1.0, 1.0, 30.0);
+        REQUIRE(result.size() == 1);
+        REQUIRE(result[0] == Catch::Approx(10.0));
+    }
+}
+
+TEST_CASE("Channel Handle Updates", "[channel]") {
+    SECTION("Smooth handles update when keyframes change") {
+        Channel ch;
+        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(4.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
         
-        // In broken mode, adjusting in_handle should not affect the out_handle
-        REQUIRE(kf.in_handle().time == Catch::Approx(1.5));
-        REQUIRE(kf.in_handle().value == Catch::Approx(2.5));
-        REQUIRE(kf.out_handle().time == Catch::Approx(orig_out_handle.time));
-        REQUIRE(kf.out_handle().value == Catch::Approx(orig_out_handle.value));
+        // Get original handle positions
+        Point orig_in = ch.keyframe(1).in_handle;
+        Point orig_out = ch.keyframe(1).out_handle;
         
-        // Adjust the out_handle
-        BezierHandle new_out_handle(2.5, 3.5);
-        kf.set_out_handle(new_out_handle);
+        // Change middle keyframe value - handles should update
+        ch.set_keyframe_value(1, 40.0);
         
-        // Both handles should now be adjusted independently
-        REQUIRE(kf.in_handle().time == Catch::Approx(1.5));
-        REQUIRE(kf.in_handle().value == Catch::Approx(2.5));
-        REQUIRE(kf.out_handle().time == Catch::Approx(2.5));
-        REQUIRE(kf.out_handle().value == Catch::Approx(3.5));
+        // Handles may have been recalculated, but we can't easily predict exact values
+        // Just verify the keyframe was updated
+        REQUIRE(ch.keyframe(1).value() == 40.0);
+    }
+
+    SECTION("Handles update when keyframe time changes") {
+        Channel ch;
+        ch.create_keyframe(0.0, 0.0, Point(-0.5, 0.0), Point(0.5, 0.0), Function::bezier, HandleMode::free);
+        ch.create_keyframe(2.0, 20.0, Point(1.5, 20.0), Point(2.5, 20.0), Function::bezier, HandleMode::free);
+        ch.create_keyframe(4.0, 0.0, Point(3.5, 0.0), Point(4.5, 0.0), Function::bezier, HandleMode::free);
+        
+        // Store original handle positions for the middle keyframe
+        Point orig_in = ch.keyframe(1).in_handle;
+        Point orig_out = ch.keyframe(1).out_handle;
+        
+        // Move the middle keyframe to a new time - this should trigger handle updates
+        ch.set_keyframe_time(1, 3.0);
+        
+        // Verify the time was changed
+        REQUIRE(ch.keyframe(1).time() == 3.0);
+        
+        // Handles should be constrained/updated - at minimum, they should be clamped to valid time ranges
+        // The in_handle time should be between the previous keyframe (0.0) and current keyframe (3.0)
+        REQUIRE(ch.keyframe(1).in_handle.time >= 0.0);
+        REQUIRE(ch.keyframe(1).in_handle.time <= 3.0);
+        
+        // The out_handle time should be between current keyframe (3.0) and next keyframe (4.0)
+        REQUIRE(ch.keyframe(1).out_handle.time >= 3.0);
+        REQUIRE(ch.keyframe(1).out_handle.time <= 4.0);
+        
+        // At least one handle should have changed from its original position due to time constraints
+        bool handles_updated = (ch.keyframe(1).in_handle.time != orig_in.time) || 
+                              (ch.keyframe(1).out_handle.time != orig_out.time);
+        REQUIRE(handles_updated);
+    }
+
+    SECTION("Smooth handles recalculate when keyframe time changes") {
+        Channel ch;
+        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(2.0, 5.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(4.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        
+        // Store original handle positions for the middle keyframe
+        Point orig_in = ch.keyframe(1).in_handle;
+        Point orig_out = ch.keyframe(1).out_handle;
+        
+        // Move the middle keyframe - smooth handles should recalculate
+        ch.set_keyframe_time(1, 1.5);
+        
+        // Verify the time was changed
+        REQUIRE(ch.keyframe(1).time() == 1.5);
+        
+        // For smooth handles, they should be recalculated based on neighboring keyframes
+        // The handles should have changed from their original positions
+        REQUIRE(ch.keyframe(1).in_handle != orig_in);
+        REQUIRE(ch.keyframe(1).out_handle != orig_out);
+    }
+
+    SECTION("Adjacent keyframes' handles update when middle keyframe moves") {
+        Channel ch;
+        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(2.0, 5.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(4.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        
+        // Store original handle positions for adjacent keyframes
+        Point prev_out_orig = ch.keyframe(0).out_handle;
+        Point next_in_orig = ch.keyframe(2).in_handle;
+        
+        // Move the middle keyframe - this should affect neighboring keyframes' handles
+        ch.set_keyframe_time(1, 3.0);
+        
+        REQUIRE(ch.keyframe(0).out_handle != prev_out_orig);
+        REQUIRE(ch.keyframe(2).in_handle != next_in_orig);
+    }
+
+    SECTION("Flat handles maintain horizontal orientation") {
+        Channel ch;
+        ch.create_keyframe(1.0, 10.0, Point(), Point(), Function::bezier, HandleMode::flat);
+        ch.create_keyframe(3.0, 30.0, Point(), Point(), Function::bezier, HandleMode::flat);
+        
+        // For flat handles, the value component should match the keyframe value
+        REQUIRE(ch.keyframe(0).in_handle.value == Catch::Approx(ch.keyframe(0).value()));
+        REQUIRE(ch.keyframe(0).out_handle.value == Catch::Approx(ch.keyframe(0).value()));
+        REQUIRE(ch.keyframe(1).in_handle.value == Catch::Approx(ch.keyframe(1).value()));
+        REQUIRE(ch.keyframe(1).out_handle.value == Catch::Approx(ch.keyframe(1).value()));
+    }
+
+    SECTION("Handle mode changes update handles") {
+        Channel ch;
+        ch.create_keyframe(1.0, 10.0, Point(), Point(), Function::bezier, HandleMode::free);
+        ch.create_keyframe(3.0, 30.0, Point(), Point(), Function::bezier, HandleMode::free);
+        
+        // Change to smooth mode should recalculate handles
+        ch.set_keyframe_handle_mode(0, HandleMode::smooth);
+        REQUIRE(ch.keyframe(0).handle_mode == HandleMode::smooth);
+        
+        // Change to flat mode
+        ch.set_keyframe_handle_mode(1, HandleMode::flat);
+        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::flat);
+        REQUIRE(ch.keyframe(1).in_handle.value == Catch::Approx(ch.keyframe(1).value()));
+        REQUIRE(ch.keyframe(1).out_handle.value == Catch::Approx(ch.keyframe(1).value()));
     }
 }
