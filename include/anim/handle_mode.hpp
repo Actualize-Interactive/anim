@@ -1,7 +1,7 @@
 #ifndef ANIM_HANDLE_TYPE_HPP
 #define ANIM_HANDLE_TYPE_HPP
 
-
+#include <cstdint>
 
 namespace anim {
 

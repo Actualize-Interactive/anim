@@ -1,6 +1,8 @@
 #ifndef ANIM_FUNCTION_TYPE_HPP
 #define ANIM_FUNCTION_TYPE_HPP
 
+#include <cstdint>
+
 namespace anim {
 
 enum class Function : uint8_t {
