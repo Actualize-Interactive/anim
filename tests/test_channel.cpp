@@ -561,3 +561,291 @@ TEST_CASE("Channel Handle Updates", "[channel]") {
         REQUIRE(ch.keyframe(1).out_handle.value == Catch::Approx(ch.keyframe(1).value()));
     }
 }
+
+TEST_CASE("Channel Complex Animation Scenario", "[channel]") {
+    SECTION("Reproduce Python test scenario") {
+        Channel pos_x("pos_x");
+        Channel pos_y("pos_y");
+        Channel rotation("rotation");
+        
+        // Create animation data
+        std::vector<double> times = {0.0, 1.0, 2.0, 3.0, 4.0};
+        std::vector<double> x_values = {0.0, 10.0, 20.0, 15.0, 5.0};
+        std::vector<double> y_values = {0.0, 5.0, 10.0, 25.0, 30.0};
+        std::vector<double> rot_values = {0.0, 90.0, 180.0, 270.0, 360.0};
+        
+        std::vector<Function> functions = {Function::constant, Function::linear, Function::bezier, Function::linear, Function::bezier};
+        std::vector<HandleMode> handle_modes = {HandleMode::flat, HandleMode::smooth, HandleMode::free, HandleMode::aligned, HandleMode::smooth};
+        
+        // Add keyframes with different interpolation types
+        for (size_t i = 0; i < times.size(); ++i) {
+            pos_x.create_keyframe(times[i], x_values[i], functions[i], handle_modes[i]);
+            pos_y.create_keyframe(times[i], y_values[i], functions[i], handle_modes[i]);
+            rotation.create_keyframe(times[i], rot_values[i], functions[i], handle_modes[i]);
+        }
+        
+        REQUIRE(pos_x.num_keyframes() == 5);
+        REQUIRE(pos_y.num_keyframes() == 5);
+        REQUIRE(rotation.num_keyframes() == 5);
+        
+        // Test evaluation at various times
+        std::vector<double> test_times = {0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0};
+        for (double t : test_times) {
+            REQUIRE_NOTHROW(pos_x.evaluate(t));
+            REQUIRE_NOTHROW(pos_y.evaluate(t));
+            REQUIRE_NOTHROW(rotation.evaluate(t));
+            
+            double x_val = pos_x.evaluate(t);
+            double y_val = pos_y.evaluate(t);
+            double r_val = rotation.evaluate(t);
+            
+            REQUIRE(std::isfinite(x_val));
+            REQUIRE(std::isfinite(y_val));
+            REQUIRE(std::isfinite(r_val));
+        }
+        
+        // Test multiple evaluation ranges - this is where the error occurred
+        std::vector<double> sample_rates = {30.0, 60.0, 120.0};
+        for (double rate : sample_rates) {
+            REQUIRE_NOTHROW(pos_x.evaluate_range_by_rate(0.0, 4.0, rate));
+            
+            auto values = pos_x.evaluate_range_by_rate(0.0, 4.0, rate);
+            size_t expected_samples = static_cast<size_t>(std::ceil(4.0 * rate)) + 1;
+            REQUIRE(values.size() == expected_samples);
+            
+            // Verify all values are finite
+            for (double val : values) {
+                REQUIRE(std::isfinite(val));
+            }
+        }
+    }
+    
+    SECTION("Edge case: Very high sample rates") {
+        Channel ch;
+        ch.create_keyframe(0.0, 0.0, Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(1.0, 10.0, Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(2.0, 5.0, Function::bezier, HandleMode::smooth);
+        
+        // Test with very high sample rate that might cause precision issues
+        REQUIRE_NOTHROW(ch.evaluate_range_by_rate(0.0, 2.0, 1000.0));
+        
+        auto values = ch.evaluate_range_by_rate(0.0, 2.0, 1000.0);
+        for (double val : values) {
+            REQUIRE(std::isfinite(val));
+        }
+    }
+}
+
+TEST_CASE("Channel API Comprehensive Test", "[channel]") {
+    SECTION("Complete Channel API functionality test") {
+        // Create a test channel
+        Channel channel("test_channel");
+        
+        // Test initial channel state
+        REQUIRE(channel.name() == "test_channel");
+        REQUIRE(channel.size() == 0);
+        REQUIRE(channel.num_keyframes() == 0);
+        REQUIRE(channel.empty());
+        
+        // Test channel name setter
+        channel.set_name("renamed_channel");
+        REQUIRE(channel.name() == "renamed_channel");
+        
+        // Test keyframe creation methods
+        const Keyframe& kf1 = channel.create_keyframe(0.0, 1.0);
+        REQUIRE(kf1.time() == 0.0);
+        REQUIRE(kf1.value() == 1.0);
+        
+        // Test channel state after keyframe creation
+        REQUIRE(channel.size() == 1);
+        REQUIRE(channel.num_keyframes() == 1);
+        REQUIRE_FALSE(channel.empty());
+        
+        // Test keyframe creation with Point
+        Point point(2.0, 3.0);
+        const Keyframe& kf2 = channel.create_keyframe(point);
+        REQUIRE(kf2.time() == 2.0);
+        REQUIRE(kf2.value() == 3.0);
+        
+        // Test keyframe creation with handles
+        Point in_handle(1.5, 2.0);
+        Point out_handle(2.5, 4.0);
+        const Keyframe& kf3 = channel.create_keyframe(4.0, 5.0, in_handle, out_handle, Function::bezier, HandleMode::free);
+        REQUIRE(kf3.time() == 4.0);
+        REQUIRE(kf3.value() == 5.0);
+        REQUIRE(kf3.in_handle.time == Catch::Approx(2.0)); // the previous keyframe's time since the handle was set beyond it
+        REQUIRE(kf3.out_handle.time == Catch::Approx(2.5));
+        
+        // Test keyframe access by index
+        const Keyframe& retrieved_kf = channel.keyframe(0);
+        REQUIRE(retrieved_kf.time() == 0.0);
+        
+        // Test sequence protocol (size, operator[], has_keyframe)
+        REQUIRE(channel.size() == 3);
+        
+        const Keyframe& kf_by_index = channel[1];
+        REQUIRE(kf_by_index.time() == 2.0);
+        
+        REQUIRE(channel.has_keyframe(0.0)); // existing time
+        REQUIRE_FALSE(channel.has_keyframe(10.0)); // non-existing time
+        
+        // Test keyframe queries
+        const Keyframe& prev_kf = channel.prev_keyframe(3.0);
+        REQUIRE(prev_kf.time() == 2.0);
+        
+        const Keyframe& next_kf = channel.next_keyframe(1.0);
+        REQUIRE(next_kf.time() == 2.0);
+        
+        const Keyframe& closest_kf = channel.closest_keyframe(1.8);
+        REQUIRE(closest_kf.time() == 2.0);
+        
+        // Test keyframe modification methods
+        Keyframe new_kf(1.0, 10.0);
+        channel.update_keyframe(1, new_kf);
+        const Keyframe& updated_kf = channel.keyframe(1);
+        REQUIRE(updated_kf.time() == 1.0);
+        REQUIRE(updated_kf.value() == 10.0);
+        
+        channel.set_keyframe_time(1, 1.5);
+        REQUIRE(channel.keyframe(1).time() == 1.5);
+        
+        channel.set_keyframe_value(1, 15.0);
+        REQUIRE(channel.keyframe(1).value() == 15.0);
+        
+        Point new_point(1.8, 18.0);
+        channel.set_keyframe_position(1, new_point);
+        REQUIRE(channel.keyframe(1).time() == 1.8);
+        REQUIRE(channel.keyframe(1).value() == 18.0);
+        
+        channel.set_keyframe_position(1, 1.9, 19.0);
+        REQUIRE(channel.keyframe(1).time() == 1.9);
+        REQUIRE(channel.keyframe(1).value() == 19.0);
+        
+        // Test handle setters - set to free mode first to prevent automatic handle updates
+        channel.set_keyframe_handle_mode(1, HandleMode::free);
+        Point new_in_handle(1.0, 18.0);
+        Point new_out_handle(2.8, 20.0);
+        channel.set_keyframe_in_handle(1, new_in_handle);
+        channel.set_keyframe_out_handle(1, new_out_handle);
+        const Keyframe& updated_kf_handles = channel.keyframe(1);
+        REQUIRE(updated_kf_handles.in_handle.time == Catch::Approx(1.0));
+        REQUIRE(updated_kf_handles.out_handle.time == Catch::Approx(2.8));
+        
+        // Test function and handle mode setters
+        channel.set_keyframe_function(1, Function::linear);
+        REQUIRE(channel.keyframe(1).function == Function::linear);
+        
+        channel.set_keyframe_handle_mode(1, HandleMode::free);
+        REQUIRE(channel.keyframe(1).handle_mode == HandleMode::free);
+        
+        // Test evaluation
+        double value_at_0 = channel.evaluate(0.0);
+        REQUIRE(std::isfinite(value_at_0));
+        REQUIRE(value_at_0 == Catch::Approx(1.0));
+        
+        // Test evaluation ranges
+        auto values_range = channel.evaluate_range(0.0, 4.0, 5);
+        REQUIRE(values_range.size() == 5);
+        for (double v : values_range) {
+            REQUIRE(std::isfinite(v));
+        }
+        
+        auto values_by_rate = channel.evaluate_range_by_rate(0.0, 2.0, 1.0);
+        REQUIRE(values_by_rate.size() == 3); // 0, 1, 2 seconds at 1Hz
+        
+        // Test channel timing properties
+        REQUIRE(channel.start_time() == 0.0);
+        REQUIRE(channel.end_time() == 4.0);
+        REQUIRE(channel.length() == 4.0);
+        
+        // Test num_samples calculation
+        size_t num_samples = channel.num_samples(30.0);
+        REQUIRE(num_samples > 0);
+        
+        // Test keyframe removal
+        channel.delete_keyframe(1);
+        REQUIRE(channel.num_keyframes() == 2);
+        
+        // Verify the remaining keyframes are correct
+        REQUIRE(channel.keyframe(0).time() == 0.0);
+        REQUIRE(channel.keyframe(1).time() == 4.0);
+    }
+    
+    SECTION("Channel API error conditions") {
+        Channel channel("error_test");
+        
+        // Test errors on empty channel
+        REQUIRE_THROWS_AS(channel.keyframe(0), std::out_of_range);
+        REQUIRE_THROWS_AS(channel[0], std::out_of_range);
+        REQUIRE_THROWS_AS(channel.prev_keyframe(1.0), std::out_of_range);
+        REQUIRE_THROWS_AS(channel.next_keyframe(1.0), std::out_of_range);
+        REQUIRE_THROWS_AS(channel.closest_keyframe(1.0), std::out_of_range);
+        REQUIRE_THROWS_AS(channel.delete_keyframe(0), std::out_of_range);
+        
+        // Add some keyframes for further error testing
+        channel.create_keyframe(1.0, 10.0);
+        channel.create_keyframe(3.0, 30.0);
+        
+        // Test errors with invalid indices
+        REQUIRE_THROWS_AS(channel.keyframe(5), std::out_of_range);
+        REQUIRE_THROWS_AS(channel[5], std::out_of_range);
+        REQUIRE_THROWS_AS(channel.delete_keyframe(5), std::out_of_range);
+        REQUIRE_THROWS_AS(channel.update_keyframe(5, Keyframe()), std::out_of_range);
+        REQUIRE_THROWS_AS(channel.set_keyframe_time(5, 2.0), std::out_of_range);
+        REQUIRE_THROWS_AS(channel.set_keyframe_value(5, 20.0), std::out_of_range);
+        REQUIRE_THROWS_AS(channel.set_keyframe_position(5, Point(2.0, 20.0)), std::out_of_range);
+        REQUIRE_THROWS_AS(channel.set_keyframe_in_handle(5, Point()), std::out_of_range);
+        REQUIRE_THROWS_AS(channel.set_keyframe_out_handle(5, Point()), std::out_of_range);
+        REQUIRE_THROWS_AS(channel.set_keyframe_function(5, Function::linear), std::out_of_range);
+        REQUIRE_THROWS_AS(channel.set_keyframe_handle_mode(5, HandleMode::smooth), std::out_of_range);
+        
+        // Test range evaluation errors
+        REQUIRE_THROWS_AS(channel.evaluate_range(3.0, 1.0, 5), std::invalid_argument); // start > end
+        REQUIRE_THROWS_AS(channel.evaluate_range_by_rate(0.0, 2.0, 0.0), std::invalid_argument); // zero rate
+        REQUIRE_THROWS_AS(channel.evaluate_range_by_rate(0.0, 2.0, -1.0), std::invalid_argument); // negative rate
+        REQUIRE_THROWS_AS(channel.evaluate_range_by_rate(2.0, 1.0, 1.0), std::invalid_argument); // start > end
+        
+        // Test num_samples error
+        REQUIRE_THROWS_AS(channel.num_samples(0.0), std::invalid_argument); // zero rate
+        REQUIRE_THROWS_AS(channel.num_samples(-1.0), std::invalid_argument); // negative rate
+    }
+    
+    SECTION("Channel emplace keyframe functionality") {
+        Channel channel("emplace_test");
+        
+        // Test emplace_keyframe
+        Keyframe new_kf(2.0, 20.0, Function::linear, HandleMode::smooth);
+        const Keyframe& emplaced_kf = channel.emplace_keyframe(std::move(new_kf));
+        REQUIRE(emplaced_kf.time() == 2.0);
+        REQUIRE(emplaced_kf.value() == 20.0);
+        REQUIRE(emplaced_kf.function == Function::linear);
+        REQUIRE(emplaced_kf.handle_mode == HandleMode::smooth);
+        
+        // Verify it was added to the channel
+        REQUIRE(channel.num_keyframes() == 1);
+        REQUIRE(channel.has_keyframe(2.0));
+    }
+    
+    SECTION("Channel keyframe access boundary conditions") {
+        Channel channel("boundary_test");
+        channel.create_keyframe(1.0, 10.0);
+        channel.create_keyframe(3.0, 30.0);
+        channel.create_keyframe(5.0, 50.0);
+        
+        // Test prev_keyframe boundary conditions
+        REQUIRE_THROWS_AS(channel.prev_keyframe(1.0), std::out_of_range); // at first keyframe
+        REQUIRE_THROWS_AS(channel.prev_keyframe(0.0), std::out_of_range); // before first keyframe
+        REQUIRE(channel.prev_keyframe(6.0).time() == 5.0); // after last keyframe
+        
+        // Test next_keyframe boundary conditions
+        REQUIRE_THROWS_AS(channel.next_keyframe(5.0), std::out_of_range); // at last keyframe
+        REQUIRE_THROWS_AS(channel.next_keyframe(6.0), std::out_of_range); // after last keyframe
+        REQUIRE(channel.next_keyframe(0.0).time() == 1.0); // before first keyframe
+        
+        // Test closest_keyframe behavior
+        REQUIRE(channel.closest_keyframe(0.0).time() == 1.0); // before first
+        REQUIRE(channel.closest_keyframe(6.0).time() == 5.0); // after last
+        REQUIRE(channel.closest_keyframe(2.0).time() == 1.0); // midpoint bias to earlier
+        REQUIRE(channel.closest_keyframe(2.1).time() == 3.0); // closer to second
+    }
+}

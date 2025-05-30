@@ -73,11 +73,17 @@ double solve_t_for_time_bisection(
         throw std::out_of_range("Target time is outside the curve segment");
     }
     
+    // Clamp the initial bounds to [0, 1] to prevent invalid argument
+    t_min = std::max(0.0, std::min(1.0, t_min));
+    t_max = std::max(0.0, std::min(1.0, t_max));
+    
+    // Ensure t_min <= t_max
+    if (t_min > t_max) {
+        std::swap(t_min, t_max);
+    }
+    
     // Binary search to find the parameter t
     double t = (t_min + t_max) / 2.0;
-    if (t < 0.0 || t > 1.0) {
-        throw std::invalid_argument("Initial t must be in range [0, 1]");
-    }
     
     for (int i = 0; i < max_iterations; ++i) {
         auto mid_time = evaluate_bezier_time_component(p0, p1, p2, p3, t);
@@ -137,8 +143,7 @@ double solve_t_for_time(
         if (std::abs(derivative) < 1e-6) {
             // Derivative is zero, can't proceed with Newton-Raphson
             return solve_t_for_time_bisection(P0, P1, P2, P3, 
-                target_time, 
-                initial_guess ? *initial_guess : 0.0, 1.0);
+                target_time, 0.0, 1.0);  // Use safe bounds
         }
 
         current_t -= error / derivative;
@@ -147,8 +152,7 @@ double solve_t_for_time(
     // Failed to converge, fallback to bisection method
 
     return solve_t_for_time_bisection(P0, P1, P2, P3, 
-        target_time, 
-        initial_guess ? *initial_guess : 0.0, 1.0);
+        target_time, 0.0, 1.0);  // Use safe bounds
 }
 
 
