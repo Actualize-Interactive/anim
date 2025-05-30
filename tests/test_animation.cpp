@@ -50,30 +50,25 @@ TEST_CASE("Animation Channel Management", "[Animation]") {
         REQUIRE(anim.channel(1).name() == "Chan1");
 
         REQUIRE_THROWS_AS(anim.create_channel("Chan3", 5), std::out_of_range);
-    }
-
-    SECTION("Emplace channel") {
-        anim.emplace_channel(Channel("EmplacedChan"));
-        REQUIRE(anim.num_channels() == 1);
-        REQUIRE(anim.has_channel("EmplacedChan"));
-        REQUIRE(anim.channel(0).name() == "EmplacedChan");
-    }
-
-    SECTION("Insert channel") {
-        Channel ch_const("ConstInsertedChan");
-        anim.insert_channel(0, ch_const);
+    }    SECTION("Create channel variations") {
+        Animation animation("VariationTest");
+        Channel& ch = animation.create_channel("CreatedChan");
+        REQUIRE(animation.num_channels() == 1);
+        REQUIRE(animation.has_channel("CreatedChan"));
+        REQUIRE(animation.channel(0).name() == "CreatedChan");
+    }SECTION("Insert channel at position") {
+        Channel& ch1 = anim.create_channel("FirstChan", 0);
         REQUIRE(anim.num_channels() == 1);
         REQUIRE(anim.size() == 1);
-        REQUIRE(anim.has_channel("ConstInsertedChan"));
-        REQUIRE(anim.channel(0).name() == "ConstInsertedChan");
+        REQUIRE(anim.has_channel("FirstChan"));
+        REQUIRE(anim.channel(0).name() == "FirstChan");
 
-        anim.insert_channel(1, Channel("RValInsertedChan"));
+        Channel& ch2 = anim.create_channel("SecondChan");
         REQUIRE(anim.num_channels() == 2);
-        REQUIRE(anim.has_channel("RValInsertedChan"));
-        REQUIRE(anim.channel(1).name() == "RValInsertedChan");
+        REQUIRE(anim.has_channel("SecondChan"));
+        REQUIRE(anim.channel(1).name() == "SecondChan");
 
-        REQUIRE_THROWS_AS(anim.insert_channel(5, ch_const), std::out_of_range);
-        REQUIRE_THROWS_AS(anim.insert_channel(5, Channel("RVal")), std::out_of_range);
+        REQUIRE_THROWS_AS(anim.create_channel("ThirdChan", 5), std::out_of_range);
     }
 
     SECTION("Access channels") {
@@ -151,19 +146,18 @@ TEST_CASE("Animation Channel Management", "[Animation]") {
         REQUIRE(anim.num_channels() == 0);
     }
     
-    SECTION("Channels accessor") {
-        anim.create_channel("C1");
+    SECTION("Channels accessor") {        anim.create_channel("C1");
         anim.create_channel("C2");
         
-        std::vector<Channel>& channels_ref = anim.channels();
+        auto channels_ref = anim.channels();
         REQUIRE(channels_ref.size() == 2);
-        channels_ref[0].set_name("NewC1");
+        channels_ref[0].get().set_name("NewC1");
         REQUIRE(anim.channel(0).name() == "NewC1");
 
         const Animation& const_anim = anim;
-        const std::vector<Channel>& const_channels_ref = const_anim.channels();
+        auto const_channels_ref = const_anim.channels();
         REQUIRE(const_channels_ref.size() == 2);
-        REQUIRE(const_channels_ref[0].name() == "NewC1");
+        REQUIRE(const_channels_ref[0].get().name() == "NewC1");
     }
 }
 
@@ -303,15 +297,13 @@ TEST_CASE("Animation API Comprehensive Test", "[Animation]") {
         REQUIRE(animation.num_channels() == 2);
         REQUIRE(animation.channel(0).name() == "pos_y");
         REQUIRE(animation.channel(1).name() == "pos_x");
-        
-        // Test emplace channel
-        animation.emplace_channel(Channel("rotation"));
+          // Test create additional channel
+        animation.create_channel("rotation");
         REQUIRE(animation.num_channels() == 3);
         REQUIRE(animation.has_channel("rotation"));
         
-        // Test insert channel
-        Channel scale_channel("scale");
-        animation.insert_channel(1, scale_channel);
+        // Test create channel at position
+        animation.create_channel("scale", 1);
         REQUIRE(animation.num_channels() == 4);
         REQUIRE(animation.channel(1).name() == "scale");
         
@@ -325,17 +317,16 @@ TEST_CASE("Animation API Comprehensive Test", "[Animation]") {
         // Test channel names
         auto names = animation.channel_names();
         REQUIRE(names.size() == 4);
-        REQUIRE(std::find(names.begin(), names.end(), "pos_x") != names.end());
-        REQUIRE(std::find(names.begin(), names.end(), "pos_y") != names.end());
+        REQUIRE(std::find(names.begin(), names.end(), "pos_x") != names.end());        REQUIRE(std::find(names.begin(), names.end(), "pos_y") != names.end());
         REQUIRE(std::find(names.begin(), names.end(), "rotation") != names.end());
         REQUIRE(std::find(names.begin(), names.end(), "scale") != names.end());
         
         // Test channels accessor
-        std::vector<Channel>& channels_ref = animation.channels();
+        auto channels_ref = animation.channels();
         REQUIRE(channels_ref.size() == 4);
         
         const Animation& const_animation = animation;
-        const std::vector<Channel>& const_channels_ref = const_animation.channels();
+        auto const_channels_ref = const_animation.channels();
         REQUIRE(const_channels_ref.size() == 4);
         
         // Test adding keyframes to channels through animation
@@ -395,10 +386,9 @@ TEST_CASE("Animation API Comprehensive Test", "[Animation]") {
         
         // Test errors with invalid indices
         REQUIRE_THROWS_AS(animation.channel(5), std::out_of_range);
-        REQUIRE_THROWS_AS(animation[5], std::out_of_range);
-        REQUIRE_THROWS_AS(animation.remove_channel(5), std::out_of_range);
+        REQUIRE_THROWS_AS(animation[5], std::out_of_range);        REQUIRE_THROWS_AS(animation.remove_channel(5), std::out_of_range);
         REQUIRE_THROWS_AS(animation.create_channel("test3", 5), std::out_of_range);
-        REQUIRE_THROWS_AS(animation.insert_channel(5, Channel("test4")), std::out_of_range);
+        REQUIRE_THROWS_AS(animation.create_channel("test4", 5), std::out_of_range);
         
         // Test timing errors
         REQUIRE_THROWS_AS(animation.set_length(-1.0), std::invalid_argument);
@@ -468,11 +458,10 @@ TEST_CASE("Animation API Comprehensive Test", "[Animation]") {
         REQUIRE(const_anim.size() == 2);
         REQUIRE_FALSE(const_anim.empty());
         REQUIRE(const_anim.has_channel("ch1"));
-        
-        auto const_names = const_anim.channel_names();
+          auto const_names = const_anim.channel_names();
         REQUIRE(const_names.size() == 2);
         
-        const std::vector<Channel>& const_channels = const_anim.channels();
+        auto const_channels = const_anim.channels();
         REQUIRE(const_channels.size() == 2);
     }
 }

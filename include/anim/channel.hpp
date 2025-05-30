@@ -3,6 +3,7 @@
 
 #include "anim/keyframe.hpp"
 #include "anim/handle_utils.hpp"
+#include "anim/id.hpp"
 #include <vector>
 #include <algorithm>
 #include <optional>
@@ -12,12 +13,29 @@
 
 namespace anim {
 
+// Forward declaration
+class Animation;
+
 class Channel {
+    friend class Animation; // Allow Animation to access protected constructor
+
+protected:
+    // Delete public constructors and copy operations to prevent direct creation and ID duplication
+    Channel() = delete;
+    Channel(const Channel&) = delete;
+    Channel& operator=(const Channel&) = delete;
+    Channel(Channel&&) = default;
+    Channel& operator=(Channel&&) = default;
+    
+    // Only Animation can create Channel objects with specific IDs
+    explicit Channel(const std::string& name, uint64_t id) : m_name(name), m_id(id) {}
+
 public:
-    Channel() = default;
-    explicit Channel(const std::string& name) : m_name(name) {}
     inline const std::string& name() const { return m_name; }
     inline void set_name(const std::string& name) { m_name = name; }
+    
+    // ID accessor
+    inline Id id() const { return m_id; }
 
     const Keyframe& create_keyframe(double time, double value,
         Function function = Function::bezier, HandleMode handle_mode = HandleMode::smooth);
@@ -61,8 +79,12 @@ public:
     double length() const;
     size_t num_samples(double sample_rate) const;
 
+    // Copy keyframes from another channel (for use by Animation::copy_channel)
+    void copy_keyframes_from(const Channel& source);
+
 private:
     std::string m_name;
+    const Id m_id; // Immutable ID - each channel has a unique identity
     std::vector<Keyframe> m_keyframes;
 
 
