@@ -278,3 +278,157 @@ TEST_CASE("Creating Bezier handles", "[bezier_utils]") {
         REQUIRE(out_handle.time < kf.time); // Out handle is to the left
     }
 }
+
+TEST_CASE("Bezier time solving edge cases", "[bezier_utils]") {
+    SECTION("solve_t_for_time with fallback to bisection") {
+        // Create a curve that might cause Newton-Raphson to fail
+        Point p0(0.0, 0.0);
+        Point p1(0.1, 10.0);  // Sharp curve up
+        Point p2(3.9, -5.0);  // Sharp curve down
+        Point p3(4.0, 5.0);
+        
+        // Test various target times
+        std::vector<double> target_times = {0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5};
+        
+        for (double target_time : target_times) {
+            if (target_time >= p0.time && target_time <= p3.time) {
+                double t = bezier_utils::solve_t_for_time(p0, p1, p2, p3, target_time);
+                REQUIRE(t >= 0.0);
+                REQUIRE(t <= 1.0);
+                
+                // Verify the solution
+                Point result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, t);
+                REQUIRE(result.time == Catch::Approx(target_time).margin(0.01));
+            }
+        }
+    }
+    
+    SECTION("solve_t_for_time_bisection with valid bounds") {
+        Point p0(0.0, 0.0);
+        Point p1(1.0, 1.0);
+        Point p2(2.0, 2.0);
+        Point p3(3.0, 3.0);
+        
+        // Test with explicit bounds
+        double t = bezier_utils::solve_t_for_time_bisection(p0, p1, p2, p3, 1.5, 0.0, 1.0);
+        REQUIRE(t >= 0.0);
+        REQUIRE(t <= 1.0);
+        
+        Point result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, t);
+        REQUIRE(result.time == Catch::Approx(1.5).margin(0.01));
+    }
+    
+    SECTION("solve_t_for_time_bisection with invalid initial bounds should clamp") {
+        Point p0(0.0, 0.0);
+        Point p1(1.0, 1.0);
+        Point p2(2.0, 2.0);
+        Point p3(3.0, 3.0);
+        
+        // This should not throw even with invalid bounds - function should handle it
+        REQUIRE_NOTHROW(bezier_utils::solve_t_for_time_bisection(p0, p1, p2, p3, 1.5, -0.5, 1.5));
+    }
+    
+    SECTION("Complex curve that might trigger bisection fallback") {
+        // Create a curve where the time component has an inflection point
+        Point p0(0.0, 0.0);
+        Point p1(2.0, 10.0);   // Handle goes forward in time
+        Point p2(1.0, 15.0);   // Handle goes backward in time (creates time loop)
+        Point p3(4.0, 20.0);
+        
+        // Even with this complex curve, solving should work
+        double target_time = 2.0;
+        if (target_time >= p0.time && target_time <= p3.time) {
+            double t = bezier_utils::solve_t_for_time(p0, p1, p2, p3, target_time);
+            REQUIRE(t >= 0.0);
+            REQUIRE(t <= 1.0);
+        }
+    }
+
+    SECTION("Newton-Raphson fallback to bisection when derivative is zero") {
+        // Create a curve where the time derivative becomes zero, forcing fallback
+        Point p0(0.0, 0.0);
+        Point p1(1.0, 5.0);   // Creates a curve where derivative might be zero
+        Point p2(1.0, 10.0);  // Same time as p1, creates zero derivative region
+        Point p3(2.0, 15.0);
+        
+        // Test various target times that might trigger the fallback
+        std::vector<double> target_times = {0.5, 1.0, 1.5};
+        
+        for (double target_time : target_times) {
+            if (target_time >= p0.time && target_time <= p3.time) {
+                // This should not throw, even when falling back to bisection
+                REQUIRE_NOTHROW(bezier_utils::solve_t_for_time(p0, p1, p2, p3, target_time));
+                
+                double t = bezier_utils::solve_t_for_time(p0, p1, p2, p3, target_time);
+                REQUIRE(t >= 0.0);
+                REQUIRE(t <= 1.0);
+                
+                // Verify the solution is reasonably accurate
+                Point result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, t);
+                REQUIRE(result.time == Catch::Approx(target_time).margin(0.05));
+            }
+        }
+    }
+    
+    SECTION("Newton-Raphson fallback to bisection after max iterations") {
+        // Create a curve that might be hard for Newton-Raphson to converge on
+        Point p0(0.0, 0.0);
+        Point p1(0.001, 100.0);  // Very steep initial slope
+        Point p2(1.999, -50.0);  // Very steep final slope
+        Point p3(2.0, 10.0);
+        
+        // Use a very low max_iterations to force fallback
+        double target_time = 1.0;
+        double t = bezier_utils::solve_t_for_time(p0, p1, p2, p3, target_time, nullptr, 1e-6, 2); // Only 2 iterations
+        
+        REQUIRE(t >= 0.0);
+        REQUIRE(t <= 1.0);
+        
+        // Even with forced fallback, should get reasonable result
+        Point result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, t);
+        REQUIRE(result.time == Catch::Approx(target_time).margin(0.1));
+    }
+    
+    SECTION("Bisection fallback with invalid initial guess") {
+        Point p0(0.0, 0.0);
+        Point p1(1.0, 1.0);
+        Point p2(2.0, 2.0);
+        Point p3(3.0, 3.0);
+        
+        // Provide an invalid initial guess that would cause bisection to get invalid bounds
+        double invalid_guess = -0.5; // Outside [0,1] range
+        double target_time = 1.5;
+        
+        // This should not throw even with invalid initial guess
+        REQUIRE_NOTHROW(bezier_utils::solve_t_for_time(p0, p1, p2, p3, target_time, &invalid_guess));
+        
+        double t = bezier_utils::solve_t_for_time(p0, p1, p2, p3, target_time, &invalid_guess);
+        REQUIRE(t >= 0.0);
+        REQUIRE(t <= 1.0);
+        
+        Point result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, t);
+        REQUIRE(result.time == Catch::Approx(target_time).margin(0.01));
+    }
+    
+    SECTION("Direct test of problematic curve that triggers bisection bounds issue") {
+        // Create a curve similar to what might be generated in the Python test
+        Point p0(0.0, 0.0);
+        Point p1(0.33, 3.33);   // Approximates smooth handles
+        Point p2(0.67, 6.67);   // Approximates smooth handles  
+        Point p3(1.0, 10.0);
+        
+        // Test with many sample points like evaluate_range_by_rate would do
+        for (int i = 0; i <= 100; ++i) {
+            double target_time = 0.0 + (1.0 * i) / 100.0;
+            
+            REQUIRE_NOTHROW(bezier_utils::solve_t_for_time(p0, p1, p2, p3, target_time));
+            
+            double t = bezier_utils::solve_t_for_time(p0, p1, p2, p3, target_time);
+            REQUIRE(t >= 0.0);
+            REQUIRE(t <= 1.0);
+            
+            Point result = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, t);
+            REQUIRE(result.time == Catch::Approx(target_time).margin(0.01));
+        }
+    }
+}
