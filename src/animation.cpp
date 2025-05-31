@@ -216,22 +216,12 @@ std::vector<std::string> Animation::channel_names() const {
     return names;
 }
 
-std::vector<std::reference_wrapper<Channel>> Animation::channels() {
-    std::vector<std::reference_wrapper<Channel>> refs;
-    refs.reserve(m_channels.size());
-    for (auto& channel_ptr : m_channels) {
-        refs.emplace_back(*channel_ptr);
-    }
-    return refs;
+const std::vector<std::unique_ptr<Channel>>& Animation::channels() {
+    return m_channels;
 }
 
-std::vector<std::reference_wrapper<const Channel>> Animation::channels() const {
-    std::vector<std::reference_wrapper<const Channel>> refs;
-    refs.reserve(m_channels.size());
-    for (const auto& channel_ptr : m_channels) {
-        refs.emplace_back(*channel_ptr);
-    }
-    return refs;
+const std::vector<std::unique_ptr<Channel>>& Animation::channels() const {
+    return m_channels;
 }
 
 void Animation::set_start_time(double start_time) { 
