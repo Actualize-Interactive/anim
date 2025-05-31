@@ -55,8 +55,8 @@ public:
     void remove_channel(Id channel_id);
 
     std::vector<std::string> channel_names() const;
-    std::vector<std::reference_wrapper<Channel>> channels();
-    std::vector<std::reference_wrapper<const Channel>> channels() const;
+    const std::vector<std::unique_ptr<Channel>>& channels();
+    const std::vector<std::unique_ptr<Channel>>& channels() const;
 
     inline double start_time() const { return m_start_time; }
     void set_start_time(double start_time);

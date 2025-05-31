@@ -149,15 +149,15 @@ TEST_CASE("Animation Channel Management", "[Animation]") {
     SECTION("Channels accessor") {        animation.create_channel("C1");
         animation.create_channel("C2");
         
-        auto channels_ref = animation.channels();
-        REQUIRE(channels_ref.size() == 2);
-        channels_ref[0].get().set_name("NewC1");
+        auto& channels = animation.channels();
+        REQUIRE(channels.size() == 2);
+        channels[0].get()->set_name("NewC1");
         REQUIRE(animation.channel(0).name() == "NewC1");
 
         const Animation& const_anim = animation;
-        auto const_channels_ref = const_anim.channels();
-        REQUIRE(const_channels_ref.size() == 2);
-        REQUIRE(const_channels_ref[0].get().name() == "NewC1");
+        auto& const_channels = const_anim.channels();
+        REQUIRE(const_channels.size() == 2);
+        REQUIRE(const_channels[0].get()->name() == "NewC1");
     }
 
     SECTION("Reorder by index") {
@@ -412,12 +412,12 @@ TEST_CASE("Animation API Comprehensive Test", "[Animation]") {
         REQUIRE(std::find(names.begin(), names.end(), "scale") != names.end());
         
         // Test channels accessor
-        auto channels_ref = animation.channels();
-        REQUIRE(channels_ref.size() == 4);
+        auto& channels = animation.channels();
+        REQUIRE(channels.size() == 4);
         
         const Animation& const_animation = animation;
-        auto const_channels_ref = const_animation.channels();
-        REQUIRE(const_channels_ref.size() == 4);
+        auto& const_channels = const_animation.channels();
+        REQUIRE(const_channels.size() == 4);
         
         // Test adding keyframes to channels through animation
         animation.channel("pos_x").create_keyframe(0.0, 0.0);
@@ -551,7 +551,7 @@ TEST_CASE("Animation API Comprehensive Test", "[Animation]") {
           auto const_names = const_anim.channel_names();
         REQUIRE(const_names.size() == 2);
         
-        auto const_channels = const_anim.channels();
+        auto& const_channels = const_anim.channels();
         REQUIRE(const_channels.size() == 2);
     }
 }
