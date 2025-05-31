@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <string>
+#include <memory>
 
 namespace anim {
 

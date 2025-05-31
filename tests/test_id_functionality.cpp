@@ -66,14 +66,14 @@ TEST_CASE("Animation ID-based channel access", "[Animation][Id]") {
         Id id2 = ch2.id();
         
         // Access channels by ID
-        REQUIRE(&animation.channel(id1) == &ch1);
-        REQUIRE(&animation.channel(id2) == &ch2);
-        REQUIRE(&animation[id1] == &ch1);
-        REQUIRE(&animation[id2] == &ch2);
+        REQUIRE(animation.channel(id1) == &ch1);
+        REQUIRE(animation.channel(id2) == &ch2);
+        REQUIRE(animation[id1] == &ch1);
+        REQUIRE(animation[id2] == &ch2);
         
         // Verify we can access the channel's properties through ID
-        REQUIRE(animation.channel(id1).name() == "channel1");
-        REQUIRE(animation.channel(id2).name() == "channel2");
+        REQUIRE(animation.channel(id1)->name() == "channel1");
+        REQUIRE(animation.channel(id2)->name() == "channel2");
     }
     
     SECTION("Invalid ID throws exception") {
@@ -120,9 +120,9 @@ TEST_CASE("Channel reordering", "[Animation][Id]") {
         REQUIRE(animation.channel(2).name() == "channel2");
         
         // IDs should still work
-        REQUIRE(&animation.channel(id1) == &ch1);
-        REQUIRE(&animation.channel(id2) == &ch2);
-        REQUIRE(&animation.channel(id3) == &ch3);
+        REQUIRE(animation.channel(id1) == &ch1);
+        REQUIRE(animation.channel(id2) == &ch2);
+        REQUIRE(animation.channel(id3) == &ch3);
     }
       SECTION("Reorder by name") {
         Channel& ch1 = animation.create_channel("channel1");
@@ -140,7 +140,7 @@ TEST_CASE("Channel reordering", "[Animation][Id]") {
         REQUIRE(animation.channel(2).name() == "channel1");
         
         // ID access should still work
-        REQUIRE(&animation.channel(id1) == &ch1);
+        REQUIRE(animation.channel(id1) == &ch1);
     }
     
     SECTION("Reorder by ID") {
@@ -159,7 +159,7 @@ TEST_CASE("Channel reordering", "[Animation][Id]") {
         REQUIRE(animation.channel(2).name() == "channel3");
         
         // ID access should still work
-        REQUIRE(&animation.channel(id2) == &ch2);
+        REQUIRE(animation.channel(id2) == &ch2);
     }
 }
 
@@ -226,14 +226,14 @@ TEST_CASE("Animation ID-based channel access with const support", "[Animation][I
         Id id2 = ch2.id();
         
         // Access channels by ID
-        REQUIRE(&animation.channel(id1) == &ch1);
-        REQUIRE(&animation.channel(id2) == &ch2);
-        REQUIRE(&animation[id1] == &ch1);
-        REQUIRE(&animation[id2] == &ch2);
+        REQUIRE(animation.channel(id1) == &ch1);
+        REQUIRE(animation.channel(id2) == &ch2);
+        REQUIRE(animation[id1] == &ch1);
+        REQUIRE(animation[id2] == &ch2);
         
         // Verify we can access the channel's properties through ID
-        REQUIRE(animation.channel(id1).name() == "channel1");
-        REQUIRE(animation.channel(id2).name() == "channel2");
+        REQUIRE(animation.channel(id1)->name() == "channel1");
+        REQUIRE(animation.channel(id2)->name() == "channel2");
     }
     
     SECTION("Access const channel by ID") {
@@ -248,14 +248,14 @@ TEST_CASE("Animation ID-based channel access with const support", "[Animation][I
         const Animation& const_animation = animation;
         
         // Access const channels by ID
-        REQUIRE(&const_animation.channel(id1) == &ch1);
-        REQUIRE(&const_animation.channel(id2) == &ch2);
-        REQUIRE(&const_animation[id1] == &ch1);
-        REQUIRE(&const_animation[id2] == &ch2);
+        REQUIRE(const_animation.channel(id1) == &ch1);
+        REQUIRE(const_animation.channel(id2) == &ch2);
+        REQUIRE(const_animation[id1] == &ch1);
+        REQUIRE(const_animation[id2] == &ch2);
         
         // Verify we can access the channel's properties through ID
-        REQUIRE(const_animation.channel(id1).name() == "channel1");
-        REQUIRE(const_animation.channel(id2).name() == "channel2");
+        REQUIRE(const_animation.channel(id1)->name() == "channel1");
+        REQUIRE(const_animation.channel(id2)->name() == "channel2");
     }
     
     SECTION("Invalid ID throws exception") {
@@ -288,9 +288,9 @@ TEST_CASE("Channel map maintenance", "[Animation][Id]") {
         Channel& ch3 = animation.create_channel("channel3"); // Normal creation
         
         // Verify all channels are accessible by ID
-        REQUIRE(&animation.channel(ch1.id()) == &ch1);
-        REQUIRE(&animation.channel(ch2.id()) == &ch2);
-        REQUIRE(&animation.channel(ch3.id()) == &ch3);
+        REQUIRE(animation.channel(ch1.id()) == &ch1);
+        REQUIRE(animation.channel(ch2.id()) == &ch2);
+        REQUIRE(animation.channel(ch3.id()) == &ch3);
         
         // Verify channel order in vector is correct
         REQUIRE(animation.channel(0).name() == "channel2"); // ch2 was inserted at index 0
@@ -307,9 +307,9 @@ TEST_CASE("Channel map maintenance", "[Animation][Id]") {
         Channel& ch3 = animation.create_channel("channel3"); // Add at end
         
         // Verify all channels are accessible by ID
-        REQUIRE(&animation.channel(ch1.id()) == &ch1);
-        REQUIRE(&animation.channel(ch2.id()) == &ch2);
-        REQUIRE(&animation.channel(ch3.id()) == &ch3);
+        REQUIRE(animation.channel(ch1.id()) == &ch1);
+        REQUIRE(animation.channel(ch2.id()) == &ch2);
+        REQUIRE(animation.channel(ch3.id()) == &ch3);
           // Verify insertion order
         REQUIRE(animation.channel(0).name() == "channel2");
         REQUIRE(animation.channel(1).name() == "channel1");
@@ -334,8 +334,8 @@ TEST_CASE("Channel map maintenance", "[Animation][Id]") {
         REQUIRE_THROWS_AS(animation.channel(id2), std::out_of_range);
         
         // ch1 and ch3 should still be accessible
-        REQUIRE(&animation.channel(id1) == &ch1);
-        REQUIRE(&animation.channel(id3) == &ch3);
+        REQUIRE(animation.channel(id1) == &ch1);
+        REQUIRE(animation.channel(id3) == &ch3);
         
         // Check vector state
         REQUIRE(animation.num_channels() == 2);
@@ -361,8 +361,8 @@ TEST_CASE("Channel map maintenance", "[Animation][Id]") {
         REQUIRE_THROWS_AS(animation.channel(id2), std::out_of_range);
         
         // ch1 and ch3 should still be accessible
-        REQUIRE(&animation.channel(id1) == &ch1);
-        REQUIRE(&animation.channel(id3) == &ch3);
+        REQUIRE(animation.channel(id1) == &ch1);
+        REQUIRE(animation.channel(id3) == &ch3);
         
         REQUIRE(animation.num_channels() == 2);
     }
@@ -385,8 +385,8 @@ TEST_CASE("Channel map maintenance", "[Animation][Id]") {
         REQUIRE_THROWS_AS(animation.channel(id2), std::out_of_range);
         
         // ch1 and ch3 should still be accessible
-        REQUIRE(&animation.channel(id1) == &ch1);
-        REQUIRE(&animation.channel(id3) == &ch3);
+        REQUIRE(animation.channel(id1) == &ch1);
+        REQUIRE(animation.channel(id3) == &ch3);
         
         REQUIRE(animation.num_channels() == 2);
     }
@@ -427,8 +427,8 @@ TEST_CASE("Channel ID persistence through operations", "[Animation][Id]") {
         
         // Verify all channels are still accessible by their IDs
         for (size_t i = 0; i < num_channels; ++i) {
-            REQUIRE(&animation.channel(channel_ids[i]) == &animation.channel(i));
-            REQUIRE(animation.channel(channel_ids[i]).name() == "channel_" + std::to_string(i));
+            REQUIRE(animation.channel(channel_ids[i]) == &animation.channel(i));
+            REQUIRE(animation.channel(channel_ids[i])->name() == "channel_" + std::to_string(i));
         }
     }
     
@@ -448,8 +448,8 @@ TEST_CASE("Channel ID persistence through operations", "[Animation][Id]") {
         
         // ID should still be the same and channel should be accessible
         REQUIRE(ch.id() == original_id);
-        REQUIRE(&animation.channel(original_id) == &ch);
-        REQUIRE(animation.channel(original_id).name() == "modified_channel");
+        REQUIRE(animation.channel(original_id) == &ch);
+        REQUIRE(animation.channel(original_id)->name() == "modified_channel");
     }
 }
 
@@ -523,7 +523,7 @@ TEST_CASE("Edge cases and error conditions", "[Animation][Id]") {
         REQUIRE_THROWS_AS(animation.remove_channel(non_existent_id), std::out_of_range);
         
         // Original channel should still be accessible
-        REQUIRE(&animation.channel(valid_id) == &ch);
+        REQUIRE(animation.channel(valid_id) == &ch);
     }
     
     SECTION("Multiple operations maintain consistency") {
@@ -549,9 +549,9 @@ TEST_CASE("Edge cases and error conditions", "[Animation][Id]") {
         // Verify final state
         REQUIRE_THROWS_AS(animation.channel(id1), std::out_of_range); // ch1 removed
         REQUIRE_THROWS_AS(animation.channel(id2), std::out_of_range); // ch2 removed
-        REQUIRE(&animation.channel(id3) == &ch3); // ch3 still exists
-        REQUIRE(&animation.channel(id4) == &ch4); // ch4 exists
-        REQUIRE(&animation.channel(id5) == &ch5); // ch5 exists
+        REQUIRE(animation.channel(id3) == &ch3); // ch3 still exists
+        REQUIRE(animation.channel(id4) == &ch4); // ch4 exists
+        REQUIRE(animation.channel(id5) == &ch5); // ch5 exists
         
         REQUIRE(animation.num_channels() == 3);
         REQUIRE(animation.channel(0).name() == "ch5");
