@@ -7,7 +7,8 @@ int main() {
     
     try {
         // Test creating a channel
-        anim::Channel channel;
+        anim::Animation animation("Test Animation");
+        anim::Channel& channel = animation.create_channel("TestChannel");
         std::cout << "✓ Channel created successfully" << std::endl;
         
         // Test creating keyframes
