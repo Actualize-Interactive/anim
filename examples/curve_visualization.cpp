@@ -30,8 +30,8 @@ static void glfw_error_callback(int error, const char* description)
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-// Example curves
-std::vector<anim::Channel> curves;
+// Example animation containing curves
+static anim::Animation animation("Example Animation");
 // Storage for keyframe visibility toggles
 static std::vector<std::vector<bool>> s_keyframe_visibilities;
 static bool s_vis_data_initialized = false; // To track if visibility data is synced with curves
@@ -55,7 +55,7 @@ const char* const c_hmode_items[] = { "Flat", "Smooth", "Aligned", "Free", "Alig
 
 
 void CreateExampleCurves() {
-    curves.clear(); 
+    animation.clear(); // Clear existing channels
     s_keyframe_visibilities.clear(); 
     
     // Reset selection when curves change
@@ -63,53 +63,48 @@ void CreateExampleCurves() {
 
     if (true) { // Placeholder for future curves, currently only sine wave
         // Curve 1: Simple Sine Wave (8 points) - only curve for now
-        anim::Channel sine_curve("Sine Wave");
+        anim::Channel& sine_curve = animation.create_channel("Sine Wave");
         for (float t = 0; t <= 32.f; t += 8.f) { 
             sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)));
         }
-        curves.push_back(sine_curve);
     }
 
     if (true){
-        // Curve 1: Simple Sine Wave (8 points) - only curve for now
-        anim::Channel sine_curve("Sine Wave");
+        // Curve 2: Simple Sine Wave (8 points) - linear interpolation
+        anim::Channel& sine_curve = animation.create_channel("Sine Wave Linear");
         for (float t = 0; t <= 32.f; t += 8.f) { 
             sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + .25, anim::Function::linear);
         }
-        curves.push_back(sine_curve);
     }
 
     if (true){
-        // Curve 1: Simple Sine Wave (8 points) - only curve for now
-        anim::Channel sine_curve("Sine Wave");
+        // Curve 3: Simple Sine Wave (8 points) - flat handles
+        anim::Channel& sine_curve = animation.create_channel("Sine Wave Flat");
         for (float t = 0; t <= 32.f; t += 8.f) { 
             sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + .5, anim::Function::bezier, anim::HandleMode::flat);
         }
-        curves.push_back(sine_curve);
     }
 
     if (true){
-        // Curve 1: Simple Sine Wave (8 points) - only curve for now
-        anim::Channel sine_curve("Sine Wave");
+        // Curve 4: Simple Sine Wave (8 points) - aligned handles
+        anim::Channel& sine_curve = animation.create_channel("Sine Wave Aligned");
         for (float t = 0; t <= 32.f; t += 8.f) { 
             sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + .75, anim::Function::bezier, anim::HandleMode::aligned);
         }
-        curves.push_back(sine_curve);
     }   
 
     if (true){
-        // Curve 1: Simple Sine Wave (8 points) - only curve for now
-        anim::Channel sine_curve("Sine Wave");
+        // Curve 5: Simple Sine Wave (8 points) - free handles
+        anim::Channel& sine_curve = animation.create_channel("Sine Wave Free");
         for (float t = 0; t <= 32.f; t += 8.f) { 
             sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + 1.0, anim::Function::bezier, anim::HandleMode::free);
         }
-        curves.push_back(sine_curve);
     }   
 
     // Initialize visibility data after curves are created
-    s_keyframe_visibilities.resize(curves.size());
-    for(size_t i = 0; i < curves.size(); ++i) {
-        s_keyframe_visibilities[i].assign(curves[i].num_keyframes(), true); // All keyframes visible by default
+    s_keyframe_visibilities.resize(animation.num_channels());
+    for(size_t i = 0; i < animation.num_channels(); ++i) {
+        s_keyframe_visibilities[i].assign(animation.channel(i).num_keyframes(), true); // All keyframes visible by default
     }
     s_vis_data_initialized = true;
 }
@@ -274,8 +269,8 @@ int main() {
             // Check if mouse is over any interactive element
             bool mouse_over_interactive_element = false;
             if (plot_hovered) {
-                for (size_t i = 0; i < curves.size() && !mouse_over_interactive_element; ++i) {
-                    anim::Channel& curve = curves[i];
+                for (size_t i = 0; i < animation.size() && !mouse_over_interactive_element; ++i) {
+                    anim::Channel& curve = animation[i];
                     
                     for (size_t k = 0; k < curve.num_keyframes(); ++k) {
                         // Skip invisible keyframes
@@ -293,7 +288,7 @@ int main() {
                             break;
                         }
                         
-                        // Check handles for bezier curves
+                        // Check handles for bezier animation
                         if (kf.function == anim::Function::bezier) {
                             ImVec2 in_handle_pos = ImVec2(static_cast<float>(kf.in_handle.time), 
                                                          static_cast<float>(kf.in_handle.value));
@@ -322,8 +317,8 @@ int main() {
                 s_selection = Selection{}; // Reset selection
                 
                 // Check for keyframe/handle selection
-                for (size_t i = 0; i < curves.size() && s_selection.curve_idx == -1; ++i) {
-                    anim::Channel& curve = curves[i];
+                for (size_t i = 0; i < animation.size() && s_selection.curve_idx == -1; ++i) {
+                    anim::Channel& curve = animation[i];
                     
                     for (size_t k = 0; k < curve.num_keyframes(); ++k) {
                         // Skip invisible keyframes
@@ -366,7 +361,7 @@ int main() {
             
             // Handle dragging
             if (s_selection.is_dragging && mouse_down && s_selection.curve_idx != -1) {
-                anim::Channel& curve = curves[s_selection.curve_idx];
+                anim::Channel& curve = animation[s_selection.curve_idx];
                 
                 if (s_selection.is_handle) {
                     // Move handle
@@ -394,8 +389,8 @@ int main() {
             }
 
             // Plot curves
-            for (size_t i = 0; i < curves.size(); ++i) {
-                anim::Channel& curve = curves[i];
+            for (size_t i = 0; i < animation.size(); ++i) {
+                anim::Channel& curve = animation[i];
                 std::vector<double> x_data, y_data;
   
                 // Sample the curve for plotting
@@ -533,8 +528,8 @@ int main() {
 
         ImGui::Begin("Curve Editor");
         // No CollapsingHeader for "Edit Curves", content is directly in the curve's TreeNode
-        for (size_t i = 0; i < curves.size(); ++i) {
-            anim::Channel& curve = curves[i];
+        for (size_t i = 0; i < animation.size(); ++i) {
+            anim::Channel& curve = animation[i];
             std::string curve_node_label = curve.name() + "##curve_" + std::to_string(i);
             if (ImGui::TreeNode(curve_node_label.c_str())) {
                 // Optional: Edit curve name (InputText here if needed)

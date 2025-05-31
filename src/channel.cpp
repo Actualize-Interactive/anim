@@ -471,5 +471,8 @@ void Channel::update_handles(Keyframe& keyframe, Keyframe* prev_keyframe_ptr, Ke
     }
 }
 
+void Channel::copy_keyframes_from(const Channel& source) {
+    m_keyframes = source.m_keyframes;
+}
 
 } // namespace anim

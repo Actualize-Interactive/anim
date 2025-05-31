@@ -82,7 +82,6 @@ namespace anim {
             const Keyframe* next_keyframe_ptr,
             GrabbedHandle grabbed_handle = GrabbedHandle::none);
 
-
 } // namespace anim
 
 #endif // ANIM_HANDLE_UTILS_HPP

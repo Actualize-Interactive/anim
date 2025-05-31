@@ -440,23 +440,5 @@ namespace anim {
         }
     }
 
-
-    void apply_manual_smooth_handles(            
-            Keyframe& keyframe, 
-            const Keyframe* prev_keyframe_ptr, 
-            const Keyframe* next_keyframe_ptr,
-            GrabbedHandle grabbed_handle
-    ) {
-        apply_aligned_handles(
-            keyframe, 
-            prev_keyframe_ptr, 
-            next_keyframe_ptr, 
-            grabbed_handle
-        );
-
-
-
-    }
-
 } // namespace anim
 

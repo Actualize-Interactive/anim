@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <anim/animation.hpp>
 #include <anim/channel.hpp>
 #include <anim/keyframe.hpp> // Required for Keyframe and Point
 #include <anim/handle_utils.hpp> // Required for GrabbedHandle enum
@@ -7,29 +8,33 @@
 using namespace anim;
 
 TEST_CASE("Channel Construction and Naming", "[channel]") {
-    SECTION("Default constructor") {
-        Channel ch;
+    SECTION("Default constructor via Animation") {
+        Animation anim;
+        Channel& ch = anim.create_channel("");
         REQUIRE(ch.name().empty());
         REQUIRE(ch.empty());
         REQUIRE(ch.size() == 0);
     }
 
-    SECTION("Constructor with a name") {
-        Channel ch("TestChannel");
+    SECTION("Constructor with a name via Animation") {
+        Animation anim;
+        Channel& ch = anim.create_channel("TestChannel");
         REQUIRE(ch.name() == "TestChannel");
         REQUIRE(ch.empty());
         REQUIRE(ch.size() == 0);
     }
 
     SECTION("Set and get name") {
-        Channel ch;
+        Animation anim;
+        Channel& ch = anim.create_channel("");
         ch.set_name("NewName");
         REQUIRE(ch.name() == "NewName");
     }
 }
 
 TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
-    Channel ch;
+    Animation anim;
+    Channel& ch = anim.create_channel("test");
 
     SECTION("Create keyframe with Point") {
         const Keyframe& kf1 = ch.create_keyframe(Point(1.0, 10.0));
@@ -105,7 +110,8 @@ TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
 }
 
 TEST_CASE("Channel Keyframe Access", "[channel]") {
-    Channel ch;
+    Animation anim;
+    Channel& ch = anim.create_channel("test");
 
     SECTION("Access on empty channel") {
         REQUIRE_THROWS_AS(ch.keyframe(0), std::out_of_range);
@@ -166,9 +172,9 @@ TEST_CASE("Channel Keyframe Access", "[channel]") {
         REQUIRE(ch.closest_keyframe(5.0).time() == 5.0);  // Exactly on third
         REQUIRE(ch.closest_keyframe(6.0).time() == 5.0);  // After last
     }
-    
-    SECTION("Access with a single keyframe") {
-        Channel single_ch;
+      SECTION("Access with a single keyframe") {
+        Animation anim;
+        auto& single_ch = anim.create_channel("single");
         single_ch.create_keyframe(2.0, 20.0);
         REQUIRE(single_ch.keyframe(0).time() == 2.0);
         REQUIRE_THROWS_AS(single_ch.prev_keyframe(2.0), std::out_of_range);
@@ -186,7 +192,8 @@ TEST_CASE("Channel Keyframe Access", "[channel]") {
 }
 
 TEST_CASE("Channel Keyframe Deletion", "[channel]") {
-    Channel ch;
+    Animation anim;
+    Channel& ch = anim.create_channel("test");
     ch.create_keyframe(1.0, 10.0);
     ch.create_keyframe(3.0, 30.0);
     ch.create_keyframe(5.0, 50.0);
@@ -214,10 +221,11 @@ TEST_CASE("Channel Keyframe Deletion", "[channel]") {
         REQUIRE(ch.keyframe(0).time() == 1.0);
         REQUIRE(ch.keyframe(1).time() == 3.0);
         REQUIRE_FALSE(ch.has_keyframe(5.0));
-    }
-
+    }    
+    
     SECTION("Delete from single keyframe channel") {
-        Channel single_ch;
+        Animation anim;
+        auto& single_ch = anim.create_channel("single");
         single_ch.create_keyframe(2.0, 20.0);
         single_ch.delete_keyframe(0);
         REQUIRE(single_ch.empty());
@@ -227,14 +235,15 @@ TEST_CASE("Channel Keyframe Deletion", "[channel]") {
     SECTION("Delete with invalid index throws exception") {
         REQUIRE_THROWS_AS(ch.delete_keyframe(3), std::out_of_range);
         REQUIRE_THROWS_AS(ch.delete_keyframe(100), std::out_of_range);
-        
-        Channel empty_ch;
+          Animation anim;
+        auto& empty_ch = anim.create_channel("empty");
         REQUIRE_THROWS_AS(empty_ch.delete_keyframe(0), std::out_of_range);
     }
 }
 
 TEST_CASE("Channel Keyframe Updates", "[channel]") {
-    Channel ch;
+    Animation anim;
+    Channel& ch = anim.create_channel("test");
     ch.create_keyframe(1.0, 10.0); // Default HandleMode::smooth
     ch.create_keyframe(3.0, 30.0); // Default HandleMode::smooth
     ch.create_keyframe(5.0, 50.0); // Default HandleMode::smooth
@@ -306,7 +315,8 @@ TEST_CASE("Channel Keyframe Updates", "[channel]") {
 
 TEST_CASE("Channel Time Properties", "[channel]") {
     SECTION("Empty channel") {
-        Channel ch;
+        Animation anim;
+        auto& ch = anim.create_channel("ch");
         REQUIRE(ch.start_time() == 0.0);
         REQUIRE(ch.end_time() == 0.0);
         REQUIRE(ch.length() == 0.0);
@@ -314,16 +324,16 @@ TEST_CASE("Channel Time Properties", "[channel]") {
     }
 
     SECTION("Single keyframe") {
-        Channel ch;
+        Animation anim;
+        auto& ch = anim.create_channel("ch");
         ch.create_keyframe(2.5, 25.0);
         REQUIRE(ch.start_time() == 2.5);
         REQUIRE(ch.end_time() == 2.5);
         REQUIRE(ch.length() == 0.0);
         REQUIRE(ch.num_samples(30.0) == 1); // Single sample at the keyframe time
-    }
-
-    SECTION("Multiple keyframes") {
-        Channel ch;
+    }    SECTION("Multiple keyframes") {
+        Animation anim;
+        auto& ch = anim.create_channel("ch");
         ch.create_keyframe(1.0, 10.0);
         ch.create_keyframe(5.0, 50.0);
         ch.create_keyframe(3.0, 30.0);
@@ -340,22 +350,23 @@ TEST_CASE("Channel Time Properties", "[channel]") {
 
 TEST_CASE("Channel Evaluation", "[channel]") {
     SECTION("Empty channel") {
-        Channel ch;
+        Animation anim;
+        auto& ch = anim.create_channel("ch");
         REQUIRE(ch.evaluate(1.0) == 0.0);
         REQUIRE(ch.evaluate(0.0) == 0.0);
         REQUIRE(ch.evaluate(-1.0) == 0.0);
     }
 
     SECTION("Single keyframe") {
-        Channel ch;
+        Animation anim;
+        auto& ch = anim.create_channel("ch");
         ch.create_keyframe(2.0, 20.0);
         REQUIRE(ch.evaluate(0.0) == 20.0); // Before keyframe
         REQUIRE(ch.evaluate(2.0) == 20.0); // At keyframe
         REQUIRE(ch.evaluate(5.0) == 20.0); // After keyframe
-    }
-
-    SECTION("Linear interpolation") {
-        Channel ch;
+    }    SECTION("Linear interpolation") {
+        Animation anim;
+        auto& ch = anim.create_channel("ch");
         ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::linear);
         ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::linear);
         
@@ -364,10 +375,9 @@ TEST_CASE("Channel Evaluation", "[channel]") {
         REQUIRE(ch.evaluate(2.0) == Catch::Approx(20.0));
         REQUIRE(ch.evaluate(-1.0) == Catch::Approx(0.0)); // Before first
         REQUIRE(ch.evaluate(3.0) == Catch::Approx(20.0)); // After last
-    }
-
-    SECTION("Constant interpolation") {
-        Channel ch;
+    }    SECTION("Constant interpolation") {
+        Animation anim;
+        auto& ch = anim.create_channel("ch");
         ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::constant);
         ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::constant);
         
@@ -375,10 +385,9 @@ TEST_CASE("Channel Evaluation", "[channel]") {
         REQUIRE(ch.evaluate(1.0) == Catch::Approx(0.0)); // Constant until next keyframe
         REQUIRE(ch.evaluate(1.9) == Catch::Approx(0.0));
         REQUIRE(ch.evaluate(2.0) == Catch::Approx(20.0));
-    }
-
-    SECTION("Bezier interpolation basic") {
-        Channel ch;
+    }    SECTION("Bezier interpolation basic") {
+        Animation anim;
+        auto& ch = anim.create_channel("ch");
         // Create keyframes with default bezier function
         ch.create_keyframe(0.0, 0.0);
         ch.create_keyframe(1.0, 10.0);
@@ -393,7 +402,8 @@ TEST_CASE("Channel Evaluation", "[channel]") {
 }
 
 TEST_CASE("Channel Evaluation Range", "[channel]") {
-    Channel ch;
+    Animation anim;
+    Channel& ch = anim.create_channel("test");
     ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::linear);
     ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::linear);
 
@@ -446,7 +456,8 @@ TEST_CASE("Channel Evaluation Range", "[channel]") {
 
 TEST_CASE("Channel Handle Updates", "[channel]") {
     SECTION("Smooth handles update when keyframes change") {
-        Channel ch;
+        Animation anim;
+        auto& ch = anim.create_channel("ch");
         ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
         ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::bezier, HandleMode::smooth);
         ch.create_keyframe(4.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
@@ -461,10 +472,9 @@ TEST_CASE("Channel Handle Updates", "[channel]") {
         // Handles may have been recalculated, but we can't easily predict exact values
         // Just verify the keyframe was updated
         REQUIRE(ch.keyframe(1).value() == 40.0);
-    }
-
-    SECTION("Handles update when keyframe time changes") {
-        Channel ch;
+    }    SECTION("Handles update when keyframe time changes") {
+        Animation anim;
+        auto& ch = anim.create_channel("ch");
         ch.create_keyframe(0.0, 0.0, Point(-0.5, 0.0), Point(0.5, 0.0), Function::bezier, HandleMode::free);
         ch.create_keyframe(2.0, 20.0, Point(1.5, 20.0), Point(2.5, 20.0), Function::bezier, HandleMode::free);
         ch.create_keyframe(4.0, 0.0, Point(3.5, 0.0), Point(4.5, 0.0), Function::bezier, HandleMode::free);
@@ -492,10 +502,9 @@ TEST_CASE("Channel Handle Updates", "[channel]") {
         bool handles_updated = (ch.keyframe(1).in_handle.time != orig_in.time) || 
                               (ch.keyframe(1).out_handle.time != orig_out.time);
         REQUIRE(handles_updated);
-    }
-
-    SECTION("Smooth handles recalculate when keyframe time changes") {
-        Channel ch;
+    }    SECTION("Smooth handles recalculate when keyframe time changes") {
+        Animation anim;
+        auto& ch = anim.create_channel("ch");
         ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
         ch.create_keyframe(2.0, 5.0, Point(), Point(), Function::bezier, HandleMode::smooth);
         ch.create_keyframe(4.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
@@ -514,10 +523,9 @@ TEST_CASE("Channel Handle Updates", "[channel]") {
         // The handles should have changed from their original positions
         REQUIRE(ch.keyframe(1).in_handle != orig_in);
         REQUIRE(ch.keyframe(1).out_handle != orig_out);
-    }
-
-    SECTION("Adjacent keyframes' handles update when middle keyframe moves") {
-        Channel ch;
+    }    SECTION("Adjacent keyframes' handles update when middle keyframe moves") {
+        Animation anim;
+        auto& ch = anim.create_channel("ch");
         ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
         ch.create_keyframe(2.0, 5.0, Point(), Point(), Function::bezier, HandleMode::smooth);
         ch.create_keyframe(4.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
@@ -531,10 +539,9 @@ TEST_CASE("Channel Handle Updates", "[channel]") {
         
         REQUIRE(ch.keyframe(0).out_handle != prev_out_orig);
         REQUIRE(ch.keyframe(2).in_handle != next_in_orig);
-    }
-
-    SECTION("Flat handles maintain horizontal orientation") {
-        Channel ch;
+    }    SECTION("Flat handles maintain horizontal orientation") {
+        Animation anim;
+        auto& ch = anim.create_channel("ch");
         ch.create_keyframe(1.0, 10.0, Point(), Point(), Function::bezier, HandleMode::flat);
         ch.create_keyframe(3.0, 30.0, Point(), Point(), Function::bezier, HandleMode::flat);
         
@@ -543,10 +550,9 @@ TEST_CASE("Channel Handle Updates", "[channel]") {
         REQUIRE(ch.keyframe(0).out_handle.value == Catch::Approx(ch.keyframe(0).value()));
         REQUIRE(ch.keyframe(1).in_handle.value == Catch::Approx(ch.keyframe(1).value()));
         REQUIRE(ch.keyframe(1).out_handle.value == Catch::Approx(ch.keyframe(1).value()));
-    }
-
-    SECTION("Handle mode changes update handles") {
-        Channel ch;
+    }    SECTION("Handle mode changes update handles") {
+        Animation anim;
+        auto& ch = anim.create_channel("ch");
         ch.create_keyframe(1.0, 10.0, Point(), Point(), Function::bezier, HandleMode::free);
         ch.create_keyframe(3.0, 30.0, Point(), Point(), Function::bezier, HandleMode::free);
         
@@ -564,9 +570,10 @@ TEST_CASE("Channel Handle Updates", "[channel]") {
 
 TEST_CASE("Channel Complex Animation Scenario", "[channel]") {
     SECTION("Reproduce Python test scenario") {
-        Channel pos_x("pos_x");
-        Channel pos_y("pos_y");
-        Channel rotation("rotation");
+        Animation anim;
+        auto& pos_x = anim.create_channel("pos_x");
+        auto& pos_y = anim.create_channel("pos_y");
+        auto& rotation = anim.create_channel("rotation");
         
         // Create animation data
         std::vector<double> times = {0.0, 1.0, 2.0, 3.0, 4.0};
@@ -619,9 +626,9 @@ TEST_CASE("Channel Complex Animation Scenario", "[channel]") {
             }
         }
     }
-    
-    SECTION("Edge case: Very high sample rates") {
-        Channel ch;
+      SECTION("Edge case: Very high sample rates") {
+        Animation anim;
+        auto& ch = anim.create_channel("ch");
         ch.create_keyframe(0.0, 0.0, Function::bezier, HandleMode::smooth);
         ch.create_keyframe(1.0, 10.0, Function::bezier, HandleMode::smooth);
         ch.create_keyframe(2.0, 5.0, Function::bezier, HandleMode::smooth);
@@ -639,7 +646,8 @@ TEST_CASE("Channel Complex Animation Scenario", "[channel]") {
 TEST_CASE("Channel API Comprehensive Test", "[channel]") {
     SECTION("Complete Channel API functionality test") {
         // Create a test channel
-        Channel channel("test_channel");
+        Animation anim;
+        auto& channel = anim.create_channel("test_channel");
         
         // Test initial channel state
         REQUIRE(channel.name() == "test_channel");
@@ -770,9 +778,9 @@ TEST_CASE("Channel API Comprehensive Test", "[channel]") {
         REQUIRE(channel.keyframe(0).time() == 0.0);
         REQUIRE(channel.keyframe(1).time() == 4.0);
     }
-    
-    SECTION("Channel API error conditions") {
-        Channel channel("error_test");
+      SECTION("Channel API error conditions") {
+        Animation anim;
+        auto& channel = anim.create_channel("error_test");
         
         // Test errors on empty channel
         REQUIRE_THROWS_AS(channel.keyframe(0), std::out_of_range);
@@ -809,9 +817,9 @@ TEST_CASE("Channel API Comprehensive Test", "[channel]") {
         REQUIRE_THROWS_AS(channel.num_samples(0.0), std::invalid_argument); // zero rate
         REQUIRE_THROWS_AS(channel.num_samples(-1.0), std::invalid_argument); // negative rate
     }
-    
-    SECTION("Channel emplace keyframe functionality") {
-        Channel channel("emplace_test");
+      SECTION("Channel emplace keyframe functionality") {
+        Animation anim;
+        auto& channel = anim.create_channel("emplace_test");
         
         // Test emplace_keyframe
         Keyframe new_kf(2.0, 20.0, Function::linear, HandleMode::smooth);
@@ -825,9 +833,9 @@ TEST_CASE("Channel API Comprehensive Test", "[channel]") {
         REQUIRE(channel.num_keyframes() == 1);
         REQUIRE(channel.has_keyframe(2.0));
     }
-    
-    SECTION("Channel keyframe access boundary conditions") {
-        Channel channel("boundary_test");
+      SECTION("Channel keyframe access boundary conditions") {
+        Animation anim;
+        auto& channel = anim.create_channel("boundary_test");
         channel.create_keyframe(1.0, 10.0);
         channel.create_keyframe(3.0, 30.0);
         channel.create_keyframe(5.0, 50.0);
