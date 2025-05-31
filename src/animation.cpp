@@ -128,24 +128,20 @@ void Animation::reorder_channel(size_t from_index, size_t to_index) {
     }
     if (from_index == to_index) return;
     
-    size_t original_size = m_channels.size();
+    size_t original_size = m_channels.size(); // Store original size
     auto temp = std::move(m_channels[from_index]);
-    m_channels.erase(m_channels.begin() + from_index);
+    m_channels.erase(m_channels.begin() + from_index); // m_channels size is now original_size - 1
     
-    // Adjust target index if it was after the removed element
-    // Special case: if target was the last position originally, keep it at the end
-    if (to_index == original_size - 1) {
-        // Target was last position - place at new end
-        to_index = m_channels.size();
+    size_t new_index = to_index;
+
+    if (to_index == original_size - 1) { // to_index was the last index
+        new_index = m_channels.size(); 
     } else if (to_index > from_index) {
-        to_index--;
+        new_index--; // vector is shorter now, so shift left by one
     }
-    
-    // Clamp to valid range for insertion
-    to_index = std::min(to_index, m_channels.size());
-    
-    m_channels.insert(m_channels.begin() + to_index, std::move(temp));
-    // No need to rebuild map as pointers don't change with unique_ptr
+
+    new_index = std::min(new_index, m_channels.size());
+    m_channels.insert(m_channels.begin() + new_index, std::move(temp));
 }
 
 void Animation::reorder_channel(const std::string& channel_name, size_t to_index) {

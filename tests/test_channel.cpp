@@ -221,7 +221,9 @@ TEST_CASE("Channel Keyframe Deletion", "[channel]") {
         REQUIRE(ch.keyframe(0).time() == 1.0);
         REQUIRE(ch.keyframe(1).time() == 3.0);
         REQUIRE_FALSE(ch.has_keyframe(5.0));
-    }    SECTION("Delete from single keyframe channel") {
+    }    
+    
+    SECTION("Delete from single keyframe channel") {
         Animation anim;
         auto& single_ch = anim.create_channel("single");
         single_ch.create_keyframe(2.0, 20.0);

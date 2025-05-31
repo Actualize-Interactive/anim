@@ -1,5 +1,5 @@
-#ifndef ANIM_HANDLE_HPP
-#define ANIM_HANDLE_HPP
+#ifndef ANIM_ID_HPP
+#define ANIM_ID_HPP
 
 
 #include <cstdint>
@@ -59,4 +59,4 @@ namespace std {
 }
 
 
-#endif // ANIM_HANDLE_HPP
+#endif // ANIM_ID_HPP
