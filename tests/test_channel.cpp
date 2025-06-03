@@ -857,3 +857,106 @@ TEST_CASE("Channel API Comprehensive Test", "[channel]") {
         REQUIRE(channel.closest_keyframe(2.1).time() == 3.0); // closer to second
     }
 }
+
+TEST_CASE("Channel keyframes() method", "[channel]") {
+    Animation anim;
+    Channel& channel = anim.create_channel("keyframes_test");
+    
+    SECTION("Empty channel returns empty vector") {
+        const std::vector<Keyframe>& keyframes = channel.keyframes();
+        REQUIRE(keyframes.empty());
+        REQUIRE(keyframes.size() == 0);
+    }
+    
+    SECTION("Single keyframe") {
+        channel.create_keyframe(1.0, 10.0);
+        const std::vector<Keyframe>& keyframes = channel.keyframes();
+        
+        REQUIRE(keyframes.size() == 1);
+        REQUIRE(keyframes[0].time() == 1.0);
+        REQUIRE(keyframes[0].value() == 10.0);
+    }
+    
+    SECTION("Multiple keyframes in order") {
+        // Add keyframes in non-chronological order to test sorting
+        channel.create_keyframe(3.0, 30.0);
+        channel.create_keyframe(1.0, 10.0);
+        channel.create_keyframe(2.0, 20.0);
+        
+        const std::vector<Keyframe>& keyframes = channel.keyframes();
+        
+        REQUIRE(keyframes.size() == 3);
+        // Verify they are sorted by time
+        REQUIRE(keyframes[0].time() == 1.0);
+        REQUIRE(keyframes[0].value() == 10.0);
+        REQUIRE(keyframes[1].time() == 2.0);
+        REQUIRE(keyframes[1].value() == 20.0);
+        REQUIRE(keyframes[2].time() == 3.0);
+        REQUIRE(keyframes[2].value() == 30.0);
+    }
+    
+    SECTION("keyframes() returns const reference") {
+        channel.create_keyframe(1.0, 10.0);
+        channel.create_keyframe(2.0, 20.0);
+        
+        const std::vector<Keyframe>& keyframes1 = channel.keyframes();
+        const std::vector<Keyframe>& keyframes2 = channel.keyframes();
+        
+        // Both references should point to the same object
+        REQUIRE(&keyframes1 == &keyframes2);
+        
+        // Verify content is correct
+        REQUIRE(keyframes1.size() == 2);
+        REQUIRE(keyframes1[0].time() == 1.0);
+        REQUIRE(keyframes1[1].time() == 2.0);
+    }
+    
+    SECTION("keyframes() reflects changes to channel") {
+        const std::vector<Keyframe>& keyframes = channel.keyframes();
+        REQUIRE(keyframes.empty());
+        
+        // Add a keyframe
+        channel.create_keyframe(1.0, 10.0);
+        REQUIRE(keyframes.size() == 1);
+        REQUIRE(keyframes[0].time() == 1.0);
+        
+        // Add another keyframe
+        channel.create_keyframe(2.0, 20.0);
+        REQUIRE(keyframes.size() == 2);
+        REQUIRE(keyframes[1].time() == 2.0);
+        
+        // Delete a keyframe
+        channel.delete_keyframe(0);
+        REQUIRE(keyframes.size() == 1);
+        REQUIRE(keyframes[0].time() == 2.0);
+    }
+    
+    SECTION("keyframes() with different keyframe properties") {
+        // Create keyframes with different properties
+        channel.create_keyframe(1.0, 10.0, Function::linear, HandleMode::smooth);
+        channel.create_keyframe(2.0, 20.0, Function::bezier, HandleMode::aligned);
+        channel.create_keyframe(3.0, 30.0, Function::constant, HandleMode::free);
+        
+        const std::vector<Keyframe>& keyframes = channel.keyframes();
+        
+        REQUIRE(keyframes.size() == 3);
+        
+        // Verify first keyframe properties
+        REQUIRE(keyframes[0].time() == 1.0);
+        REQUIRE(keyframes[0].value() == 10.0);
+        REQUIRE(keyframes[0].function == Function::linear);
+        REQUIRE(keyframes[0].handle_mode == HandleMode::smooth);
+        
+        // Verify second keyframe properties
+        REQUIRE(keyframes[1].time() == 2.0);
+        REQUIRE(keyframes[1].value() == 20.0);
+        REQUIRE(keyframes[1].function == Function::bezier);
+        REQUIRE(keyframes[1].handle_mode == HandleMode::aligned);
+        
+        // Verify third keyframe properties
+        REQUIRE(keyframes[2].time() == 3.0);
+        REQUIRE(keyframes[2].value() == 30.0);
+        REQUIRE(keyframes[2].function == Function::constant);
+        REQUIRE(keyframes[2].handle_mode == HandleMode::free);
+    }
+}

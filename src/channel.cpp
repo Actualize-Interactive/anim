@@ -112,6 +112,11 @@ const Keyframe &Channel::closest_keyframe(double time) const
     return (std::abs(prev_it->time() - time) <= std::abs(it->time() - time)) ? *prev_it : *it;
 }
 
+const std::vector<Keyframe>& Channel::keyframes() const
+{
+    return m_keyframes;
+}
+
 void Channel::update_keyframe(size_t index, const Keyframe& keyframe)
 {
     if (index >= m_keyframes.size()) {
