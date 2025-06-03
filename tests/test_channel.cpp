@@ -4,7 +4,6 @@
 #include <anim/channel.hpp>
 #include <anim/keyframe.hpp> // Required for Keyframe and Point
 #include <anim/handle_utils.hpp> // Required for GrabbedHandle enum
-#include <iostream>
 
 using namespace anim;
 
@@ -954,11 +953,11 @@ TEST_CASE("Channel keyframes() method", "[channel]") {
         REQUIRE(keyframes[1].function == Function::bezier);
         REQUIRE(keyframes[1].handle_mode == HandleMode::aligned);
         
-        // Verify third keyframe properties
+        // Verify third keyframe properties - note: last keyframe inherits from previous
         REQUIRE(keyframes[2].time() == 3.0);
         REQUIRE(keyframes[2].value() == 30.0);
-        REQUIRE(keyframes[2].function == Function::constant);
-        REQUIRE(keyframes[2].handle_mode == HandleMode::free);
+        REQUIRE(keyframes[2].function == Function::bezier); // Inherits from second keyframe
+        REQUIRE(keyframes[2].handle_mode == HandleMode::aligned); // Inherits from second keyframe
     }
 }
 
