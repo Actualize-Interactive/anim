@@ -8,34 +8,7 @@ namespace anim {
 const Keyframe& Channel::create_keyframe(double time, 
     double value, Function function, HandleMode handle_mode) 
 {
-    // Store the original intended values for this keyframe
-    m_original_keyframe_properties[time] = std::make_pair(function, handle_mode);
-    
-    const auto& result = create_default_keyframe(Point(time, value), function, handle_mode);
-    
-    // After creation, apply inheritance rules
-    if (m_keyframes.size() >= 2) {
-        // Restore all non-last keyframes to their original intended values
-        for (size_t i = 0; i < m_keyframes.size() - 1; ++i) {
-            auto& kf = m_keyframes[i];
-            auto original_it = m_original_keyframe_properties.find(kf.time());
-            if (original_it != m_original_keyframe_properties.end()) {
-                kf.function = original_it->second.first;
-                kf.handle_mode = original_it->second.second;
-            }
-        }
-        
-        // Make the last keyframe inherit from the second-to-last
-        size_t last_index = m_keyframes.size() - 1;
-        size_t second_last_index = last_index - 1;
-        
-        auto& last_keyframe = m_keyframes[last_index];
-        const auto& second_last_keyframe = m_keyframes[second_last_index];
-        last_keyframe.function = second_last_keyframe.function;
-        last_keyframe.handle_mode = second_last_keyframe.handle_mode;
-    }
-    
-    return result;
+    return create_default_keyframe(Point(time, value), function, handle_mode);
 }
 
 const Keyframe& Channel::create_keyframe(const Point& position, 
@@ -52,8 +25,8 @@ const Keyframe& Channel::create_keyframe(double time, double value,
 }
 
 const Keyframe& Channel::emplace_keyframe(Keyframe&& keyframe) {
-    return insert_keyframe(std::move(keyframe));
-}
+        return insert_keyframe(std::move(keyframe));
+    }
 
 bool Channel::has_keyframe(double time) const
 {   // Check if a keyframe exists with in 1/200th of a second toleranc
@@ -68,7 +41,11 @@ void Channel::delete_keyframe(size_t index)
     if (index < 0 || index >= m_keyframes.size()) {
         throw std::out_of_range("Keyframe index out of range");
     }
+    
     m_keyframes.erase(m_keyframes.begin() + index);
+    
+    // After deletion, apply inheritance to the new last keyframe (if there are 2+ keyframes)
+    update_last_keyframe_inheritance();
 }
 
 const Keyframe &Channel::keyframe(size_t index) const
@@ -158,9 +135,6 @@ void Channel::update_keyframe(size_t index, const Keyframe& keyframe)
     it = m_keyframes.insert(it, keyframe);
     clamp_keyframe_time(it, keyframe.time());
     update_local_handles(it);
-    
-    // Apply last keyframe inheritance after update
-    enforce_last_keyframe_inheritance();
 }
 
 void Channel::set_keyframe_time(size_t index, double new_time)
@@ -228,41 +202,11 @@ void Channel::set_keyframe_function(size_t index, Function function)
     }
     auto it = m_keyframes.begin() + index;
     it->function = function;
-    
-    // Update the original intended value for this keyframe
-    auto original_it = m_original_keyframe_properties.find(it->time());
-    if (original_it != m_original_keyframe_properties.end()) {
-        original_it->second.first = function; // Update function
-    } else {
-        // If not found, create a new entry
-        m_original_keyframe_properties[it->time()] = std::make_pair(function, it->handle_mode);
-    }
-    
     update_local_handles(it);
     
-    // Apply inheritance, but exclude the keyframe we just modified
-    size_t modified_index = index;
-    if (m_keyframes.size() >= 2) {
-        // Restore all non-last keyframes to their original intended values (except the one we just modified)
-        for (size_t i = 0; i < m_keyframes.size() - 1; ++i) {
-            if (i != modified_index) {
-                auto& kf = m_keyframes[i];
-                auto orig_it = m_original_keyframe_properties.find(kf.time());
-                if (orig_it != m_original_keyframe_properties.end()) {
-                    kf.function = orig_it->second.first;
-                    kf.handle_mode = orig_it->second.second;
-                }
-            }
-        }
-        
-        // Only apply inheritance to the last keyframe if it's not the one we just modified
-        size_t last_index = m_keyframes.size() - 1;
-        if (last_index != modified_index && last_index >= 1) {
-            auto& last_keyframe = m_keyframes[last_index];
-            const auto& second_last_keyframe = m_keyframes[last_index - 1];
-            last_keyframe.function = second_last_keyframe.function;
-            last_keyframe.handle_mode = second_last_keyframe.handle_mode;
-        }
+    // Apply inheritance only if we modified the second-to-last keyframe
+    if (m_keyframes.size() >= 2 && index == m_keyframes.size() - 2) {
+        update_last_keyframe_inheritance();
     }
 }
 
@@ -273,41 +217,11 @@ void Channel::set_keyframe_handle_mode(size_t index, HandleMode handle_mode)
     }
     auto it = m_keyframes.begin() + index;
     it->handle_mode = handle_mode;
-    
-    // Update the original intended value for this keyframe
-    auto original_it = m_original_keyframe_properties.find(it->time());
-    if (original_it != m_original_keyframe_properties.end()) {
-        original_it->second.second = handle_mode; // Update handle_mode
-    } else {
-        // If not found, create a new entry
-        m_original_keyframe_properties[it->time()] = std::make_pair(it->function, handle_mode);
-    }
-    
     update_local_handles(it);
     
-    // Apply inheritance, but exclude the keyframe we just modified
-    size_t modified_index = index;
-    if (m_keyframes.size() >= 2) {
-        // Restore all non-last keyframes to their original intended values (except the one we just modified)
-        for (size_t i = 0; i < m_keyframes.size() - 1; ++i) {
-            if (i != modified_index) {
-                auto& kf = m_keyframes[i];
-                auto orig_it = m_original_keyframe_properties.find(kf.time());
-                if (orig_it != m_original_keyframe_properties.end()) {
-                    kf.function = orig_it->second.first;
-                    kf.handle_mode = orig_it->second.second;
-                }
-            }
-        }
-        
-        // Only apply inheritance to the last keyframe if it's not the one we just modified
-        size_t last_index = m_keyframes.size() - 1;
-        if (last_index != modified_index && last_index >= 1) {
-            auto& last_keyframe = m_keyframes[last_index];
-            const auto& second_last_keyframe = m_keyframes[last_index - 1];
-            last_keyframe.function = second_last_keyframe.function;
-            last_keyframe.handle_mode = second_last_keyframe.handle_mode;
-        }
+    // Apply inheritance only if we modified the second-to-last keyframe
+    if (m_keyframes.size() >= 2 && index == m_keyframes.size() - 2) {
+        update_last_keyframe_inheritance();
     }
 }
 
@@ -496,11 +410,25 @@ const Keyframe &Channel::insert_keyframe(KeyframeIt it, Keyframe&& keyframe, Gra
     update_local_handles(it, grabbed_handle);
 
     auto& new_keyframe = *it; // reference to the newly inserted keyframe
-    // std::cout << "Updated Keyframe, time: " << new_keyframe.time() << ", value: " << new_keyframe.value()
-    //             << ", in_handle.time: " << new_keyframe.in_handle.time << ", in_handle.value: " << new_keyframe.in_handle.value
-    //             << ", out_handle.time: " << new_keyframe.out_handle.time << ", out_handle.value: " << new_keyframe.out_handle.value
-    //             << ", function: " << static_cast<int>(new_keyframe.function)
-    //             << ", handle_mode: " << static_cast<int>(new_keyframe.handle_mode) << std::endl;
+    
+    // Apply inheritance only if:
+    // 1. We now have 2+ keyframes 
+    // 2. The inserted keyframe is at the last position (highest time)
+    if (m_keyframes.size() >= 2) {
+        // Check if the inserted keyframe is the last one by time
+        bool is_last = true;
+        for (const auto& kf : m_keyframes) {
+            if (kf.time() > new_keyframe.time()) {
+                is_last = false;
+                break;
+            }
+        }
+        
+        if (is_last) {
+            update_last_keyframe_inheritance();
+        }
+    }
+    
     return *it;
 }
 
@@ -580,32 +508,19 @@ void Channel::copy_keyframes_from(const Channel& source) {
     m_keyframes = source.m_keyframes;
 }
 
-void Channel::enforce_last_keyframe_inheritance() {
-    // If there are fewer than 2 keyframes, no inheritance needed
-    if (m_keyframes.size() < 2) {
-        return;
+void Channel::update_last_keyframe_inheritance() {
+    // Simple rule: if there are 2+ keyframes, the last keyframe inherits 
+    // Function and HandleMode from the second-to-last keyframe
+    if (m_keyframes.size() >= 2) {
+        size_t last_index = m_keyframes.size() - 1;
+        size_t second_last_index = last_index - 1;
+        
+        auto& last_keyframe = m_keyframes[last_index];
+        const auto& second_last_keyframe = m_keyframes[second_last_index];
+        
+        last_keyframe.function = second_last_keyframe.function;
+        last_keyframe.handle_mode = second_last_keyframe.handle_mode;
     }
-    
-    // Restore all non-last keyframes to their original intended values
-    for (size_t i = 0; i < m_keyframes.size() - 1; ++i) {
-        auto& kf = m_keyframes[i];
-        auto original_it = m_original_keyframe_properties.find(kf.time());
-        if (original_it != m_original_keyframe_properties.end()) {
-            kf.function = original_it->second.first;
-            kf.handle_mode = original_it->second.second;
-        }
-    }
-    
-    // Only modify the very last keyframe to inherit from the second-to-last
-    size_t last_index = m_keyframes.size() - 1;
-    size_t second_last_index = last_index - 1;
-    
-    auto& last_keyframe = m_keyframes[last_index];
-    const auto& second_last_keyframe = m_keyframes[second_last_index];
-    
-    // Set the last keyframe's function and handle mode to match the second-to-last keyframe
-    last_keyframe.function = second_last_keyframe.function;
-    last_keyframe.handle_mode = second_last_keyframe.handle_mode;
 }
 
 } // namespace anim
