@@ -104,6 +104,7 @@ private:
         Keyframe& keyframe, 
         Keyframe* prev_keyframe_ptr, Keyframe* next_keyframe_ptr, 
         GrabbedHandle grabbed_handle = GrabbedHandle::none);
+    void enforce_last_keyframe_inheritance();
 };
 
 } // namespace anim

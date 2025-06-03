@@ -8,25 +8,45 @@ namespace anim {
 const Keyframe& Channel::create_keyframe(double time, 
     double value, Function function, HandleMode handle_mode) 
 {
-    return create_default_keyframe(Point(time, value), function, handle_mode);
+    const auto& result = create_default_keyframe(Point(time, value), function, handle_mode);
+    
+    // Apply last keyframe inheritance after creation
+    enforce_last_keyframe_inheritance();
+    
+    return result;
 }
 
 const Keyframe& Channel::create_keyframe(const Point& position, 
     Function function, HandleMode handle_mode) 
 {
-    return create_default_keyframe(position, function, handle_mode);
+    const auto& result = create_default_keyframe(position, function, handle_mode);
+    
+    // Apply last keyframe inheritance after creation
+    enforce_last_keyframe_inheritance();
+    
+    return result;
 }
 
 const Keyframe& Channel::create_keyframe(double time, double value,
     const Point& in_handle, const Point& out_handle,
     Function function, HandleMode handle_mode) 
 {
-    return insert_keyframe(Keyframe(time, value, function, handle_mode, in_handle, out_handle));
+    const auto& result = insert_keyframe(Keyframe(time, value, function, handle_mode, in_handle, out_handle));
+    
+    // Apply last keyframe inheritance after creation
+    enforce_last_keyframe_inheritance();
+    
+    return result;
 }
 
 const Keyframe& Channel::emplace_keyframe(Keyframe&& keyframe) {
-        return insert_keyframe(std::move(keyframe));
-    }
+    const auto& result = insert_keyframe(std::move(keyframe));
+    
+    // Apply last keyframe inheritance after emplacement
+    enforce_last_keyframe_inheritance();
+    
+    return result;
+}
 
 bool Channel::has_keyframe(double time) const
 {   // Check if a keyframe exists with in 1/200th of a second toleranc
@@ -131,6 +151,9 @@ void Channel::update_keyframe(size_t index, const Keyframe& keyframe)
     it = m_keyframes.insert(it, keyframe);
     clamp_keyframe_time(it, keyframe.time());
     update_local_handles(it);
+    
+    // Apply last keyframe inheritance after update
+    enforce_last_keyframe_inheritance();
 }
 
 void Channel::set_keyframe_time(size_t index, double new_time)
@@ -199,6 +222,9 @@ void Channel::set_keyframe_function(size_t index, Function function)
     auto it = m_keyframes.begin() + index;
     it->function = function;
     update_local_handles(it);
+    
+    // Apply last keyframe inheritance after function change
+    enforce_last_keyframe_inheritance();
 }
 
 void Channel::set_keyframe_handle_mode(size_t index, HandleMode handle_mode)
@@ -209,6 +235,9 @@ void Channel::set_keyframe_handle_mode(size_t index, HandleMode handle_mode)
     auto it = m_keyframes.begin() + index;
     it->handle_mode = handle_mode;
     update_local_handles(it);
+    
+    // Apply last keyframe inheritance after handle mode change
+    enforce_last_keyframe_inheritance();
 }
 
 double Channel::evaluate(double time, double* prev_t) const {
@@ -478,6 +507,29 @@ void Channel::update_handles(Keyframe& keyframe, Keyframe* prev_keyframe_ptr, Ke
 
 void Channel::copy_keyframes_from(const Channel& source) {
     m_keyframes = source.m_keyframes;
+}
+
+void Channel::enforce_last_keyframe_inheritance() {
+    // If there are fewer than 2 keyframes, no inheritance needed
+    if (m_keyframes.size() < 2) {
+        return;
+    }
+    
+    // Get the last and second-to-last keyframes
+    auto& last_keyframe = m_keyframes.back();
+    const auto& prev_keyframe = m_keyframes[m_keyframes.size() - 2];
+    
+    std::cout << "enforce_last_keyframe_inheritance: last_keyframe (before) function=" << static_cast<int>(last_keyframe.function) 
+              << ", handle_mode=" << static_cast<int>(last_keyframe.handle_mode) << std::endl;
+    std::cout << "enforce_last_keyframe_inheritance: prev_keyframe function=" << static_cast<int>(prev_keyframe.function) 
+              << ", handle_mode=" << static_cast<int>(prev_keyframe.handle_mode) << std::endl;
+    
+    // Set the last keyframe's function and handle mode to match the previous keyframe
+    last_keyframe.function = prev_keyframe.function;
+    last_keyframe.handle_mode = prev_keyframe.handle_mode;
+    
+    std::cout << "enforce_last_keyframe_inheritance: last_keyframe (after) function=" << static_cast<int>(last_keyframe.function) 
+              << ", handle_mode=" << static_cast<int>(last_keyframe.handle_mode) << std::endl;
 }
 
 } // namespace anim

@@ -4,6 +4,7 @@
 #include <anim/channel.hpp>
 #include <anim/keyframe.hpp> // Required for Keyframe and Point
 #include <anim/handle_utils.hpp> // Required for GrabbedHandle enum
+#include <iostream>
 
 using namespace anim;
 
@@ -958,5 +959,151 @@ TEST_CASE("Channel keyframes() method", "[channel]") {
         REQUIRE(keyframes[2].value() == 30.0);
         REQUIRE(keyframes[2].function == Function::constant);
         REQUIRE(keyframes[2].handle_mode == HandleMode::free);
+    }
+}
+
+TEST_CASE("Last keyframe inherits Function and HandleMode from preceding keyframe", "[channel][last_keyframe]") {
+    Animation anim;
+    Channel& ch = anim.create_channel("test");
+
+    SECTION("Last keyframe inherits when added as second keyframe") {
+        // Add first keyframe with specific function and handle mode
+        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
+        
+        // Add second keyframe that becomes the last
+        ch.create_keyframe(3.0, 30.0, Function::bezier, HandleMode::smooth);
+        
+        // The last keyframe should inherit function and handle mode from the first
+        REQUIRE(ch.keyframe(1).function == Function::linear);
+        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::free);
+        
+        // The first keyframe should remain unchanged
+        REQUIRE(ch.keyframe(0).function == Function::linear);
+        REQUIRE(ch.keyframe(0).handle_mode == HandleMode::free);
+    }
+
+    SECTION("Last keyframe inherits when added as third keyframe") {
+        // Add first keyframe
+        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
+        // Add second keyframe with different function/handle mode
+        ch.create_keyframe(2.0, 20.0, Function::bezier, HandleMode::smooth);
+        // Add third keyframe that becomes the last
+        ch.create_keyframe(3.0, 30.0, Function::constant, HandleMode::aligned);
+        
+        // The last keyframe should inherit from the second-to-last (middle) keyframe
+        REQUIRE(ch.keyframe(2).function == Function::bezier);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::smooth);
+    }
+
+    SECTION("Last keyframe inherits when middle keyframe function is changed") {
+        // Add three keyframes
+        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
+        ch.create_keyframe(2.0, 20.0, Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(3.0, 30.0, Function::constant, HandleMode::aligned);
+        
+        // Change the second keyframe's function
+        ch.set_keyframe_function(1, Function::constant);
+        
+        // The last keyframe should inherit the new function
+        REQUIRE(ch.keyframe(2).function == Function::constant);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::smooth); // handle mode should remain from second keyframe
+    }
+
+    SECTION("Last keyframe inherits when middle keyframe handle mode is changed") {
+        // Add three keyframes
+        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
+        ch.create_keyframe(2.0, 20.0, Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(3.0, 30.0, Function::constant, HandleMode::aligned);
+        
+        // Change the second keyframe's handle mode
+        ch.set_keyframe_handle_mode(1, HandleMode::flat);
+        
+        // The last keyframe should inherit the new handle mode
+        REQUIRE(ch.keyframe(2).function == Function::bezier); // function should remain from second keyframe
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::flat);
+    }
+
+    SECTION("Last keyframe inherits when a keyframe is inserted that becomes second-to-last") {
+        // Add two keyframes
+        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
+        ch.create_keyframe(3.0, 30.0, Function::bezier, HandleMode::smooth);
+        
+        // Insert a keyframe in the middle that becomes the new second-to-last
+        ch.create_keyframe(2.0, 20.0, Function::constant, HandleMode::aligned);
+        
+        // The last keyframe should inherit from the new second-to-last keyframe
+        REQUIRE(ch.keyframe(2).function == Function::constant);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::aligned);
+    }
+
+    SECTION("Single keyframe is not affected") {
+        // Add only one keyframe
+        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
+        
+        // Single keyframe should remain unchanged
+        REQUIRE(ch.keyframe(0).function == Function::linear);
+        REQUIRE(ch.keyframe(0).handle_mode == HandleMode::free);
+    }
+}
+
+TEST_CASE("Debug last keyframe inheritance", "[debug]") {
+    Animation anim;
+    Channel& ch = anim.create_channel("test");
+
+    // Add three keyframes
+    ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
+    ch.create_keyframe(2.0, 20.0, Function::bezier, HandleMode::smooth);
+    ch.create_keyframe(3.0, 30.0, Function::constant, HandleMode::aligned);
+    
+    std::cout << "After adding keyframes:" << std::endl;
+    for (size_t i = 0; i < ch.size(); ++i) {
+        const auto& kf = ch.keyframe(i);
+        std::cout << "Keyframe " << i << ": time=" << kf.time() << ", function=" << static_cast<int>(kf.function) 
+                  << ", handle_mode=" << static_cast<int>(kf.handle_mode) << std::endl;
+    }
+    
+    // Change the second keyframe's function
+    ch.set_keyframe_function(1, Function::constant);
+    
+    std::cout << "After changing keyframe[1] function:" << std::endl;
+    for (size_t i = 0; i < ch.size(); ++i) {
+        const auto& kf = ch.keyframe(i);
+        std::cout << "Keyframe " << i << ": time=" << kf.time() << ", function=" << static_cast<int>(kf.function) 
+                  << ", handle_mode=" << static_cast<int>(kf.handle_mode) << std::endl;
+    }
+}
+
+TEST_CASE("Debug keyframe creation separately", "[debug2]") {
+    Animation anim;
+    Channel& ch = anim.create_channel("test");
+
+    std::cout << "Adding first keyframe (1.0, 10.0, linear, free)" << std::endl;
+    ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
+    
+    std::cout << "After first keyframe:" << std::endl;
+    for (size_t i = 0; i < ch.size(); ++i) {
+        const auto& kf = ch.keyframe(i);
+        std::cout << "Keyframe " << i << ": time=" << kf.time() << ", function=" << static_cast<int>(kf.function) 
+                  << ", handle_mode=" << static_cast<int>(kf.handle_mode) << std::endl;
+    }
+    
+    std::cout << "Adding second keyframe (2.0, 20.0, bezier, smooth)" << std::endl;
+    ch.create_keyframe(2.0, 20.0, Function::bezier, HandleMode::smooth);
+    
+    std::cout << "After second keyframe:" << std::endl;
+    for (size_t i = 0; i < ch.size(); ++i) {
+        const auto& kf = ch.keyframe(i);
+        std::cout << "Keyframe " << i << ": time=" << kf.time() << ", function=" << static_cast<int>(kf.function) 
+                  << ", handle_mode=" << static_cast<int>(kf.handle_mode) << std::endl;
+    }
+    
+    std::cout << "Adding third keyframe (3.0, 30.0, constant, aligned)" << std::endl;
+    ch.create_keyframe(3.0, 30.0, Function::constant, HandleMode::aligned);
+    
+    std::cout << "After third keyframe:" << std::endl;
+    for (size_t i = 0; i < ch.size(); ++i) {
+        const auto& kf = ch.keyframe(i);
+        std::cout << "Keyframe " << i << ": time=" << kf.time() << ", function=" << static_cast<int>(kf.function) 
+                  << ", handle_mode=" << static_cast<int>(kf.handle_mode) << std::endl;
     }
 }
