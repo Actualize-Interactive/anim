@@ -57,6 +57,7 @@ public:
     const Keyframe& prev_keyframe(double time) const;
     const Keyframe& next_keyframe(double time) const;
     const Keyframe& closest_keyframe(double time) const;
+    const std::vector<Keyframe>& keyframes() const;
     inline size_t size() const { return m_keyframes.size(); }
     inline size_t num_keyframes() const { return m_keyframes.size(); }
     inline bool empty() const { return m_keyframes.empty(); }
