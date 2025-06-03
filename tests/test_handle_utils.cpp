@@ -406,4 +406,62 @@ TEST_CASE("Function and HandleMode constraints for in_handle time", "[handle_uti
         REQUIRE(current_kf.in_handle.time <= current_kf.position.time);
         REQUIRE(current_kf.in_handle.time == 5.0); // Should be clamped to keyframe time
     }
+    
+    SECTION("Function::linear keyframe with preceding adjustable mode") {
+        // Preceding keyframe with HandleMode::alignAdjustable (adjustable mode)
+        Keyframe prev_kf(2.0, 1.0, Function::bezier, HandleMode::alignAdjustable);
+        Keyframe current_kf(10.0, 5.0, Function::linear);
+        
+        // Simulate handles being set incorrectly
+        current_kf.in_handle = Point(10.5, 4.0); // time > keyframe.position.time
+        
+        // Apply the constraints via the update_handles logic
+        ensure_linear_handles_time_boundary(current_kf, &prev_kf, nullptr);
+        
+        REQUIRE(current_kf.in_handle.time <= current_kf.position.time);
+    }
+    
+    SECTION("Function::constant keyframe with preceding adjustable mode") {
+        // Preceding keyframe with HandleMode::free (adjustable mode)
+        Keyframe prev_kf(3.0, 2.0, Function::bezier, HandleMode::free);
+        Keyframe current_kf(8.0, 7.0, Function::constant);
+        
+        // Simulate handles being set incorrectly
+        current_kf.in_handle = Point(8.2, 6.0); // time > keyframe.position.time
+        
+        // Apply the constraints via the update_handles logic
+        ensure_linear_handles_time_boundary(current_kf, &prev_kf, nullptr);
+        
+        REQUIRE(current_kf.in_handle.time <= current_kf.position.time);
+    }
+    
+    SECTION("HandleMode::flat with preceding HandleMode::aligned") {
+        // Preceding keyframe with HandleMode::aligned (adjustable mode)
+        Keyframe prev_kf(1.5, 3.0, Function::bezier, HandleMode::aligned);
+        Keyframe current_kf(6.0, 8.0, Function::bezier, HandleMode::flat);
+        
+        // Manually set invalid in_handle after applying flat handles
+        apply_flat_handles(current_kf, &prev_kf, nullptr);
+        current_kf.in_handle = Point(6.1, 8.0); // time > keyframe.position.time
+        
+        // Apply constraints again
+        constrain_in_handle_time(current_kf, prev_kf);
+        
+        REQUIRE(current_kf.in_handle.time <= current_kf.position.time);
+    }
+    
+    SECTION("HandleMode::smooth with preceding HandleMode::alignFlex") {
+        // Preceding keyframe with HandleMode::alignFlex (adjustable mode)
+        Keyframe prev_kf(2.5, 4.0, Function::bezier, HandleMode::alignFlex);
+        Keyframe current_kf(7.0, 9.0, Function::bezier, HandleMode::smooth);
+        
+        // Manually set invalid in_handle after applying smooth handles
+        apply_smooth_handles(current_kf, &prev_kf, nullptr);
+        current_kf.in_handle = Point(7.3, 8.5); // time > keyframe.position.time
+        
+        // Apply constraints again
+        constrain_in_handle_time(current_kf, prev_kf);
+        
+        REQUIRE(current_kf.in_handle.time <= current_kf.position.time);
+    }
 }
