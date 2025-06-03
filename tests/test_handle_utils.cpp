@@ -326,3 +326,84 @@ TEST_CASE("Edge cases and special conditions", "[handle_utils]") {
         REQUIRE(current_kf.out_handle.value == Catch::Approx(current_kf.position.value));
     }
 }
+
+TEST_CASE("Function and HandleMode constraints for in_handle time", "[handle_utils]") {
+    SECTION("Function::linear must constrain in_handle by keyframe time") {
+        Keyframe prev_kf(1.0, 2.0, Function::bezier, HandleMode::free);
+        Keyframe current_kf(5.0, 6.0, Function::linear);
+        
+        // Set in_handle beyond the keyframe time (violates constraint)
+        current_kf.in_handle = Point(6.0, 4.0); // time > keyframe.position.time
+        
+        // Apply linear function constraints - this should clamp in_handle.time
+        ensure_linear_handles_time_boundary(current_kf, &prev_kf, nullptr);
+        
+        REQUIRE(current_kf.in_handle.time <= current_kf.position.time);
+    }
+    
+    SECTION("Function::constant must constrain in_handle by keyframe time") {
+        Keyframe prev_kf(1.0, 2.0, Function::bezier, HandleMode::free);
+        Keyframe current_kf(5.0, 6.0, Function::constant);
+        
+        // Set in_handle beyond the keyframe time (violates constraint)
+        current_kf.in_handle = Point(5.5, 4.0); // time > keyframe.position.time
+        
+        // Apply constant function constraints - this should clamp in_handle.time
+        ensure_linear_handles_time_boundary(current_kf, &prev_kf, nullptr);
+        
+        REQUIRE(current_kf.in_handle.time <= current_kf.position.time);
+    }
+    
+    SECTION("HandleMode::flat must constrain in_handle by keyframe time") {
+        Keyframe prev_kf(1.0, 2.0, Function::bezier, HandleMode::free);
+        Keyframe current_kf(5.0, 6.0, Function::bezier, HandleMode::flat);
+        
+        // Set in_handle beyond the keyframe time (violates constraint)
+        current_kf.in_handle = Point(5.2, 6.0); // time > keyframe.position.time
+        
+        apply_flat_handles(current_kf, &prev_kf, nullptr);
+        
+        // This should already work but let's test the additional constraint
+        REQUIRE(current_kf.in_handle.time <= current_kf.position.time);
+        
+        // Also test that if we manually set a bad in_handle after apply_flat_handles,
+        // we need a way to constrain it
+        current_kf.in_handle = Point(5.3, 6.0); // violates constraint again
+        constrain_in_handle_time(current_kf, prev_kf);
+        REQUIRE(current_kf.in_handle.time <= current_kf.position.time);
+    }
+    
+    SECTION("HandleMode::smooth must constrain in_handle by keyframe time") {
+        Keyframe prev_kf(1.0, 2.0, Function::bezier, HandleMode::free);
+        Keyframe current_kf(5.0, 6.0, Function::bezier, HandleMode::smooth);
+        
+        // Set in_handle beyond the keyframe time (violates constraint)
+        current_kf.in_handle = Point(5.1, 5.5); // time > keyframe.position.time
+        
+        apply_smooth_handles(current_kf, &prev_kf, nullptr);
+        
+        // This should already work but let's test the additional constraint
+        REQUIRE(current_kf.in_handle.time <= current_kf.position.time);
+        
+        // Also test that if we manually set a bad in_handle after apply_smooth_handles,
+        // we need a way to constrain it
+        current_kf.in_handle = Point(5.2, 5.5); // violates constraint again
+        constrain_in_handle_time(current_kf, prev_kf);
+        REQUIRE(current_kf.in_handle.time <= current_kf.position.time);
+    }
+    
+    SECTION("Preceding keyframe with adjustable modes should not affect constraints") {
+        // Test case where preceding keyframe has HandleMode::free (adjustable)
+        Keyframe prev_kf(1.0, 2.0, Function::bezier, HandleMode::free);
+        prev_kf.out_handle = Point(6.0, 10.0); // out_handle beyond current keyframe time
+        
+        Keyframe current_kf(5.0, 6.0, Function::linear);
+        current_kf.in_handle = Point(5.5, 4.0); // violates constraint
+        
+        // Apply constraints - should constrain in_handle regardless of prev_kf.out_handle
+        constrain_in_handle_time(current_kf, prev_kf);
+        
+        REQUIRE(current_kf.in_handle.time <= current_kf.position.time);
+        REQUIRE(current_kf.in_handle.time == 5.0); // Should be clamped to keyframe time
+    }
+}

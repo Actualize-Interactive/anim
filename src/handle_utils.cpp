@@ -161,6 +161,10 @@ namespace anim {
         } else { // keyframe is the only keyframe
             // No handles to adjust
         }
+        
+        // For linear and constant functions, ensure in_handle doesn't go past keyframe time
+        // and out_handle doesn't go before keyframe time
+        constrain_handles_time(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
     }
 
 
@@ -186,6 +190,10 @@ namespace anim {
             keyframe.in_handle = Point(keyframe.position.time - 1.0, keyframe.position.value);
             keyframe.out_handle = Point(keyframe.position.time + 1.0, keyframe.position.value);
         }
+        
+        // For flat handles, ensure in_handle doesn't go past keyframe time
+        // and out_handle doesn't go before keyframe time
+        constrain_handles_time(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
     }
 
     void apply_smooth_handles(Keyframe& keyframe, const Keyframe* prev_keyframe_ptr, const Keyframe* next_keyframe_ptr, double smooth_factor) {
@@ -247,6 +255,10 @@ namespace anim {
             keyframe.in_handle  = Point(keyframe.position.time - 1.0, keyframe.position.value);
             keyframe.out_handle = Point(keyframe.position.time + 1.0, keyframe.position.value);
         }
+        
+        // For smooth handles, ensure in_handle doesn't go past keyframe time
+        // and out_handle doesn't go before keyframe time
+        constrain_handles_time(keyframe, prev_keyframe_ptr, next_keyframe_ptr);
     }
 
 
