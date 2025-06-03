@@ -11,6 +11,7 @@
 #include <cmath>
 #include <string>
 #include <memory>
+#include <map>
 
 namespace anim {
 
@@ -88,6 +89,9 @@ private:
     std::string m_name;
     const Id m_id; // Immutable ID - each channel has a unique identity
     std::vector<Keyframe> m_keyframes;
+    
+    // Track original intended function and handle_mode for each keyframe by time
+    std::map<double, std::pair<Function, HandleMode>> m_original_keyframe_properties;
 
 
     using KeyframeIt = std::vector<Keyframe>::iterator;
