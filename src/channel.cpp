@@ -416,6 +416,20 @@ const Keyframe &Channel::insert_keyframe(Keyframe&& keyframe, GrabbedHandle grab
 
 const Keyframe &Channel::insert_keyframe(KeyframeIt it, Keyframe&& keyframe, GrabbedHandle grabbed_handle)
 {
+    // Restore any cached keyframe BEFORE insertion to avoid index issues
+    // Find the cached keyframe by time to avoid index problems
+    if (m_cache_valid && m_cached_keyframe_index < m_keyframes.size()) {
+        double cached_time = m_last_keyframe_cache.time();
+        for (size_t i = 0; i < m_keyframes.size(); ++i) {
+            if (nearly_equal(m_keyframes[i].time(), cached_time, 0.005)) {
+                auto& cached_keyframe = m_keyframes[i];
+                cached_keyframe.function = m_last_keyframe_cache.function;
+                cached_keyframe.handle_mode = m_last_keyframe_cache.handle_mode;
+                break;
+            }
+        }
+    }
+    
     // If the keyframe already with 1 / 200th of a second, replace it
     if (it != m_keyframes.end() && nearly_equal(it->time(), keyframe.time(), 0.005)) {
         *it = std::move(keyframe);
@@ -423,7 +437,7 @@ const Keyframe &Channel::insert_keyframe(KeyframeIt it, Keyframe&& keyframe, Gra
 
     it = m_keyframes.insert(it, std::move(keyframe));
     update_local_handles(it, grabbed_handle);
-    apply_last_keyframe_inheritance();
+    apply_last_keyframe_inheritance(false); // Don't restore cache again, just apply inheritance and cache new last keyframe
     
     return *it;
 }
@@ -516,19 +530,20 @@ void Channel::apply_last_keyframe_inheritance(bool restore_cache) const {
         return; // No inheritance needed for single keyframe or empty channel
     }
     
-    size_t last_index = m_keyframes.size() - 1;
-    size_t second_last_index = last_index - 1;
-    
-    // If this is a keyframe addition and we have a valid cache of a different keyframe,
-    // restore that keyframe from cache since it's no longer the last
-    if (restore_cache && m_cache_valid && m_cached_keyframe_index != last_index && m_cached_keyframe_index < m_keyframes.size()) {
+    // If this is a structural change (keyframe addition/deletion) and we have a valid cache,
+    // restore the cached keyframe FIRST before any other operations
+    if (restore_cache && m_cache_valid && m_cached_keyframe_index < m_keyframes.size()) {
         auto& cached_keyframe = m_keyframes[m_cached_keyframe_index];
         cached_keyframe.function = m_last_keyframe_cache.function;
         cached_keyframe.handle_mode = m_last_keyframe_cache.handle_mode;
     }
     
+    size_t last_index = m_keyframes.size() - 1;
+    size_t second_last_index = last_index - 1;
+    
     // Cache the current last keyframe's original state before applying inheritance
-    if (restore_cache) {
+    // Only cache when restore_cache is true (structural changes) or when cache is invalid
+    if (restore_cache || !m_cache_valid) {
         m_last_keyframe_cache = m_keyframes[last_index];
         m_cached_keyframe_index = last_index;
         m_cache_valid = true;
