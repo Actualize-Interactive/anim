@@ -87,10 +87,10 @@ public:
 private:
     std::string m_name;
     const Id m_id; // Immutable ID - each channel has a unique identity
-    std::vector<Keyframe> m_keyframes;
-    mutable Keyframe m_last_keyframe_proxy; // Mutable proxy for returning inherited last keyframe
-    mutable std::vector<Keyframe> m_keyframes_with_inheritance; // Cached version with inheritance applied
-    mutable bool m_keyframes_cache_valid = false; // Track if cache needs refresh
+    mutable std::vector<Keyframe> m_keyframes;
+    mutable Keyframe m_last_keyframe_cache; // Cache for the last keyframe's original state
+    mutable bool m_cache_valid = false; // Track if cache contains valid data
+    mutable size_t m_cached_keyframe_index = SIZE_MAX; // Index of the keyframe in cache
 
     using KeyframeIt = std::vector<Keyframe>::iterator;
 
@@ -107,7 +107,8 @@ private:
         Keyframe* prev_keyframe_ptr, Keyframe* next_keyframe_ptr, 
         GrabbedHandle grabbed_handle = GrabbedHandle::none);
     
-    void invalidate_keyframes_cache() const;
+    void apply_last_keyframe_inheritance(bool restore_cache = true) const;
+    void invalidate_cache() const;
 };
 
 } // namespace anim
