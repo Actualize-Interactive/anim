@@ -234,6 +234,8 @@ void Channel::set_keyframe_function(size_t index, Function function)
         } else if (index == second_last_index) {
             // Modifying second-to-last keyframe - last keyframe should inherit
             apply_last_keyframe_inheritance(false);
+            // Invalidate cache so the last keyframe's inherited values become its new intended values
+            invalidate_cache();
         }
         // Other keyframes don't affect inheritance
     }
@@ -260,6 +262,8 @@ void Channel::set_keyframe_handle_mode(size_t index, HandleMode handle_mode)
         } else if (index == second_last_index) {
             // Modifying second-to-last keyframe - last keyframe should inherit
             apply_last_keyframe_inheritance(false);
+            // Invalidate cache so the last keyframe's inherited values become its new intended values
+            invalidate_cache();
         }
         // Other keyframes don't affect inheritance
     }
@@ -567,8 +571,9 @@ void Channel::apply_last_keyframe_inheritance(bool restore_cache) const {
     size_t second_last_index = last_index - 1;
     
     // Cache the current last keyframe's original state before applying inheritance
-    // Only cache when restore_cache is true (structural changes) or when cache is invalid
-    if (restore_cache || !m_cache_valid) {
+    // Always cache when restore_cache is true (structural changes), or when cache is invalid,
+    // or when the last keyframe index has changed (new keyframe added)
+    if (restore_cache || !m_cache_valid || m_cached_keyframe_index != last_index) {
         m_last_keyframe_cache = m_keyframes[last_index];
         m_cached_keyframe_index = last_index;
         m_cache_valid = true;

@@ -1062,27 +1062,26 @@ TEST_CASE("Advanced keyframe inheritance scenarios", "[channel][inheritance_adva
         // Add 4th keyframe with different properties
         ch.create_keyframe(4.0, 40.0, Function::linear, HandleMode::flat);
         
-        // Note: Current implementation has a cache limitation where only the immediately
-        // previous last keyframe gets restored. KF2 stays at inherited values (bezier, smooth)
-        // rather than being restored to original (constant, aligned).
-        REQUIRE(ch.keyframe(2).function == Function::bezier);
-        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::smooth);
+        // With the fix: 3rd keyframe (C) should be restored to its original values (constant, aligned)
+        // when the 4th keyframe is added
+        REQUIRE(ch.keyframe(2).function == Function::constant);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::aligned);
         
-        // Verify 4th keyframe inherits from 3rd's current values (not original)
-        REQUIRE(ch.keyframe(3).function == Function::bezier);
-        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::smooth);
+        // Verify 4th keyframe inherits from 3rd's restored original values
+        REQUIRE(ch.keyframe(3).function == Function::constant);
+        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::aligned);
         
         // Add 5th keyframe with different properties
         ch.create_keyframe(5.0, 50.0, Function::bezier, HandleMode::free);
         
-        // Due to the cache bug, KF3 is not restored to its original values
-        // It stays at the inherited values from when it was the last keyframe
-        REQUIRE(ch.keyframe(3).function == Function::bezier);
-        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::smooth);
+        // With the fix: 4th keyframe (D) should be restored to its original values (linear, flat)
+        // when the 5th keyframe is added
+        REQUIRE(ch.keyframe(3).function == Function::linear);
+        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::flat);
         
-        // Verify 5th keyframe inherits from 4th's current values (not original)
-        REQUIRE(ch.keyframe(4).function == Function::bezier);
-        REQUIRE(ch.keyframe(4).handle_mode == HandleMode::smooth);
+        // Verify 5th keyframe inherits from 4th's restored original values
+        REQUIRE(ch.keyframe(4).function == Function::linear);
+        REQUIRE(ch.keyframe(4).handle_mode == HandleMode::flat);
     }
 
     SECTION("Edit last keyframe then append - second-to-last keeps edited values") {
@@ -1213,13 +1212,14 @@ TEST_CASE("Advanced keyframe inheritance scenarios", "[channel][inheritance_adva
         ch.create_keyframe(6.0, 60.0, Function::linear, HandleMode::free);
         ch.create_keyframe(7.0, 70.0, Function::bezier, HandleMode::aligned);
         
-        // Verify the inheritance chain - note: due to cache limitations, 
-        // keyframe 2 may not be restored to its original post-edit state
-        REQUIRE(ch.keyframe(3).function == Function::bezier);  // Inherits from keyframe 2's current state
-        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::smooth);
+        // With the fix: keyframe 2 (time=5.0) was created with original values (constant, aligned)
+        // When keyframe 3 (time=6.0) was added, keyframe 2 was restored to its original values
+        // When keyframe 4 (time=7.0) was added, keyframe 3 was restored to its original values (linear, free) 
+        REQUIRE(ch.keyframe(3).function == Function::linear);   // KF3 restored to original
+        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::free);
         
-        REQUIRE(ch.keyframe(4).function == Function::bezier);   // Inherits from keyframe 3
-        REQUIRE(ch.keyframe(4).handle_mode == HandleMode::smooth);
+        REQUIRE(ch.keyframe(4).function == Function::linear);   // KF4 inherits from restored KF3
+        REQUIRE(ch.keyframe(4).handle_mode == HandleMode::free);
     }
 
     SECTION("Edge cases - handle constraints and mode updates") {
