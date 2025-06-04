@@ -67,7 +67,7 @@ namespace anim {
     }
 
     Point rotate(const Point& p, double angle_degrees) {
-        double rad = angle_degrees * M_PI / 180.0; 
+        double rad = angle_degrees * std::numbers::pi / 180.0; 
         double cos_angle = std::cos(rad);
         double sin_angle = std::sin(rad);
         return Point(
