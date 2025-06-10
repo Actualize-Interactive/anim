@@ -262,6 +262,7 @@ int main() {
             bool mouse_clicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
             bool mouse_down = ImGui::IsMouseDown(ImGuiMouseButton_Left);
             bool mouse_released = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+            bool alt_pressed = ImGui::GetIO().KeyAlt;
             
             auto mouse_pnt = ImPlot::GetPlotMousePos();
             ImVec2 mouse_plot_pos = ImVec2(mouse_pnt.x, mouse_pnt.y);
@@ -305,11 +306,14 @@ int main() {
                 }
             }
 
-            // Only process selection if mouse is not over interactive elements OR we're already dragging
-            if (mouse_over_interactive_element || s_selection.is_dragging) {
-                // Disable plot navigation temporarily
-                ImPlot::GetInputMap().Pan = ImGuiMouseButton_COUNT; // Disable panning
-                ImPlot::GetInputMap().Menu = ImGuiMouseButton_COUNT; // Disable context menu
+            // Store original input map values
+            ImGuiMouseButton original_pan = ImPlot::GetInputMap().Pan;
+            ImGuiMouseButton original_menu = ImPlot::GetInputMap().Menu;
+            
+            // Only allow plot navigation when Alt is pressed
+            if (!alt_pressed) {
+                ImPlot::GetInputMap().Pan = ImGuiMouseButton_COUNT;
+                ImPlot::GetInputMap().Menu = ImGuiMouseButton_COUNT;
             }
             
             // Start selection/dragging
@@ -375,8 +379,6 @@ int main() {
                     }
                 } else {
                     // Move keyframe
-                    // curve.set_keyframe_time(s_selection.keyframe_idx, static_cast<double>(mouse_plot_pos.x));
-                    // curve.set_keyframe_value(s_selection.keyframe_idx, static_cast<double>(mouse_plot_pos.y));
                     anim::Point new_kf_pos(static_cast<double>(mouse_plot_pos.x), 
                                            static_cast<double>(mouse_plot_pos.y));
                     curve.set_keyframe_position(s_selection.keyframe_idx, new_kf_pos);
@@ -387,7 +389,7 @@ int main() {
             if (mouse_released) {
                 s_selection.is_dragging = false;
             }
-
+            
             // Plot curves
             for (size_t i = 0; i < animation.size(); ++i) {
                 anim::Channel& curve = animation[i];
@@ -522,6 +524,10 @@ int main() {
                     ImPlot::PlotScatter((curve.name() + " Selected").c_str(), selected_kf_x.data(), selected_kf_y.data(), selected_kf_x.size());
                 }
             }
+            // Restore input map after all plot operations are complete
+            ImPlot::GetInputMap().Pan = original_pan;
+            ImPlot::GetInputMap().Menu = original_menu;
+            
             ImPlot::EndPlot();
         }
         ImGui::End();
