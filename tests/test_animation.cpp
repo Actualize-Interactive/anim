@@ -556,3 +556,113 @@ TEST_CASE("Animation API Comprehensive Test", "[Animation]") {
     }
 }
 
+TEST_CASE("Animation Copy Functionality", "[Animation][Copy]") {
+    SECTION("Copy empty animation") {
+        Animation original("TestAnimation");
+        original.set_start_time(5.0);
+        original.set_end_time(25.0);
+        
+        Animation copied = original.copy();
+        
+        REQUIRE(copied.name() == "TestAnimation_copy");
+        REQUIRE(copied.start_time() == Catch::Approx(5.0));
+        REQUIRE(copied.end_time() == Catch::Approx(25.0));
+        REQUIRE(copied.empty());
+        REQUIRE(copied.num_channels() == 0);
+    }
+    
+    SECTION("Copy empty animation with custom name") {
+        Animation original("TestAnimation");
+        
+        Animation copied = original.copy("CustomCopyName");
+        
+        REQUIRE(copied.name() == "CustomCopyName");
+        REQUIRE(copied.start_time() == original.start_time());
+        REQUIRE(copied.end_time() == original.end_time());
+        REQUIRE(copied.empty());
+    }
+    
+    SECTION("Copy animation with channels") {
+        Animation original("AnimWithChannels");
+        original.set_start_time(1.0);
+        original.set_end_time(10.0);
+        
+        // Create channels with keyframes
+        Channel& ch1 = original.create_channel("Channel1");
+        ch1.create_keyframe(0.0, 0.0);
+        ch1.create_keyframe(5.0, 10.0);
+        
+        Channel& ch2 = original.create_channel("Channel2");
+        ch2.create_keyframe(2.0, 5.0);
+        ch2.create_keyframe(8.0, 15.0);
+        
+        Animation copied = original.copy();
+        
+        // Verify basic properties
+        REQUIRE(copied.name() == "AnimWithChannels_copy");
+        REQUIRE(copied.start_time() == Catch::Approx(1.0));
+        REQUIRE(copied.end_time() == Catch::Approx(10.0));
+        REQUIRE(copied.num_channels() == 2);
+        
+        // Verify channels exist with same names
+        REQUIRE(copied.has_channel("Channel1"));
+        REQUIRE(copied.has_channel("Channel2"));
+        
+        // Verify channel content
+        const Channel& copied_ch1 = copied.channel("Channel1");
+        const Channel& copied_ch2 = copied.channel("Channel2");
+        
+        REQUIRE(copied_ch1.num_keyframes() == 2);
+        REQUIRE(copied_ch2.num_keyframes() == 2);
+        
+        // Verify keyframe data
+        REQUIRE(copied_ch1.keyframe(0).time() == Catch::Approx(0.0));
+        REQUIRE(copied_ch1.keyframe(0).value() == Catch::Approx(0.0));
+        REQUIRE(copied_ch1.keyframe(1).time() == Catch::Approx(5.0));
+        REQUIRE(copied_ch1.keyframe(1).value() == Catch::Approx(10.0));
+        
+        REQUIRE(copied_ch2.keyframe(0).time() == Catch::Approx(2.0));
+        REQUIRE(copied_ch2.keyframe(0).value() == Catch::Approx(5.0));
+        REQUIRE(copied_ch2.keyframe(1).time() == Catch::Approx(8.0));
+        REQUIRE(copied_ch2.keyframe(1).value() == Catch::Approx(15.0));
+    }
+    
+    SECTION("Copy preserves channel independence") {
+        Animation original("Original");
+        Channel& orig_ch = original.create_channel("TestChannel");
+        orig_ch.create_keyframe(0.0, 0.0);
+        
+        Animation copied = original.copy("Copy");
+        
+        // Verify channels have different IDs (thus are independent)
+        const Channel& orig_channel = original.channel("TestChannel");
+        const Channel& copy_channel = copied.channel("TestChannel");
+        
+        REQUIRE(orig_channel.id() != copy_channel.id());
+        
+        // Modify original and verify copy is unaffected
+        original.create_channel("NewChannel");
+        REQUIRE(original.num_channels() == 2);
+        REQUIRE(copied.num_channels() == 1);
+        
+        // Modify original channel and verify copy is unaffected
+        orig_ch.create_keyframe(1.0, 1.0);
+        REQUIRE(orig_channel.num_keyframes() == 2);
+        REQUIRE(copy_channel.num_keyframes() == 1);
+    }
+    
+    SECTION("Copy maintains channel order") {
+        Animation original("OrderTest");
+        original.create_channel("First");
+        original.create_channel("Second");
+        original.create_channel("Third");
+        
+        Animation copied = original.copy();
+        
+        REQUIRE(copied.num_channels() == 3);
+        REQUIRE(copied.channel(0).name() == "First");
+        REQUIRE(copied.channel(1).name() == "Second");
+        REQUIRE(copied.channel(2).name() == "Third");
+    }
+}
+

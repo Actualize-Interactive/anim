@@ -25,6 +25,10 @@ public:
     Channel& create_channel(const std::string& channel_name, size_t index);
     Channel& copy_channel(const Channel& source_channel, const std::string& new_name = "");
 
+    // Animation copy methods
+    Animation copy() const;
+    Animation copy(const std::string& new_name) const;
+
     const Channel& channel(size_t index) const;
     const Channel& operator[](size_t index) const;
     Channel& channel(size_t index);

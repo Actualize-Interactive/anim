@@ -51,6 +51,25 @@ Channel& Animation::copy_channel(const Channel& source_channel, const std::strin
     return *raw_ptr;
 }
 
+Animation Animation::copy() const {
+    return copy(m_name + "_copy");
+}
+
+Animation Animation::copy(const std::string& new_name) const {
+    Animation new_animation(new_name);
+    
+    // Copy basic properties
+    new_animation.m_start_time = m_start_time;
+    new_animation.m_end_time = m_end_time;
+    
+    // Copy all channels using existing copy_channel method
+    for (const auto& channel : m_channels) {
+        new_animation.copy_channel(*channel, channel->name());
+    }
+    
+    return new_animation;
+}
+
 const Channel& Animation::channel(size_t index) const {
     if (index >= m_channels.size()) {
         throw std::out_of_range("Channel index out of range");
