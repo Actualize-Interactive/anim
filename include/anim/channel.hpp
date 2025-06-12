@@ -48,6 +48,12 @@ public:
         const Point& in_handle, const Point& out_handle,
         Function function = Function::bezier, HandleMode handle_mode = HandleMode::aligned);
 
+    const Keyframe& create_keyframe(const Point& position,
+        const Point& in_handle, const Point& out_handle,
+        Function function = Function::bezier, HandleMode handle_mode = HandleMode::aligned);
+
+    const Keyframe& create_keyframe(const Keyframe& reference_keyframe);
+
     const Keyframe& emplace_keyframe(Keyframe&& keyframe);
     
     bool has_keyframe(double time) const;
