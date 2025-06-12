@@ -24,6 +24,18 @@ const Keyframe& Channel::create_keyframe(double time, double value,
     return insert_keyframe(Keyframe(time, value, function, handle_mode, in_handle, out_handle));
 }
 
+const Keyframe& Channel::create_keyframe(const Point& position,
+    const Point& in_handle, const Point& out_handle,
+    Function function, HandleMode handle_mode) 
+{
+    return insert_keyframe(Keyframe(position, function, handle_mode, in_handle, out_handle));
+}
+
+const Keyframe& Channel::create_keyframe(const Keyframe& reference_keyframe) 
+{
+    return insert_keyframe(Keyframe(reference_keyframe));
+}
+
 const Keyframe& Channel::emplace_keyframe(Keyframe&& keyframe) {
         return insert_keyframe(std::move(keyframe));
     }
