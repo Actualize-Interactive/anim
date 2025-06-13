@@ -604,4 +604,28 @@ void Channel::invalidate_cache() const {
     m_cached_keyframe_index = SIZE_MAX;
 }
 
+bool Channel::operator==(const Channel& other) const {
+    // Compare names and keyframes, but not IDs (copied channels should be equal)
+    if (m_name != other.m_name) {
+        return false;
+    }
+    
+    if (m_keyframes.size() != other.m_keyframes.size()) {
+        return false;
+    }
+    
+    // Compare all keyframes
+    for (size_t i = 0; i < m_keyframes.size(); ++i) {
+        if (m_keyframes[i] != other.m_keyframes[i]) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+bool Channel::operator!=(const Channel& other) const {
+    return !(*this == other);
+}
+
 } // namespace anim

@@ -948,3 +948,170 @@ TEST_CASE("Animation Deep Copy Validation with Smart Pointers", "[Animation][Cop
     }
 }
 
+TEST_CASE("Animation Equality Operators", "[Animation][equality]") {
+    SECTION("Empty animations with same settings are equal") {
+        Animation anim1("TestAnim");
+        Animation anim2("TestAnim");
+        
+        REQUIRE(anim1 == anim2);
+        REQUIRE_FALSE(anim1 != anim2);
+    }
+
+    SECTION("Empty animations with different names are not equal") {
+        Animation anim1("TestAnim1");
+        Animation anim2("TestAnim2");
+        
+        REQUIRE_FALSE(anim1 == anim2);
+        REQUIRE(anim1 != anim2);
+    }
+
+    SECTION("Animations with different start times are not equal") {
+        Animation anim1("TestAnim");
+        Animation anim2("TestAnim");
+        
+        anim1.set_start_time(5.0);
+        anim2.set_start_time(10.0);
+        
+        REQUIRE_FALSE(anim1 == anim2);
+        REQUIRE(anim1 != anim2);
+    }
+
+    SECTION("Animations with different end times are not equal") {
+        Animation anim1("TestAnim");
+        Animation anim2("TestAnim");
+        
+        anim1.set_end_time(25.0);
+        anim2.set_end_time(30.0);
+        
+        REQUIRE_FALSE(anim1 == anim2);
+        REQUIRE(anim1 != anim2);
+    }
+
+    SECTION("Animations with same channels are equal") {
+        Animation anim1("TestAnim");
+        Animation anim2("TestAnim");
+        
+        anim1.create_channel("Ch1").create_keyframe(1.0, 10.0);
+        anim1.create_channel("Ch2").create_keyframe(2.0, 20.0);
+        
+        anim2.create_channel("Ch1").create_keyframe(1.0, 10.0);
+        anim2.create_channel("Ch2").create_keyframe(2.0, 20.0);
+        
+        REQUIRE(anim1 == anim2);
+        REQUIRE_FALSE(anim1 != anim2);
+    }
+
+    SECTION("Animations with different number of channels are not equal") {
+        Animation anim1("TestAnim");
+        Animation anim2("TestAnim");
+        
+        anim1.create_channel("Ch1");
+        anim2.create_channel("Ch1");
+        anim2.create_channel("Ch2");
+        
+        REQUIRE_FALSE(anim1 == anim2);
+        REQUIRE(anim1 != anim2);
+    }
+
+    SECTION("Animations with different channel order are not equal") {
+        Animation anim1("TestAnim");
+        Animation anim2("TestAnim");
+        
+        anim1.create_channel("Ch1");
+        anim1.create_channel("Ch2");
+        
+        anim2.create_channel("Ch2");
+        anim2.create_channel("Ch1");
+        
+        REQUIRE_FALSE(anim1 == anim2);
+        REQUIRE(anim1 != anim2);
+    }
+
+    SECTION("Animations with channels having different keyframes are not equal") {
+        Animation anim1("TestAnim");
+        Animation anim2("TestAnim");
+        
+        anim1.create_channel("Ch1").create_keyframe(1.0, 10.0);
+        anim2.create_channel("Ch1").create_keyframe(1.0, 15.0); // Different value
+        
+        REQUIRE_FALSE(anim1 == anim2);
+        REQUIRE(anim1 != anim2);
+    }
+
+    SECTION("Copied animations are equal") {
+        Animation original("OriginalAnim");
+        original.set_start_time(5.0);
+        original.set_end_time(25.0);
+        original.create_channel("Ch1").create_keyframe(1.0, 10.0);
+        original.create_channel("Ch2").create_keyframe(2.0, 20.0);
+        
+        Animation copied = original.copy();
+        
+        // copy() creates a name with "_copy" suffix, so they won't be equal by default
+        REQUIRE_FALSE(original == copied);
+        REQUIRE(original != copied);
+        
+        // But if we set the same name, they should be equal
+        copied.set_name("OriginalAnim");
+        REQUIRE(original == copied);
+        REQUIRE_FALSE(original != copied);
+    }
+
+    SECTION("Copied animations with different names can be equal except for name") {
+        Animation original("OriginalAnim");
+        original.set_start_time(5.0);
+        original.set_end_time(25.0);
+        original.create_channel("Ch1").create_keyframe(1.0, 10.0);
+        
+        Animation copied = original.copy("CopiedAnim");
+        
+        // Should not be equal due to different names
+        REQUIRE_FALSE(original == copied);
+        REQUIRE(original != copied);
+        
+        // But if we set the same name, they should be equal
+        copied.set_name("OriginalAnim");
+        REQUIRE(original == copied);
+        REQUIRE_FALSE(original != copied);
+    }
+
+    SECTION("Complex animations with multiple channels and keyframes") {
+        Animation anim1("ComplexAnim");
+        Animation anim2("ComplexAnim");
+        
+        anim1.set_start_time(2.0);
+        anim1.set_end_time(20.0);
+        
+        anim2.set_start_time(2.0);
+        anim2.set_end_time(20.0);
+        
+        // Add complex channels with multiple keyframes
+        Channel& ch1_1 = anim1.create_channel("Position");
+        ch1_1.create_keyframe(0.0, 0.0);
+        ch1_1.create_keyframe(5.0, 50.0);
+        ch1_1.create_keyframe(10.0, 100.0);
+        
+        Channel& ch1_2 = anim1.create_channel("Rotation");
+        ch1_2.create_keyframe(0.0, 0.0, Function::linear);
+        ch1_2.create_keyframe(10.0, 360.0, Function::linear);
+        
+        Channel& ch2_1 = anim2.create_channel("Position");
+        ch2_1.create_keyframe(0.0, 0.0);
+        ch2_1.create_keyframe(5.0, 50.0);
+        ch2_1.create_keyframe(10.0, 100.0);
+        
+        Channel& ch2_2 = anim2.create_channel("Rotation");
+        ch2_2.create_keyframe(0.0, 0.0, Function::linear);
+        ch2_2.create_keyframe(10.0, 360.0, Function::linear);
+        
+        REQUIRE(anim1 == anim2);
+        REQUIRE_FALSE(anim1 != anim2);
+        
+        // Modify one keyframe and verify they're no longer equal
+        ch2_1.set_keyframe_value(1, 55.0); // Change middle keyframe value
+        
+        REQUIRE_FALSE(anim1 == anim2);
+        REQUIRE(anim1 != anim2);
+    }
+}
+

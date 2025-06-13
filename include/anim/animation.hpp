@@ -73,6 +73,10 @@ public:
 
     int num_samples(double sample_rate) const;
 
+    // Equality operators
+    bool operator==(const Animation& other) const;
+    bool operator!=(const Animation& other) const;
+
 private:
     static uint64_t s_next_channel_id;
     std::string m_name;
