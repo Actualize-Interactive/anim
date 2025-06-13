@@ -90,6 +90,10 @@ public:
     // Copy keyframes from another channel (for use by Animation::copy_channel)
     void copy_keyframes_from(const Channel& source);
 
+    // Equality operators
+    bool operator==(const Channel& other) const;
+    bool operator!=(const Channel& other) const;
+
 private:
     std::string m_name;
     const Id m_id; // Immutable ID - each channel has a unique identity

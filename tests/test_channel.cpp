@@ -1500,3 +1500,90 @@ TEST_CASE("Advanced keyframe inheritance scenarios", "[channel][inheritance_adva
         REQUIRE(ch.keyframe(2).handle_mode == HandleMode::smooth);
     }
 }
+
+TEST_CASE("Channel Equality Operators", "[channel][equality]") {
+    Animation anim;
+    Channel& ch1 = anim.create_channel("TestChannel");
+    Channel& ch2 = anim.create_channel("TestChannel"); // Same name, different ID
+    Channel& ch3 = anim.create_channel("DifferentChannel");
+
+    SECTION("Empty channels with same name are equal") {
+        REQUIRE(ch1 == ch2);
+        REQUIRE_FALSE(ch1 != ch2);
+    }
+
+    SECTION("Empty channels with different names are not equal") {
+        REQUIRE_FALSE(ch1 == ch3);
+        REQUIRE(ch1 != ch3);
+    }
+
+    SECTION("Channels with same keyframes are equal") {
+        ch1.create_keyframe(1.0, 10.0);
+        ch1.create_keyframe(2.0, 20.0);
+        
+        ch2.create_keyframe(1.0, 10.0);
+        ch2.create_keyframe(2.0, 20.0);
+        
+        REQUIRE(ch1 == ch2);
+        REQUIRE_FALSE(ch1 != ch2);
+    }
+
+    SECTION("Channels with different number of keyframes are not equal") {
+        ch1.create_keyframe(1.0, 10.0);
+        ch2.create_keyframe(1.0, 10.0);
+        ch2.create_keyframe(2.0, 20.0);
+        
+        REQUIRE_FALSE(ch1 == ch2);
+        REQUIRE(ch1 != ch2);
+    }
+
+    SECTION("Channels with different keyframe values are not equal") {
+        ch1.create_keyframe(1.0, 10.0);
+        ch2.create_keyframe(1.0, 15.0); // Different value
+        
+        REQUIRE_FALSE(ch1 == ch2);
+        REQUIRE(ch1 != ch2);
+    }
+
+    SECTION("Channels with different keyframe times are not equal") {
+        ch1.create_keyframe(1.0, 10.0);
+        ch2.create_keyframe(1.5, 10.0); // Different time
+        
+        REQUIRE_FALSE(ch1 == ch2);
+        REQUIRE(ch1 != ch2);
+    }
+
+    SECTION("Channels with different keyframe properties are not equal") {
+        ch1.create_keyframe(1.0, 10.0, Function::linear, HandleMode::smooth);
+        ch2.create_keyframe(1.0, 10.0, Function::bezier, HandleMode::smooth); // Different function
+        
+        REQUIRE_FALSE(ch1 == ch2);
+        REQUIRE(ch1 != ch2);
+    }
+
+    SECTION("Channels with different keyframe order are not equal") {
+        ch1.create_keyframe(1.0, 10.0);
+        ch1.create_keyframe(2.0, 20.0);
+        
+        ch2.create_keyframe(2.0, 20.0);
+        ch2.create_keyframe(1.0, 10.0);
+        
+        // Should be equal since keyframes are automatically sorted by time
+        REQUIRE(ch1 == ch2);
+        REQUIRE_FALSE(ch1 != ch2);
+    }
+
+    SECTION("Copied channels are equal") {
+        ch1.create_keyframe(1.0, 10.0);
+        ch1.create_keyframe(2.0, 20.0);
+        
+        Animation anim2;
+        Channel& copied = anim2.copy_channel(ch1, "TestChannel");
+        
+        REQUIRE(ch1 == copied);
+        REQUIRE_FALSE(ch1 != copied);
+        
+        // Verify they have different IDs but are still equal
+        REQUIRE(ch1.id() != copied.id());
+    }
+}
