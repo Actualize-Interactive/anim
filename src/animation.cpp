@@ -275,4 +275,36 @@ int Animation::num_samples(double sample_rate) const {
     return static_cast<int>(std::ceil(length() * sample_rate)) + 1; // +1 to include the start time
 }
 
+bool Animation::operator==(const Animation& other) const {
+    // Compare all settings and channels
+    if (m_name != other.m_name) {
+        return false;
+    }
+    
+    if (m_start_time != other.m_start_time) {
+        return false;
+    }
+    
+    if (m_end_time != other.m_end_time) {
+        return false;
+    }
+    
+    if (m_channels.size() != other.m_channels.size()) {
+        return false;
+    }
+    
+    // Compare all channels in order
+    for (size_t i = 0; i < m_channels.size(); ++i) {
+        if (*m_channels[i] != *other.m_channels[i]) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+bool Animation::operator!=(const Animation& other) const {
+    return !(*this == other);
+}
+
 } // namespace anim
