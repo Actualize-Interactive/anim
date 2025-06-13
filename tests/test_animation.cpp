@@ -2,6 +2,8 @@
 #include <catch2/catch_approx.hpp>
 #include <anim/animation.hpp>
 #include <anim/channel.hpp>
+#include <memory>
+#include <vector>
 
 
 using namespace anim;
@@ -663,6 +665,286 @@ TEST_CASE("Animation Copy Functionality", "[Animation][Copy]") {
         REQUIRE(copied.channel(0).name() == "First");
         REQUIRE(copied.channel(1).name() == "Second");
         REQUIRE(copied.channel(2).name() == "Third");
+    }
+}
+
+TEST_CASE("Animation Deep Copy Validation with Smart Pointers", "[Animation][Copy][DeepCopy]") {
+    SECTION("Deep copy with unique_ptr - basic validation") {
+        // Create original animation in unique_ptr
+        auto original = std::make_unique<Animation>("OriginalAnim");
+        original->set_start_time(1.0);
+        original->set_end_time(10.0);
+        
+        Channel& orig_ch = original->create_channel("TestChannel");
+        orig_ch.create_keyframe(0.0, 5.0);
+        orig_ch.create_keyframe(2.0, 15.0);
+        
+        // Copy to new unique_ptr
+        auto copied = std::make_unique<Animation>(original->copy("CopiedAnim"));
+        
+        // Verify basic properties are copied correctly
+        REQUIRE(copied->name() == "CopiedAnim");
+        REQUIRE(copied->start_time() == Catch::Approx(1.0));
+        REQUIRE(copied->end_time() == Catch::Approx(10.0));
+        REQUIRE(copied->num_channels() == 1);
+        REQUIRE(copied->has_channel("TestChannel"));
+        
+        // Verify channels have different IDs (independence)
+        const Channel& orig_channel = original->channel("TestChannel");
+        const Channel& copy_channel = copied->channel("TestChannel");
+        REQUIRE(orig_channel.id() != copy_channel.id());
+        
+        // Verify keyframe data is copied correctly
+        REQUIRE(copy_channel.num_keyframes() == 2);
+        REQUIRE(copy_channel.keyframe(0).time() == Catch::Approx(0.0));
+        REQUIRE(copy_channel.keyframe(0).value() == Catch::Approx(5.0));
+        REQUIRE(copy_channel.keyframe(1).time() == Catch::Approx(2.0));
+        REQUIRE(copy_channel.keyframe(1).value() == Catch::Approx(15.0));
+        
+        // Test independence - modify original and verify copy is unaffected
+        original->create_channel("NewChannel");
+        orig_ch.create_keyframe(4.0, 25.0);
+        original->set_start_time(0.5);
+        
+        // Copy should remain unchanged
+        REQUIRE(copied->num_channels() == 1);
+        REQUIRE(copy_channel.num_keyframes() == 2);
+        REQUIRE(copied->start_time() == Catch::Approx(1.0));
+        REQUIRE_FALSE(copied->has_channel("NewChannel"));
+        
+        // Test independence - modify copy and verify original is unaffected
+        copied->create_channel("CopyOnlyChannel");
+        Channel& copy_test_ch = copied->channel("TestChannel");
+        copy_test_ch.create_keyframe(6.0, 35.0);
+        copied->set_end_time(20.0);
+        
+        // Original should remain unchanged
+        REQUIRE(original->num_channels() == 2);
+        REQUIRE(orig_channel.num_keyframes() == 3);
+        REQUIRE(original->end_time() == Catch::Approx(10.0));
+        REQUIRE_FALSE(original->has_channel("CopyOnlyChannel"));
+    }
+    
+    SECTION("Deep copy with vector of unique_ptr") {
+        // Create vector of animations
+        std::vector<std::unique_ptr<Animation>> original_anims;
+        
+        // Create first animation
+        auto anim1 = std::make_unique<Animation>("Anim1");
+        anim1->set_start_time(0.0);
+        anim1->set_end_time(5.0);
+        Channel& ch1 = anim1->create_channel("Channel1");
+        ch1.create_keyframe(0.0, 10.0);
+        ch1.create_keyframe(1.0, 20.0);
+        
+        // Create second animation
+        auto anim2 = std::make_unique<Animation>("Anim2");
+        anim2->set_start_time(5.0);
+        anim2->set_end_time(15.0);
+        Channel& ch2 = anim2->create_channel("Channel2");
+        ch2.create_keyframe(2.0, 30.0);
+        ch2.create_keyframe(3.0, 40.0);
+        Channel& ch2_extra = anim2->create_channel("ExtraChannel");
+        ch2_extra.create_keyframe(1.0, 100.0);
+        
+        original_anims.push_back(std::move(anim1));
+        original_anims.push_back(std::move(anim2));
+        
+        // Create vector of copied animations
+        std::vector<std::unique_ptr<Animation>> copied_anims;
+        for (const auto& orig : original_anims) {
+            copied_anims.push_back(std::make_unique<Animation>(orig->copy(orig->name() + "_copy")));
+        }
+        
+        // Verify copies are correct
+        REQUIRE(copied_anims.size() == 2);
+        
+        // Verify first animation copy
+        const auto& copy1 = copied_anims[0];
+        REQUIRE(copy1->name() == "Anim1_copy");
+        REQUIRE(copy1->start_time() == Catch::Approx(0.0));
+        REQUIRE(copy1->end_time() == Catch::Approx(5.0));
+        REQUIRE(copy1->num_channels() == 1);
+        const Channel& copy_ch1 = copy1->channel("Channel1");
+        REQUIRE(copy_ch1.num_keyframes() == 2);
+        REQUIRE(copy_ch1.keyframe(0).time() == Catch::Approx(0.0));
+        REQUIRE(copy_ch1.keyframe(0).value() == Catch::Approx(10.0));
+        
+        // Verify second animation copy
+        const auto& copy2 = copied_anims[1];
+        REQUIRE(copy2->name() == "Anim2_copy");
+        REQUIRE(copy2->start_time() == Catch::Approx(5.0));
+        REQUIRE(copy2->end_time() == Catch::Approx(15.0));
+        REQUIRE(copy2->num_channels() == 2);
+        const Channel& copy_ch2 = copy2->channel("Channel2");
+        const Channel& copy_ch2_extra = copy2->channel("ExtraChannel");
+        REQUIRE(copy_ch2.num_keyframes() == 2);
+        REQUIRE(copy_ch2_extra.num_keyframes() == 1);
+        
+        // Verify channel independence by checking IDs
+        const Channel& orig_ch1 = original_anims[0]->channel("Channel1");
+        const Channel& orig_ch2 = original_anims[1]->channel("Channel2");
+        const Channel& orig_ch2_extra = original_anims[1]->channel("ExtraChannel");
+        
+        REQUIRE(orig_ch1.id() != copy_ch1.id());
+        REQUIRE(orig_ch2.id() != copy_ch2.id());
+        REQUIRE(orig_ch2_extra.id() != copy_ch2_extra.id());
+        
+        // Test independence - modify originals and verify copies are unaffected
+        original_anims[0]->create_channel("NewChannelOrig1");
+        Channel& orig_modify_ch = original_anims[1]->channel("Channel2");
+        orig_modify_ch.create_keyframe(4.0, 50.0);
+        
+        REQUIRE(copy1->num_channels() == 1);
+        REQUIRE_FALSE(copy1->has_channel("NewChannelOrig1"));
+        REQUIRE(copy_ch2.num_keyframes() == 2);
+        
+        // Test independence - modify copies and verify originals are unaffected
+        copied_anims[0]->create_channel("NewChannelCopy1");
+        Channel& copy_modify_ch = copied_anims[1]->channel("Channel2");
+        copy_modify_ch.create_keyframe(5.0, 60.0);
+        
+        REQUIRE(original_anims[0]->num_channels() == 2);
+        REQUIRE_FALSE(original_anims[0]->has_channel("NewChannelCopy1"));
+        REQUIRE(orig_modify_ch.num_keyframes() == 3);
+    }
+    
+    SECTION("Deep copy with std::move operations") {
+        // Create original animation
+        Animation original("MoveTest");
+        original.set_start_time(2.0);
+        original.set_end_time(8.0);
+        Channel& orig_ch = original.create_channel("MoveChannel");
+        orig_ch.create_keyframe(0.0, 100.0);
+        orig_ch.create_keyframe(1.0, 200.0);
+        
+        // Create copy and store in unique_ptr
+        auto copied_ptr = std::make_unique<Animation>(original.copy("MovedCopy"));
+        
+        // Move to vector
+        std::vector<std::unique_ptr<Animation>> anim_vector;
+        anim_vector.push_back(std::move(copied_ptr));
+        
+        // Verify the move worked and data is intact
+        REQUIRE(anim_vector.size() == 1);
+        REQUIRE(copied_ptr == nullptr); // Should be moved from
+        
+        const auto& moved_anim = anim_vector[0];
+        REQUIRE(moved_anim->name() == "MovedCopy");
+        REQUIRE(moved_anim->start_time() == Catch::Approx(2.0));
+        REQUIRE(moved_anim->end_time() == Catch::Approx(8.0));
+        REQUIRE(moved_anim->num_channels() == 1);
+        
+        const Channel& moved_ch = moved_anim->channel("MoveChannel");
+        REQUIRE(moved_ch.num_keyframes() == 2);
+        REQUIRE(moved_ch.keyframe(0).time() == Catch::Approx(0.0));
+        REQUIRE(moved_ch.keyframe(0).value() == Catch::Approx(100.0));
+        REQUIRE(moved_ch.keyframe(1).time() == Catch::Approx(1.0));
+        REQUIRE(moved_ch.keyframe(1).value() == Catch::Approx(200.0));
+        
+        // Verify independence - original should still be independent
+        const Channel& orig_channel = original.channel("MoveChannel");
+        REQUIRE(orig_channel.id() != moved_ch.id());
+        
+        // Modify original and verify moved copy is unaffected
+        original.create_channel("OriginalOnlyChannel");
+        orig_ch.create_keyframe(2.0, 300.0);
+        
+        REQUIRE(moved_anim->num_channels() == 1);
+        REQUIRE(moved_ch.num_keyframes() == 2);
+        REQUIRE_FALSE(moved_anim->has_channel("OriginalOnlyChannel"));
+        
+        // Move back to single unique_ptr
+        auto single_ptr = std::move(anim_vector[0]);
+        anim_vector.clear();
+        
+        // Verify data is still intact after multiple moves
+        REQUIRE(single_ptr->name() == "MovedCopy");
+        REQUIRE(single_ptr->start_time() == Catch::Approx(2.0));
+        REQUIRE(single_ptr->num_channels() == 1);
+        
+        const Channel& final_ch = single_ptr->channel("MoveChannel");
+        REQUIRE(final_ch.num_keyframes() == 2);
+        REQUIRE(final_ch.keyframe(0).value() == Catch::Approx(100.0));
+        REQUIRE(final_ch.keyframe(1).value() == Catch::Approx(200.0));
+        
+        // Test moving between vectors
+        std::vector<std::unique_ptr<Animation>> vector1;
+        std::vector<std::unique_ptr<Animation>> vector2;
+        
+        vector1.push_back(std::move(single_ptr));
+        
+        // Move from vector1 to vector2
+        vector2.push_back(std::move(vector1[0]));
+        vector1.clear();
+        
+        // Verify data integrity after vector-to-vector move
+        REQUIRE(vector2.size() == 1);
+        const auto& final_anim = vector2[0];
+        REQUIRE(final_anim->name() == "MovedCopy");
+        REQUIRE(final_anim->num_channels() == 1);
+        const Channel& final_moved_ch = final_anim->channel("MoveChannel");
+        REQUIRE(final_moved_ch.num_keyframes() == 2);
+        REQUIRE(final_moved_ch.keyframe(0).value() == Catch::Approx(100.0));
+        
+        // Verify independence is still maintained
+        REQUIRE(orig_channel.id() != final_moved_ch.id());
+    }
+    
+    SECTION("Deep copy keyframe data independence") {
+        // Create original with detailed keyframe data
+        Animation original("KeyframeTest");
+        Channel& orig_ch = original.create_channel("TestChannel");
+        
+        // Create keyframes
+        const auto& kf1 = orig_ch.create_keyframe(0.0, 10.0);
+        const auto& kf2 = orig_ch.create_keyframe(2.0, 20.0);
+        const auto& kf3 = orig_ch.create_keyframe(4.0, 30.0);
+        
+        // Copy animation
+        auto copied_ptr = std::make_unique<Animation>(original.copy("KeyframeCopy"));
+        const Channel& copy_ch = copied_ptr->channel("TestChannel");
+        
+        // Verify keyframe data is copied correctly
+        REQUIRE(copy_ch.num_keyframes() == 3);
+        
+        const auto& copy_kf1 = copy_ch.keyframe(0);
+        const auto& copy_kf2 = copy_ch.keyframe(1);
+        const auto& copy_kf3 = copy_ch.keyframe(2);
+        
+        REQUIRE(copy_kf1.time() == Catch::Approx(0.0));
+        REQUIRE(copy_kf1.value() == Catch::Approx(10.0));
+        REQUIRE(copy_kf2.time() == Catch::Approx(2.0));
+        REQUIRE(copy_kf2.value() == Catch::Approx(20.0));
+        REQUIRE(copy_kf3.time() == Catch::Approx(4.0));
+        REQUIRE(copy_kf3.value() == Catch::Approx(30.0));
+        
+        // Verify channel IDs are different (independence)
+        REQUIRE(orig_ch.id() != copy_ch.id());
+        
+        // Test independence - modify original keyframes and verify copy is unaffected
+        orig_ch.set_keyframe_position(0, Point(0.1, 11.0));
+        orig_ch.create_keyframe(3.0, 25.0);  // Add new keyframe
+        
+        // Copy should remain unchanged
+        const auto& copy_kf1_after = copy_ch.keyframe(0);
+        REQUIRE(copy_kf1_after.time() == Catch::Approx(0.0));
+        REQUIRE(copy_kf1_after.value() == Catch::Approx(10.0));
+        REQUIRE(copy_ch.num_keyframes() == 3);  // Should still have 3 keyframes
+        
+        // Test independence - modify copy keyframes and verify original is unaffected  
+        Channel& copy_modify_ch = copied_ptr->channel("TestChannel");
+        copy_modify_ch.set_keyframe_position(1, Point(2.1, 21.0));
+        copy_modify_ch.create_keyframe(5.0, 35.0);  // Add new keyframe
+        
+        // Original should remain unchanged (except for our earlier modification)
+        const auto& orig_kf1_after = orig_ch.keyframe(0);
+        const auto& orig_kf2_after = orig_ch.keyframe(1);
+        REQUIRE(orig_kf1_after.time() == Catch::Approx(0.1));  // Our modification
+        REQUIRE(orig_kf1_after.value() == Catch::Approx(11.0));  // Our modification
+        REQUIRE(orig_kf2_after.time() == Catch::Approx(2.0));  // Should be unchanged
+        REQUIRE(orig_kf2_after.value() == Catch::Approx(20.0));  // Should be unchanged
+        REQUIRE(orig_ch.num_keyframes() == 4);  // Should have 4 keyframes (3 original + 1 added)
     }
 }
 
