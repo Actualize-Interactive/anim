@@ -290,12 +290,81 @@ double Channel::evaluate(double time, double* prev_t) const {
         return m_keyframes[0].value();
     }
     
-    if (time <= m_keyframes.front().time()) {
-        return m_keyframes.front().value();
-    }
+    double start_time = m_keyframes.front().time();
+    double end_time = m_keyframes.back().time();
+    double duration = end_time - start_time;
     
-    if (time >= m_keyframes.back().time()) {
-        return m_keyframes.back().value();
+    // Handle out-of-bounds time based on extend settings
+    if (time < start_time) {
+        switch (m_extend_start) {
+            case Extend::Hold:
+                return m_keyframes.front().value();
+            case Extend::Repeat:
+                if (duration > 0.0) {
+                    // Map time into the valid range by cycling
+                    double cycles_before = std::ceil((start_time - time) / duration);
+                    time = time + cycles_before * duration;
+                } else {
+                    return m_keyframes.front().value();
+                }
+                break;
+            case Extend::Mirror:
+                if (duration > 0.0) {
+                    // For mirror mode, we create a ping-pong pattern
+                    // Each full cycle is 2*duration long (start->end->start)
+                    double distance_before = start_time - time;
+                    double cycle_length = 2.0 * duration;
+                    
+                    // Map to position within a cycle
+                    double pos_in_cycle = std::fmod(distance_before, cycle_length);
+                    
+                    if (pos_in_cycle <= duration) {
+                        // First half of cycle: normal direction (going backwards from start)
+                        time = start_time + pos_in_cycle;
+                    } else {
+                        // Second half of cycle: reverse direction
+                        time = end_time - (pos_in_cycle - duration);
+                    }
+                } else {
+                    return m_keyframes.front().value();
+                }
+                break;
+        }
+    } else if (time > end_time) {
+        switch (m_extend_end) {
+            case Extend::Hold:
+                return m_keyframes.back().value();
+            case Extend::Repeat:
+                if (duration > 0.0) {
+                    // Map time into the valid range by cycling
+                    double cycles_after = std::ceil((time - end_time) / duration);
+                    time = time - cycles_after * duration;
+                } else {
+                    return m_keyframes.back().value();
+                }
+                break;
+            case Extend::Mirror:
+                if (duration > 0.0) {
+                    // For mirror mode, we create a ping-pong pattern
+                    // Each full cycle is 2*duration long (start->end->start)
+                    double distance_after = time - end_time;
+                    double cycle_length = 2.0 * duration;
+                    
+                    // Map to position within a cycle
+                    double pos_in_cycle = std::fmod(distance_after, cycle_length);
+                    
+                    if (pos_in_cycle <= duration) {
+                        // First half of cycle: reverse direction (going backwards from end)
+                        time = end_time - pos_in_cycle;
+                    } else {
+                        // Second half of cycle: normal direction
+                        time = start_time + (pos_in_cycle - duration);
+                    }
+                } else {
+                    return m_keyframes.back().value();
+                }
+                break;
+        }
     }
     
     // Find the keyframes that bracket the requested time
@@ -409,6 +478,22 @@ size_t Channel::num_samples(double sample_rate) const
     double duration = end_time() - start_time();
     return static_cast<size_t>(std::ceil(duration * sample_rate)) + 1; // +1 to include the start time
     
+}
+
+Extend Channel::extend_start() const {
+    return m_extend_start;
+}
+
+Extend Channel::extend_end() const {
+    return m_extend_end;
+}
+
+void Channel::set_extend_start(Extend extend) {
+    m_extend_start = extend;
+}
+
+void Channel::set_extend_end(Extend extend) {
+    m_extend_end = extend;
 }
 
 const Keyframe &Channel::create_default_keyframe(const Point &position, Function function, HandleMode handle_mode)
