@@ -1587,3 +1587,146 @@ TEST_CASE("Channel Equality Operators", "[channel][equality]") {
         REQUIRE(ch1.id() != copied.id());
     }
 }
+
+TEST_CASE("Channel Extend Functionality", "[channel]") {
+    Animation anim;
+    Channel& ch = anim.create_channel("extend_test");
+    
+    // Create keyframes from time 1.0 to 3.0, values 10.0 to 30.0
+    ch.create_keyframe(1.0, 10.0, Function::linear);
+    ch.create_keyframe(3.0, 30.0, Function::linear);
+
+    SECTION("Default extend behavior is Hold") {
+        REQUIRE(ch.extend_start() == Extend::Hold);
+        REQUIRE(ch.extend_end() == Extend::Hold);
+        
+        // Before range: should hold first value
+        REQUIRE(ch.evaluate(0.0) == Catch::Approx(10.0));
+        REQUIRE(ch.evaluate(0.5) == Catch::Approx(10.0));
+        
+        // After range: should hold last value  
+        REQUIRE(ch.evaluate(4.0) == Catch::Approx(30.0));
+        REQUIRE(ch.evaluate(5.0) == Catch::Approx(30.0));
+        
+        // In range: should interpolate normally
+        REQUIRE(ch.evaluate(2.0) == Catch::Approx(20.0));
+    }
+
+    SECTION("Extend start Hold behavior") {
+        ch.set_extend_start(Extend::Hold);
+        REQUIRE(ch.extend_start() == Extend::Hold);
+        
+        REQUIRE(ch.evaluate(0.0) == Catch::Approx(10.0));
+        REQUIRE(ch.evaluate(-1.0) == Catch::Approx(10.0));
+    }
+
+    SECTION("Extend end Hold behavior") {
+        ch.set_extend_end(Extend::Hold);
+        REQUIRE(ch.extend_end() == Extend::Hold);
+        
+        REQUIRE(ch.evaluate(4.0) == Catch::Approx(30.0));
+        REQUIRE(ch.evaluate(10.0) == Catch::Approx(30.0));
+    }
+
+    SECTION("Extend start Repeat behavior") {
+        ch.set_extend_start(Extend::Repeat);
+        REQUIRE(ch.extend_start() == Extend::Repeat);
+        
+        // Duration is 2.0 (3.0 - 1.0)
+        // At time 0.0: should be 1.0 before start, which maps to time 2.0 (3.0 - 1.0)
+        REQUIRE(ch.evaluate(0.0) == Catch::Approx(20.0)); // time 2.0 maps to value 20.0
+        
+        // At time -1.0: should be 2.0 before start, which maps to time 1.0
+        REQUIRE(ch.evaluate(-1.0) == Catch::Approx(10.0)); // time 1.0 maps to value 10.0
+        
+        // At time 0.5: should be 0.5 before start, which maps to time 2.5
+        REQUIRE(ch.evaluate(0.5) == Catch::Approx(25.0)); // time 2.5 maps to value 25.0
+    }
+
+    SECTION("Extend end Repeat behavior") {
+        ch.set_extend_end(Extend::Repeat);
+        REQUIRE(ch.extend_end() == Extend::Repeat);
+        
+        // Duration is 2.0 (3.0 - 1.0)
+        // At time 4.0: should be 1.0 after end, which maps to time 2.0 (1.0 + 1.0)
+        REQUIRE(ch.evaluate(4.0) == Catch::Approx(20.0)); // time 2.0 maps to value 20.0
+        
+        // At time 5.0: should be 2.0 after end, which maps to time 3.0
+        REQUIRE(ch.evaluate(5.0) == Catch::Approx(30.0)); // time 3.0 maps to value 30.0
+        
+        // At time 3.5: should be 0.5 after end, which maps to time 1.5
+        REQUIRE(ch.evaluate(3.5) == Catch::Approx(15.0)); // time 1.5 maps to value 15.0
+    }
+
+    SECTION("Extend start Mirror behavior") {
+        ch.set_extend_start(Extend::Mirror);
+        REQUIRE(ch.extend_start() == Extend::Mirror);
+        
+        // Duration is 2.0 (3.0 - 1.0)
+        // Pattern before start: ...3.0->1.0->3.0->1.0
+        // At time 0.0: 1 unit before start, maps to time 2.0, value 20.0
+        REQUIRE(ch.evaluate(0.0) == Catch::Approx(20.0));
+        
+        // At time -1.0: 2 units before start, maps to time 3.0, value 30.0
+        REQUIRE(ch.evaluate(-1.0) == Catch::Approx(30.0));
+        
+        // At time 0.5: 0.5 units before start, maps to time 1.5, value 15.0
+        REQUIRE(ch.evaluate(0.5) == Catch::Approx(15.0));
+    }
+
+    SECTION("Extend end Mirror behavior") {
+        ch.set_extend_end(Extend::Mirror);
+        REQUIRE(ch.extend_end() == Extend::Mirror);
+        
+        // Duration is 2.0 (3.0 - 1.0)
+        // Pattern after end: 3.0->1.0->3.0->1.0...
+        // At time 4.0: 1 unit after end, maps to time 2.0, value 20.0
+        REQUIRE(ch.evaluate(4.0) == Catch::Approx(20.0));
+        
+        // At time 5.0: 2 units after end, maps to time 1.0, value 10.0
+        REQUIRE(ch.evaluate(5.0) == Catch::Approx(10.0));
+        
+        // At time 3.5: 0.5 units after end, maps to time 2.5, value 25.0
+        REQUIRE(ch.evaluate(3.5) == Catch::Approx(25.0));
+    }
+
+    SECTION("Mixed extend modes") {
+        ch.set_extend_start(Extend::Repeat);
+        ch.set_extend_end(Extend::Mirror);
+        
+        // Before range with Repeat
+        REQUIRE(ch.evaluate(0.0) == Catch::Approx(20.0));
+        
+        // After range with Mirror
+        REQUIRE(ch.evaluate(4.0) == Catch::Approx(20.0));
+        
+        // In range should work normally
+        REQUIRE(ch.evaluate(2.0) == Catch::Approx(20.0));
+    }
+
+    SECTION("Single keyframe extend behavior") {
+        Animation single_anim;
+        Channel& single_ch = single_anim.create_channel("single");
+        single_ch.create_keyframe(2.0, 50.0);
+        
+        // With single keyframe, all extend modes should return the keyframe value
+        single_ch.set_extend_start(Extend::Repeat);
+        single_ch.set_extend_end(Extend::Mirror);
+        
+        REQUIRE(single_ch.evaluate(0.0) == Catch::Approx(50.0));
+        REQUIRE(single_ch.evaluate(2.0) == Catch::Approx(50.0));
+        REQUIRE(single_ch.evaluate(5.0) == Catch::Approx(50.0));
+    }
+
+    SECTION("Empty channel extend behavior") {
+        Animation empty_anim;
+        Channel& empty_ch = empty_anim.create_channel("empty");
+        
+        empty_ch.set_extend_start(Extend::Repeat);
+        empty_ch.set_extend_end(Extend::Mirror);
+        
+        // Empty channel should always return 0.0 regardless of extend mode
+        REQUIRE(empty_ch.evaluate(0.0) == Catch::Approx(0.0));
+        REQUIRE(empty_ch.evaluate(5.0) == Catch::Approx(0.0));
+    }
+}

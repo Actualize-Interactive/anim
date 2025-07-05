@@ -4,6 +4,7 @@
 #include "anim/keyframe.hpp"
 #include "anim/handle_utils.hpp"
 #include "anim/id.hpp"
+#include "anim/extend.hpp"
 #include <vector>
 #include <algorithm>
 #include <optional>
@@ -87,6 +88,12 @@ public:
     double length() const;
     size_t num_samples(double sample_rate) const;
 
+    // Extend behavior methods
+    Extend extend_start() const;
+    Extend extend_end() const;
+    void set_extend_start(Extend extend);
+    void set_extend_end(Extend extend);
+
     // Copy keyframes from another channel (for use by Animation::copy_channel)
     void copy_keyframes_from(const Channel& source);
 
@@ -101,6 +108,10 @@ private:
     mutable Keyframe m_last_keyframe_cache; // Cache for the last keyframe's original state
     mutable bool m_cache_valid = false; // Track if cache contains valid data
     mutable size_t m_cached_keyframe_index = SIZE_MAX; // Index of the keyframe in cache
+    
+    // Extend behavior settings
+    Extend m_extend_start = Extend::Hold;
+    Extend m_extend_end = Extend::Hold;
 
     using KeyframeIt = std::vector<Keyframe>::iterator;
 
