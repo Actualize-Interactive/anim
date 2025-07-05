@@ -6,14 +6,14 @@
 namespace anim {
 
 enum class HandleMode : uint8_t {
-    flat = 0,
-    smooth = 1,
-    aligned = 2,
-    free = 3,
-    alignStrict = 4,
-    alignFlex = 5,
-    alignAdjustable = 6,
-    count = 7
+    Flat = 0,
+    Smooth = 1,
+    Aligned = 2,
+    Free = 3,
+    AlignStrict = 4,
+    AlignFlex = 5,
+    AlignAdjustable = 6,
+    Count = 7
 };
 
 

@@ -40,18 +40,18 @@ public:
     inline Id id() const { return m_id; }
 
     const Keyframe& create_keyframe(double time, double value,
-        Function function = Function::bezier, HandleMode handle_mode = HandleMode::smooth);
+        Function function = Function::Bezier, HandleMode handle_mode = HandleMode::Smooth);
 
     const Keyframe& create_keyframe(const Point& position,
-        Function function = Function::bezier, HandleMode handle_mode = HandleMode::smooth);
+        Function function = Function::Bezier, HandleMode handle_mode = HandleMode::Smooth);
 
     const Keyframe& create_keyframe(double time, double value,
         const Point& in_handle, const Point& out_handle,
-        Function function = Function::bezier, HandleMode handle_mode = HandleMode::aligned);
+        Function function = Function::Bezier, HandleMode handle_mode = HandleMode::Aligned);
 
     const Keyframe& create_keyframe(const Point& position,
         const Point& in_handle, const Point& out_handle,
-        Function function = Function::bezier, HandleMode handle_mode = HandleMode::aligned);
+        Function function = Function::Bezier, HandleMode handle_mode = HandleMode::Aligned);
 
     const Keyframe& create_keyframe(const Keyframe& reference_keyframe);
 

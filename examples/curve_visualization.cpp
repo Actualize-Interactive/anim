@@ -50,8 +50,8 @@ static const float SELECTION_RADIUS = 8.0f; // Pixel radius for selection
 double eval_step = 0.01;
 
 // Enum string mappers - ensure these match your anim::Function and anim::HandleMode enum order and values
-const char* const c_func_items[] = { "Constant", "Linear", "Bezier" }; // Assuming anim::Function::constant=0, linear=1, bezier=2
-const char* const c_hmode_items[] = { "Flat", "Smooth", "Aligned", "Free", "AlignStrict", "AlignFlex", "AlignAdjustable" }; // anim::HandleMode::flat=0, smooth=1, aligned=2, free=3
+const char* const c_func_items[] = { "Constant", "Linear", "Bezier" }; // Assuming anim::Function::Constant=0, linear=1, bezier=2
+const char* const c_hmode_items[] = { "Flat", "Smooth", "Aligned", "Free", "AlignStrict", "AlignFlex", "AlignAdjustable" }; // anim::HandleMode::Flat=0, smooth=1, aligned=2, free=3
 
 
 void CreateExampleCurves() {
@@ -73,7 +73,7 @@ void CreateExampleCurves() {
         // Curve 2: Simple Sine Wave (8 points) - linear interpolation
         anim::Channel& sine_curve = animation.create_channel("Sine Wave Linear");
         for (float t = 0; t <= 32.f; t += 8.f) { 
-            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + .25, anim::Function::linear);
+            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + .25, anim::Function::Linear);
         }
     }
 
@@ -81,7 +81,7 @@ void CreateExampleCurves() {
         // Curve 3: Simple Sine Wave (8 points) - flat handles
         anim::Channel& sine_curve = animation.create_channel("Sine Wave Flat");
         for (float t = 0; t <= 32.f; t += 8.f) { 
-            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + .5, anim::Function::bezier, anim::HandleMode::flat);
+            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + .5, anim::Function::Bezier, anim::HandleMode::Flat);
         }
     }
 
@@ -89,7 +89,7 @@ void CreateExampleCurves() {
         // Curve 4: Simple Sine Wave (8 points) - aligned handles
         anim::Channel& sine_curve = animation.create_channel("Sine Wave Aligned");
         for (float t = 0; t <= 32.f; t += 8.f) { 
-            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + .75, anim::Function::bezier, anim::HandleMode::aligned);
+            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + .75, anim::Function::Bezier, anim::HandleMode::Aligned);
         }
     }   
 
@@ -97,7 +97,7 @@ void CreateExampleCurves() {
         // Curve 5: Simple Sine Wave (8 points) - free handles
         anim::Channel& sine_curve = animation.create_channel("Sine Wave Free");
         for (float t = 0; t <= 32.f; t += 8.f) { 
-            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + 1.0, anim::Function::bezier, anim::HandleMode::free);
+            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + 1.0, anim::Function::Bezier, anim::HandleMode::Free);
         }
     }   
 
@@ -290,7 +290,7 @@ int main() {
                         }
                         
                         // Check handles for bezier animation
-                        if (kf.function == anim::Function::bezier) {
+                        if (kf.function == anim::Function::Bezier) {
                             ImVec2 in_handle_pos = ImVec2(static_cast<float>(kf.in_handle.time), 
                                                          static_cast<float>(kf.in_handle.value));
                             ImVec2 out_handle_pos = ImVec2(static_cast<float>(kf.out_handle.time), 
@@ -335,7 +335,7 @@ int main() {
                         ImVec2 kf_pos = ImVec2(static_cast<float>(kf.time()), static_cast<float>(kf.value()));
                         
                         // Check handles first (for bezier curves) - they have priority over keyframes
-                        if (kf.function == anim::Function::bezier) {
+                        if (kf.function == anim::Function::Bezier) {
                             ImVec2 in_handle_pos = ImVec2(static_cast<float>(kf.in_handle.time), 
                                                          static_cast<float>(kf.in_handle.value));
                             ImVec2 out_handle_pos = ImVec2(static_cast<float>(kf.out_handle.time), 
@@ -453,7 +453,7 @@ int main() {
                     }
 
                     // Plot handles for bezier curves
-                    if (kf.function == anim::Function::bezier) {
+                    if (kf.function == anim::Function::Bezier) {
                         anim::Point in_handle_abs = kf.in_handle;
                         anim::Point out_handle_abs = kf.out_handle;
 

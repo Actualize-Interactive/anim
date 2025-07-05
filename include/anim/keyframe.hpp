@@ -15,8 +15,8 @@ struct Keyframe {
     Function     function;
     HandleMode   handle_mode;
     inline Keyframe(const Point& position, 
-          Function function = Function::bezier,
-          HandleMode handle_mode = HandleMode::smooth,
+          Function function = Function::Bezier,
+          HandleMode handle_mode = HandleMode::Smooth,
           const Point& in_handle = Point(),
           const Point& out_handle = Point())
       : position(position),
@@ -26,8 +26,8 @@ struct Keyframe {
         handle_mode(handle_mode) {}
 
     inline Keyframe(double time, double value, 
-          Function function = Function::bezier,
-          HandleMode handle_mode = HandleMode::smooth,
+          Function function = Function::Bezier,
+          HandleMode handle_mode = HandleMode::Smooth,
           const Point& in_handle = Point(),
           const Point& out_handle = Point())
       : position(time, value),
@@ -40,7 +40,7 @@ struct Keyframe {
       : position(), 
         in_handle(), 
         out_handle(), 
-        function(Function::bezier), handle_mode(HandleMode::smooth) {}
+        function(Function::Bezier), handle_mode(HandleMode::Smooth) {}
 
     inline Keyframe(const Keyframe& other) = default;
     inline Keyframe(Keyframe&& other) noexcept = default;
