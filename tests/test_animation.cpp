@@ -1092,8 +1092,8 @@ TEST_CASE("Animation Equality Operators", "[Animation][equality]") {
         ch1_1.create_keyframe(10.0, 100.0);
         
         Channel& ch1_2 = anim1.create_channel("Rotation");
-        ch1_2.create_keyframe(0.0, 0.0, Function::linear);
-        ch1_2.create_keyframe(10.0, 360.0, Function::linear);
+        ch1_2.create_keyframe(0.0, 0.0, Function::Linear);
+        ch1_2.create_keyframe(10.0, 360.0, Function::Linear);
         
         Channel& ch2_1 = anim2.create_channel("Position");
         ch2_1.create_keyframe(0.0, 0.0);
@@ -1101,8 +1101,8 @@ TEST_CASE("Animation Equality Operators", "[Animation][equality]") {
         ch2_1.create_keyframe(10.0, 100.0);
         
         Channel& ch2_2 = anim2.create_channel("Rotation");
-        ch2_2.create_keyframe(0.0, 0.0, Function::linear);
-        ch2_2.create_keyframe(10.0, 360.0, Function::linear);
+        ch2_2.create_keyframe(0.0, 0.0, Function::Linear);
+        ch2_2.create_keyframe(10.0, 360.0, Function::Linear);
         
         REQUIRE(anim1 == anim2);
         REQUIRE_FALSE(anim1 != anim2);

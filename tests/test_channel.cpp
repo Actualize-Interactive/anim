@@ -58,12 +58,12 @@ TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
         REQUIRE(kf1.time() == 2.0);
         REQUIRE(kf1.value() == 20.0);
 
-        const Keyframe& kf2 = ch.create_keyframe(0.0, 0.0, Point(-0.1, 0), Point(0.1, 0), Function::linear, HandleMode::free);
+        const Keyframe& kf2 = ch.create_keyframe(0.0, 0.0, Point(-0.1, 0), Point(0.1, 0), Function::Linear, HandleMode::Free);
         REQUIRE(ch.size() == 2);
         REQUIRE(ch.keyframe(0).time() == 0.0);
         REQUIRE(ch.keyframe(1).time() == 2.0);
-        REQUIRE(kf2.function == Function::linear);
-        REQUIRE(kf2.handle_mode == HandleMode::free);
+        REQUIRE(kf2.function == Function::Linear);
+        REQUIRE(kf2.handle_mode == HandleMode::Free);
         REQUIRE(kf2.in_handle.time == Catch::Approx(-0.1));
         REQUIRE(kf2.out_handle.time == Catch::Approx(0.1));
     }
@@ -101,18 +101,18 @@ TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
         REQUIRE(kf1.in_handle.value == Catch::Approx(18.0));
         REQUIRE(kf1.out_handle.time == Catch::Approx(2.5));
         REQUIRE(kf1.out_handle.value == Catch::Approx(22.0));
-        REQUIRE(kf1.function == Function::bezier); // Default
-        REQUIRE(kf1.handle_mode == HandleMode::aligned); // Default for this overload
+        REQUIRE(kf1.function == Function::Bezier); // Default
+        REQUIRE(kf1.handle_mode == HandleMode::Aligned); // Default for this overload
 
         // Test with explicit function and handle mode - put it at time 0.0 like existing test
         Point position2(0.0, 0.0);
         Point in_handle2(-0.3, -2.0);
         Point out_handle2(0.3, 2.0);
         
-        const Keyframe& kf2 = ch.create_keyframe(position2, in_handle2, out_handle2, Function::linear, HandleMode::free);
+        const Keyframe& kf2 = ch.create_keyframe(position2, in_handle2, out_handle2, Function::Linear, HandleMode::Free);
         REQUIRE(ch.size() == 2);
-        REQUIRE(kf2.function == Function::linear);
-        REQUIRE(kf2.handle_mode == HandleMode::free);
+        REQUIRE(kf2.function == Function::Linear);
+        REQUIRE(kf2.handle_mode == HandleMode::Free);
         REQUIRE(kf2.in_handle.time == Catch::Approx(-0.3));
         REQUIRE(kf2.in_handle.value == Catch::Approx(-2.0));
         REQUIRE(kf2.out_handle.time == Catch::Approx(0.3));
@@ -128,7 +128,7 @@ TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
         Point original_pos(3.0, 30.0);
         Point original_in(2.5, 28.0);
         Point original_out(3.5, 32.0);
-        const Keyframe& original = ch.create_keyframe(original_pos, original_in, original_out, Function::linear, HandleMode::free);
+        const Keyframe& original = ch.create_keyframe(original_pos, original_in, original_out, Function::Linear, HandleMode::Free);
         
         REQUIRE(ch.size() == 1);
         
@@ -150,21 +150,21 @@ TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
         // Verify all properties are copied correctly in the last keyframe
         REQUIRE(last_kf.time() == first_kf.time());
         REQUIRE(last_kf.value() == first_kf.value());
-        REQUIRE(last_kf.function == Function::linear);
-        REQUIRE(last_kf.handle_mode == HandleMode::free);
+        REQUIRE(last_kf.function == Function::Linear);
+        REQUIRE(last_kf.handle_mode == HandleMode::Free);
 
         // Test creating a copy with different properties by using a fresh channel to avoid inheritance issues
         Animation anim2;
         Channel& ch2 = anim2.create_channel("test2");
-        Keyframe reference_kf(5.0, 50.0, Function::bezier, HandleMode::free, Point(4.5, 48.0), Point(5.5, 52.0));
+        Keyframe reference_kf(5.0, 50.0, Function::Bezier, HandleMode::Free, Point(4.5, 48.0), Point(5.5, 52.0));
         const Keyframe& copy2 = ch2.create_keyframe(reference_kf);
         
         REQUIRE(ch2.size() == 1);
         REQUIRE(copy2.time() == 5.0);
         REQUIRE(copy2.value() == 50.0);
-        REQUIRE(copy2.function == Function::bezier);
-        REQUIRE(copy2.handle_mode == HandleMode::free);
-        // With HandleMode::free, the handles should be preserved as specified
+        REQUIRE(copy2.function == Function::Bezier);
+        REQUIRE(copy2.handle_mode == HandleMode::Free);
+        // With HandleMode::Free, the handles should be preserved as specified
         REQUIRE(copy2.in_handle.time == Catch::Approx(4.5));
         REQUIRE(copy2.in_handle.value == Catch::Approx(48.0));
         REQUIRE(copy2.out_handle.time == Catch::Approx(5.5));
@@ -179,13 +179,13 @@ TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
         {
             Animation anim1;
             Channel& ch1 = anim1.create_channel("test_direct_kf1");
-            Keyframe direct_kf1(10.0, 100.0);  // Uses defaults: Function::bezier, HandleMode::smooth
+            Keyframe direct_kf1(10.0, 100.0);  // Uses defaults: Function::Bezier, HandleMode::Smooth
             const Keyframe& copy1 = ch1.create_keyframe(direct_kf1);
             
             REQUIRE(copy1.time() == 10.0);
             REQUIRE(copy1.value() == 100.0);
-            REQUIRE(copy1.function == Function::bezier);
-            REQUIRE(copy1.handle_mode == HandleMode::smooth);
+            REQUIRE(copy1.function == Function::Bezier);
+            REQUIRE(copy1.handle_mode == HandleMode::Smooth);
         }
         
         // Test 2: Constructor with Point position and explicit Function/HandleMode
@@ -193,13 +193,13 @@ TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
             Animation anim2;
             Channel& ch2 = anim2.create_channel("test_direct_kf2");
             Point pos(15.0, 150.0);
-            Keyframe direct_kf2(pos, Function::linear, HandleMode::free);
+            Keyframe direct_kf2(pos, Function::Linear, HandleMode::Free);
             const Keyframe& copy2 = ch2.create_keyframe(direct_kf2);
             
             REQUIRE(copy2.time() == 15.0);
             REQUIRE(copy2.value() == 150.0);
-            REQUIRE(copy2.function == Function::linear);
-            REQUIRE(copy2.handle_mode == HandleMode::free);
+            REQUIRE(copy2.function == Function::Linear);
+            REQUIRE(copy2.handle_mode == HandleMode::Free);
         }
         
         // Test 3: Constructor with time/value and explicit handles
@@ -208,13 +208,13 @@ TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
             Channel& ch3 = anim3.create_channel("test_direct_kf3");
             Point in_handle(7.0, 65.0);
             Point out_handle(9.0, 85.0);
-            Keyframe direct_kf3(8.0, 75.0, Function::bezier, HandleMode::aligned, in_handle, out_handle);
+            Keyframe direct_kf3(8.0, 75.0, Function::Bezier, HandleMode::Aligned, in_handle, out_handle);
             const Keyframe& copy3 = ch3.create_keyframe(direct_kf3);
             
             REQUIRE(copy3.time() == 8.0);
             REQUIRE(copy3.value() == 75.0);
-            REQUIRE(copy3.function == Function::bezier);
-            REQUIRE(copy3.handle_mode == HandleMode::aligned);
+            REQUIRE(copy3.function == Function::Bezier);
+            REQUIRE(copy3.handle_mode == HandleMode::Aligned);
             REQUIRE(copy3.in_handle.time == Catch::Approx(7.0));
             REQUIRE(copy3.in_handle.value == Catch::Approx(65.0));
             REQUIRE(copy3.out_handle.time == Catch::Approx(9.0));
@@ -228,13 +228,13 @@ TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
             Point pos(20.0, 200.0);
             Point in_handle(19.5, 195.0);
             Point out_handle(20.5, 205.0);
-            Keyframe direct_kf4(pos, Function::constant, HandleMode::free, in_handle, out_handle);
+            Keyframe direct_kf4(pos, Function::Constant, HandleMode::Free, in_handle, out_handle);
             const Keyframe& copy4 = ch4.create_keyframe(direct_kf4);
             
             REQUIRE(copy4.time() == 20.0);
             REQUIRE(copy4.value() == 200.0);
-            REQUIRE(copy4.function == Function::constant);
-            REQUIRE(copy4.handle_mode == HandleMode::free);
+            REQUIRE(copy4.function == Function::Constant);
+            REQUIRE(copy4.handle_mode == HandleMode::Free);
             REQUIRE(copy4.in_handle.time == Catch::Approx(19.5));
             REQUIRE(copy4.in_handle.value == Catch::Approx(195.0));
             REQUIRE(copy4.out_handle.time == Catch::Approx(20.5));
@@ -247,8 +247,8 @@ TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
             Channel& ch5 = anim5.create_channel("test_direct_kf5");
             Keyframe direct_kf5;  // Default constructor
             direct_kf5.position = Point(25.0, 250.0);
-            direct_kf5.function = Function::constant;
-            direct_kf5.handle_mode = HandleMode::smooth;
+            direct_kf5.function = Function::Constant;
+            direct_kf5.handle_mode = HandleMode::Smooth;
             direct_kf5.in_handle = Point(24.0, 240.0);
             direct_kf5.out_handle = Point(26.0, 260.0);
             
@@ -256,8 +256,8 @@ TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
             
             REQUIRE(copy5.time() == 25.0);
             REQUIRE(copy5.value() == 250.0);
-            REQUIRE(copy5.function == Function::constant);
-            REQUIRE(copy5.handle_mode == HandleMode::smooth);
+            REQUIRE(copy5.function == Function::Constant);
+            REQUIRE(copy5.handle_mode == HandleMode::Smooth);
             REQUIRE(copy5.in_handle.time == Catch::Approx(24.0));
             REQUIRE(copy5.in_handle.value == Catch::Approx(240.0));
             REQUIRE(copy5.out_handle.time == Catch::Approx(26.0));
@@ -268,27 +268,27 @@ TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
         {
             Animation anim6;
             Channel& ch6 = anim6.create_channel("test_direct_kf6");
-            Keyframe direct_kf6(0.0, 0.0, Function::linear, HandleMode::aligned);
+            Keyframe direct_kf6(0.0, 0.0, Function::Linear, HandleMode::Aligned);
             const Keyframe& copy6 = ch6.create_keyframe(direct_kf6);
             
             REQUIRE(copy6.time() == 0.0);
             REQUIRE(copy6.value() == 0.0);
-            REQUIRE(copy6.function == Function::linear);
-            REQUIRE(copy6.handle_mode == HandleMode::aligned);
+            REQUIRE(copy6.function == Function::Linear);
+            REQUIRE(copy6.handle_mode == HandleMode::Aligned);
         }
         
         // Test 7: Negative values
         {
             Animation anim7;
             Channel& ch7 = anim7.create_channel("test_direct_kf7");
-            Keyframe direct_kf7(-5.0, -50.0, Function::bezier, HandleMode::free,
+            Keyframe direct_kf7(-5.0, -50.0, Function::Bezier, HandleMode::Free,
                                Point(-6.0, -60.0), Point(-4.0, -40.0));
             const Keyframe& copy7 = ch7.create_keyframe(direct_kf7);
             
             REQUIRE(copy7.time() == -5.0);
             REQUIRE(copy7.value() == -50.0);
-            REQUIRE(copy7.function == Function::bezier);
-            REQUIRE(copy7.handle_mode == HandleMode::free);
+            REQUIRE(copy7.function == Function::Bezier);
+            REQUIRE(copy7.handle_mode == HandleMode::Free);
             REQUIRE(copy7.in_handle.time == Catch::Approx(-6.0));
             REQUIRE(copy7.in_handle.value == Catch::Approx(-60.0));
             REQUIRE(copy7.out_handle.time == Catch::Approx(-4.0));
@@ -299,15 +299,15 @@ TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
         {
             Animation anim8;
             Channel& ch8 = anim8.create_channel("test_direct_kf8");
-            Keyframe original_kf(30.0, 300.0, Function::constant, HandleMode::aligned,
+            Keyframe original_kf(30.0, 300.0, Function::Constant, HandleMode::Aligned,
                                Point(29.0, 290.0), Point(31.0, 310.0));
             Keyframe copied_kf(original_kf);  // Use copy constructor
             const Keyframe& channel_copy = ch8.create_keyframe(copied_kf);
             
             REQUIRE(channel_copy.time() == 30.0);
             REQUIRE(channel_copy.value() == 300.0);
-            REQUIRE(channel_copy.function == Function::constant);
-            REQUIRE(channel_copy.handle_mode == HandleMode::aligned);
+            REQUIRE(channel_copy.function == Function::Constant);
+            REQUIRE(channel_copy.handle_mode == HandleMode::Aligned);
             REQUIRE(channel_copy.in_handle.time == Catch::Approx(29.0));
             REQUIRE(channel_copy.in_handle.value == Catch::Approx(290.0));
             REQUIRE(channel_copy.out_handle.time == Catch::Approx(31.0));
@@ -472,17 +472,17 @@ TEST_CASE("Channel Keyframe Deletion", "[channel]") {
 TEST_CASE("Channel Keyframe Updates", "[channel]") {
     Animation anim;
     Channel& ch = anim.create_channel("test");
-    ch.create_keyframe(1.0, 10.0); // Default HandleMode::smooth
-    ch.create_keyframe(3.0, 30.0); // Default HandleMode::smooth
-    ch.create_keyframe(5.0, 50.0); // Default HandleMode::smooth
+    ch.create_keyframe(1.0, 10.0); // Default HandleMode::Smooth
+    ch.create_keyframe(3.0, 30.0); // Default HandleMode::Smooth
+    ch.create_keyframe(5.0, 50.0); // Default HandleMode::Smooth
 
     SECTION("update_keyframe") {
-        Keyframe new_kf(2.5, 25.0, Function::linear, HandleMode::free);
+        Keyframe new_kf(2.5, 25.0, Function::Linear, HandleMode::Free);
         ch.update_keyframe(1, new_kf); // Update middle keyframe
         REQUIRE(ch.keyframe(1).time() == 2.5);
         REQUIRE(ch.keyframe(1).value() == 25.0);
-        REQUIRE(ch.keyframe(1).function == Function::linear);
-        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::free);
+        REQUIRE(ch.keyframe(1).function == Function::Linear);
+        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::Free);
         
         // Verify keyframes are still sorted
         REQUIRE(ch.keyframe(0).time() == 1.0);
@@ -506,7 +506,7 @@ TEST_CASE("Channel Keyframe Updates", "[channel]") {
     SECTION("set_keyframe_in_handle") {
         Point new_in_handle(2.5, 25.0);
         // Set HandleMode to free to prevent smooth/flat/aligned logic from overriding the manual set.
-        ch.set_keyframe_handle_mode(1, HandleMode::free); 
+        ch.set_keyframe_handle_mode(1, HandleMode::Free); 
         ch.set_keyframe_in_handle(1, new_in_handle);
         REQUIRE(ch.keyframe(1).in_handle == new_in_handle);
     }
@@ -514,19 +514,19 @@ TEST_CASE("Channel Keyframe Updates", "[channel]") {
     SECTION("set_keyframe_out_handle") {
         Point new_out_handle(3.5, 35.0);
         // Set HandleMode to free
-        ch.set_keyframe_handle_mode(1, HandleMode::free);
+        ch.set_keyframe_handle_mode(1, HandleMode::Free);
         ch.set_keyframe_out_handle(1, new_out_handle);
         REQUIRE(ch.keyframe(1).out_handle == new_out_handle);
     }
 
     SECTION("set_keyframe_function") {
-        ch.set_keyframe_function(1, Function::constant);
-        REQUIRE(ch.keyframe(1).function == Function::constant);
+        ch.set_keyframe_function(1, Function::Constant);
+        REQUIRE(ch.keyframe(1).function == Function::Constant);
     }
 
     SECTION("set_keyframe_handle_mode") {
-        ch.set_keyframe_handle_mode(1, HandleMode::aligned);
-        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::aligned);
+        ch.set_keyframe_handle_mode(1, HandleMode::Aligned);
+        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::Aligned);
     }
 
     SECTION("Update with invalid index throws exception") {
@@ -536,8 +536,8 @@ TEST_CASE("Channel Keyframe Updates", "[channel]") {
         REQUIRE_THROWS_AS(ch.set_keyframe_value(3, 1.0), std::out_of_range);
         REQUIRE_THROWS_AS(ch.set_keyframe_in_handle(3, Point()), std::out_of_range);
         REQUIRE_THROWS_AS(ch.set_keyframe_out_handle(3, Point()), std::out_of_range);
-        REQUIRE_THROWS_AS(ch.set_keyframe_function(3, Function::linear), std::out_of_range);
-        REQUIRE_THROWS_AS(ch.set_keyframe_handle_mode(3, HandleMode::free), std::out_of_range);
+        REQUIRE_THROWS_AS(ch.set_keyframe_function(3, Function::Linear), std::out_of_range);
+        REQUIRE_THROWS_AS(ch.set_keyframe_handle_mode(3, HandleMode::Free), std::out_of_range);
     }
 }
 
@@ -595,8 +595,8 @@ TEST_CASE("Channel Evaluation", "[channel]") {
     }    SECTION("Linear interpolation") {
         Animation anim;
         auto& ch = anim.create_channel("ch");
-        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::linear);
-        ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::linear);
+        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::Linear);
+        ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::Linear);
         
         REQUIRE(ch.evaluate(0.0) == Catch::Approx(0.0));
         REQUIRE(ch.evaluate(1.0) == Catch::Approx(10.0));
@@ -606,8 +606,8 @@ TEST_CASE("Channel Evaluation", "[channel]") {
     }    SECTION("Constant interpolation") {
         Animation anim;
         auto& ch = anim.create_channel("ch");
-        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::constant);
-        ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::constant);
+        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::Constant);
+        ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::Constant);
         
         REQUIRE(ch.evaluate(0.0) == Catch::Approx(0.0));
         REQUIRE(ch.evaluate(1.0) == Catch::Approx(0.0)); // Constant until next keyframe
@@ -632,8 +632,8 @@ TEST_CASE("Channel Evaluation", "[channel]") {
 TEST_CASE("Channel Evaluation Range", "[channel]") {
     Animation anim;
     Channel& ch = anim.create_channel("test");
-    ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::linear);
-    ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::linear);
+    ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::Linear);
+    ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::Linear);
 
     SECTION("evaluate_range") {
         auto result = ch.evaluate_range(0.0, 2.0, 5);
@@ -686,9 +686,9 @@ TEST_CASE("Channel Handle Updates", "[channel]") {
     SECTION("Smooth handles update when keyframes change") {
         Animation anim;
         auto& ch = anim.create_channel("ch");
-        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
-        ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::bezier, HandleMode::smooth);
-        ch.create_keyframe(4.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::Bezier, HandleMode::Smooth);
+        ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::Bezier, HandleMode::Smooth);
+        ch.create_keyframe(4.0, 0.0, Point(), Point(), Function::Bezier, HandleMode::Smooth);
         
         // Get original handle positions
         Point orig_in = ch.keyframe(1).in_handle;
@@ -703,9 +703,9 @@ TEST_CASE("Channel Handle Updates", "[channel]") {
     }    SECTION("Handles update when keyframe time changes") {
         Animation anim;
         auto& ch = anim.create_channel("ch");
-        ch.create_keyframe(0.0, 0.0, Point(-0.5, 0.0), Point(0.5, 0.0), Function::bezier, HandleMode::free);
-        ch.create_keyframe(2.0, 20.0, Point(1.5, 20.0), Point(2.5, 20.0), Function::bezier, HandleMode::free);
-        ch.create_keyframe(4.0, 0.0, Point(3.5, 0.0), Point(4.5, 0.0), Function::bezier, HandleMode::free);
+        ch.create_keyframe(0.0, 0.0, Point(-0.5, 0.0), Point(0.5, 0.0), Function::Bezier, HandleMode::Free);
+        ch.create_keyframe(2.0, 20.0, Point(1.5, 20.0), Point(2.5, 20.0), Function::Bezier, HandleMode::Free);
+        ch.create_keyframe(4.0, 0.0, Point(3.5, 0.0), Point(4.5, 0.0), Function::Bezier, HandleMode::Free);
         
         // Store original handle positions for the middle keyframe
         Point orig_in = ch.keyframe(1).in_handle;
@@ -733,9 +733,9 @@ TEST_CASE("Channel Handle Updates", "[channel]") {
     }    SECTION("Smooth handles recalculate when keyframe time changes") {
         Animation anim;
         auto& ch = anim.create_channel("ch");
-        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
-        ch.create_keyframe(2.0, 5.0, Point(), Point(), Function::bezier, HandleMode::smooth);
-        ch.create_keyframe(4.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::Bezier, HandleMode::Smooth);
+        ch.create_keyframe(2.0, 5.0, Point(), Point(), Function::Bezier, HandleMode::Smooth);
+        ch.create_keyframe(4.0, 0.0, Point(), Point(), Function::Bezier, HandleMode::Smooth);
         
         // Store original handle positions for the middle keyframe
         Point orig_in = ch.keyframe(1).in_handle;
@@ -754,9 +754,9 @@ TEST_CASE("Channel Handle Updates", "[channel]") {
     }    SECTION("Adjacent keyframes' handles update when middle keyframe moves") {
         Animation anim;
         auto& ch = anim.create_channel("ch");
-        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
-        ch.create_keyframe(2.0, 5.0, Point(), Point(), Function::bezier, HandleMode::smooth);
-        ch.create_keyframe(4.0, 0.0, Point(), Point(), Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::Bezier, HandleMode::Smooth);
+        ch.create_keyframe(2.0, 5.0, Point(), Point(), Function::Bezier, HandleMode::Smooth);
+        ch.create_keyframe(4.0, 0.0, Point(), Point(), Function::Bezier, HandleMode::Smooth);
         
         // Store original handle positions for adjacent keyframes
         Point prev_out_orig = ch.keyframe(0).out_handle;
@@ -770,8 +770,8 @@ TEST_CASE("Channel Handle Updates", "[channel]") {
     }    SECTION("Flat handles maintain horizontal orientation") {
         Animation anim;
         auto& ch = anim.create_channel("ch");
-        ch.create_keyframe(1.0, 10.0, Point(), Point(), Function::bezier, HandleMode::flat);
-        ch.create_keyframe(3.0, 30.0, Point(), Point(), Function::bezier, HandleMode::flat);
+        ch.create_keyframe(1.0, 10.0, Point(), Point(), Function::Bezier, HandleMode::Flat);
+        ch.create_keyframe(3.0, 30.0, Point(), Point(), Function::Bezier, HandleMode::Flat);
         
         // For flat handles, the value component should match the keyframe value
         REQUIRE(ch.keyframe(0).in_handle.value == Catch::Approx(ch.keyframe(0).value()));
@@ -781,16 +781,16 @@ TEST_CASE("Channel Handle Updates", "[channel]") {
     }    SECTION("Handle mode changes update handles") {
         Animation anim;
         auto& ch = anim.create_channel("ch");
-        ch.create_keyframe(1.0, 10.0, Point(), Point(), Function::bezier, HandleMode::free);
-        ch.create_keyframe(3.0, 30.0, Point(), Point(), Function::bezier, HandleMode::free);
+        ch.create_keyframe(1.0, 10.0, Point(), Point(), Function::Bezier, HandleMode::Free);
+        ch.create_keyframe(3.0, 30.0, Point(), Point(), Function::Bezier, HandleMode::Free);
         
         // Change to smooth mode should recalculate handles
-        ch.set_keyframe_handle_mode(0, HandleMode::smooth);
-        REQUIRE(ch.keyframe(0).handle_mode == HandleMode::smooth);
+        ch.set_keyframe_handle_mode(0, HandleMode::Smooth);
+        REQUIRE(ch.keyframe(0).handle_mode == HandleMode::Smooth);
         
         // Change to flat mode
-        ch.set_keyframe_handle_mode(1, HandleMode::flat);
-        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::flat);
+        ch.set_keyframe_handle_mode(1, HandleMode::Flat);
+        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::Flat);
         REQUIRE(ch.keyframe(1).in_handle.value == Catch::Approx(ch.keyframe(1).value()));
         REQUIRE(ch.keyframe(1).out_handle.value == Catch::Approx(ch.keyframe(1).value()));
     }
@@ -809,8 +809,8 @@ TEST_CASE("Channel Complex Animation Scenario", "[channel]") {
         std::vector<double> y_values = {0.0, 5.0, 10.0, 25.0, 30.0};
         std::vector<double> rot_values = {0.0, 90.0, 180.0, 270.0, 360.0};
         
-        std::vector<Function> functions = {Function::constant, Function::linear, Function::bezier, Function::linear, Function::bezier};
-        std::vector<HandleMode> handle_modes = {HandleMode::flat, HandleMode::smooth, HandleMode::free, HandleMode::aligned, HandleMode::smooth};
+        std::vector<Function> functions = {Function::Constant, Function::Linear, Function::Bezier, Function::Linear, Function::Bezier};
+        std::vector<HandleMode> handle_modes = {HandleMode::Flat, HandleMode::Smooth, HandleMode::Free, HandleMode::Aligned, HandleMode::Smooth};
         
         // Add keyframes with different interpolation types
         for (size_t i = 0; i < times.size(); ++i) {
@@ -857,9 +857,9 @@ TEST_CASE("Channel Complex Animation Scenario", "[channel]") {
       SECTION("Edge case: Very high sample rates") {
         Animation anim;
         auto& ch = anim.create_channel("ch");
-        ch.create_keyframe(0.0, 0.0, Function::bezier, HandleMode::smooth);
-        ch.create_keyframe(1.0, 10.0, Function::bezier, HandleMode::smooth);
-        ch.create_keyframe(2.0, 5.0, Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(0.0, 0.0, Function::Bezier, HandleMode::Smooth);
+        ch.create_keyframe(1.0, 10.0, Function::Bezier, HandleMode::Smooth);
+        ch.create_keyframe(2.0, 5.0, Function::Bezier, HandleMode::Smooth);
         
         // Test with very high sample rate that might cause precision issues
         REQUIRE_NOTHROW(ch.evaluate_range_by_rate(0.0, 2.0, 1000.0));
@@ -906,7 +906,7 @@ TEST_CASE("Channel API Comprehensive Test", "[channel]") {
         // Test keyframe creation with handles
         Point in_handle(1.5, 2.0);
         Point out_handle(2.5, 4.0);
-        const Keyframe& kf3 = channel.create_keyframe(4.0, 5.0, in_handle, out_handle, Function::bezier, HandleMode::free);
+        const Keyframe& kf3 = channel.create_keyframe(4.0, 5.0, in_handle, out_handle, Function::Bezier, HandleMode::Free);
         REQUIRE(kf3.time() == 4.0);
         REQUIRE(kf3.value() == 5.0);
         REQUIRE(kf3.in_handle.time == Catch::Approx(2.0)); // the previous keyframe's time since the handle was set beyond it
@@ -958,7 +958,7 @@ TEST_CASE("Channel API Comprehensive Test", "[channel]") {
         REQUIRE(channel.keyframe(1).value() == 19.0);
         
         // Test handle setters - set to free mode first to prevent automatic handle updates
-        channel.set_keyframe_handle_mode(1, HandleMode::free);
+        channel.set_keyframe_handle_mode(1, HandleMode::Free);
         Point new_in_handle(1.0, 18.0);
         Point new_out_handle(2.8, 20.0);
         channel.set_keyframe_in_handle(1, new_in_handle);
@@ -968,11 +968,11 @@ TEST_CASE("Channel API Comprehensive Test", "[channel]") {
         REQUIRE(updated_kf_handles.out_handle.time == Catch::Approx(2.8));
         
         // Test function and handle mode setters
-        channel.set_keyframe_function(1, Function::linear);
-        REQUIRE(channel.keyframe(1).function == Function::linear);
+        channel.set_keyframe_function(1, Function::Linear);
+        REQUIRE(channel.keyframe(1).function == Function::Linear);
         
-        channel.set_keyframe_handle_mode(1, HandleMode::free);
-        REQUIRE(channel.keyframe(1).handle_mode == HandleMode::free);
+        channel.set_keyframe_handle_mode(1, HandleMode::Free);
+        REQUIRE(channel.keyframe(1).handle_mode == HandleMode::Free);
         
         // Test evaluation
         double value_at_0 = channel.evaluate(0.0);
@@ -1032,8 +1032,8 @@ TEST_CASE("Channel API Comprehensive Test", "[channel]") {
         REQUIRE_THROWS_AS(channel.set_keyframe_position(5, Point(2.0, 20.0)), std::out_of_range);
         REQUIRE_THROWS_AS(channel.set_keyframe_in_handle(5, Point()), std::out_of_range);
         REQUIRE_THROWS_AS(channel.set_keyframe_out_handle(5, Point()), std::out_of_range);
-        REQUIRE_THROWS_AS(channel.set_keyframe_function(5, Function::linear), std::out_of_range);
-        REQUIRE_THROWS_AS(channel.set_keyframe_handle_mode(5, HandleMode::smooth), std::out_of_range);
+        REQUIRE_THROWS_AS(channel.set_keyframe_function(5, Function::Linear), std::out_of_range);
+        REQUIRE_THROWS_AS(channel.set_keyframe_handle_mode(5, HandleMode::Smooth), std::out_of_range);
         
         // Test range evaluation errors
         REQUIRE_THROWS_AS(channel.evaluate_range(3.0, 1.0, 5), std::invalid_argument); // start > end
@@ -1050,12 +1050,12 @@ TEST_CASE("Channel API Comprehensive Test", "[channel]") {
         auto& channel = anim.create_channel("emplace_test");
         
         // Test emplace_keyframe
-        Keyframe new_kf(2.0, 20.0, Function::linear, HandleMode::smooth);
+        Keyframe new_kf(2.0, 20.0, Function::Linear, HandleMode::Smooth);
         const Keyframe& emplaced_kf = channel.emplace_keyframe(std::move(new_kf));
         REQUIRE(emplaced_kf.time() == 2.0);
         REQUIRE(emplaced_kf.value() == 20.0);
-        REQUIRE(emplaced_kf.function == Function::linear);
-        REQUIRE(emplaced_kf.handle_mode == HandleMode::smooth);
+        REQUIRE(emplaced_kf.function == Function::Linear);
+        REQUIRE(emplaced_kf.handle_mode == HandleMode::Smooth);
         
         // Verify it was added to the channel
         REQUIRE(channel.num_keyframes() == 1);
@@ -1161,9 +1161,9 @@ TEST_CASE("Channel keyframes() method", "[channel]") {
     
     SECTION("keyframes() with different keyframe properties") {
         // Create keyframes with different properties
-        channel.create_keyframe(1.0, 10.0, Function::linear, HandleMode::smooth);
-        channel.create_keyframe(2.0, 20.0, Function::bezier, HandleMode::aligned);
-        channel.create_keyframe(3.0, 30.0, Function::constant, HandleMode::free);
+        channel.create_keyframe(1.0, 10.0, Function::Linear, HandleMode::Smooth);
+        channel.create_keyframe(2.0, 20.0, Function::Bezier, HandleMode::Aligned);
+        channel.create_keyframe(3.0, 30.0, Function::Constant, HandleMode::Free);
         
         const std::vector<Keyframe>& keyframes = channel.keyframes();
         
@@ -1172,20 +1172,20 @@ TEST_CASE("Channel keyframes() method", "[channel]") {
         // Verify first keyframe properties
         REQUIRE(keyframes[0].time() == 1.0);
         REQUIRE(keyframes[0].value() == 10.0);
-        REQUIRE(keyframes[0].function == Function::linear);
-        REQUIRE(keyframes[0].handle_mode == HandleMode::smooth);
+        REQUIRE(keyframes[0].function == Function::Linear);
+        REQUIRE(keyframes[0].handle_mode == HandleMode::Smooth);
         
         // Verify second keyframe properties
         REQUIRE(keyframes[1].time() == 2.0);
         REQUIRE(keyframes[1].value() == 20.0);
-        REQUIRE(keyframes[1].function == Function::bezier);
-        REQUIRE(keyframes[1].handle_mode == HandleMode::aligned);
+        REQUIRE(keyframes[1].function == Function::Bezier);
+        REQUIRE(keyframes[1].handle_mode == HandleMode::Aligned);
         
         // Verify third keyframe properties - note: last keyframe inherits from previous
         REQUIRE(keyframes[2].time() == 3.0);
         REQUIRE(keyframes[2].value() == 30.0);
-        REQUIRE(keyframes[2].function == Function::bezier); // Inherits from second keyframe
-        REQUIRE(keyframes[2].handle_mode == HandleMode::aligned); // Inherits from second keyframe
+        REQUIRE(keyframes[2].function == Function::Bezier); // Inherits from second keyframe
+        REQUIRE(keyframes[2].handle_mode == HandleMode::Aligned); // Inherits from second keyframe
     }
 }
 
@@ -1195,81 +1195,81 @@ TEST_CASE("Last keyframe inherits Function and HandleMode from preceding keyfram
 
     SECTION("Last keyframe inherits when added as second keyframe") {
         // Add first keyframe with specific function and handle mode
-        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
+        ch.create_keyframe(1.0, 10.0, Function::Linear, HandleMode::Free);
         
         // Add second keyframe that becomes the last
-        ch.create_keyframe(3.0, 30.0, Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(3.0, 30.0, Function::Bezier, HandleMode::Smooth);
         
         // The last keyframe should inherit function and handle mode from the first
-        REQUIRE(ch.keyframe(1).function == Function::linear);
-        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::free);
+        REQUIRE(ch.keyframe(1).function == Function::Linear);
+        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::Free);
         
         // The first keyframe should remain unchanged
-        REQUIRE(ch.keyframe(0).function == Function::linear);
-        REQUIRE(ch.keyframe(0).handle_mode == HandleMode::free);
+        REQUIRE(ch.keyframe(0).function == Function::Linear);
+        REQUIRE(ch.keyframe(0).handle_mode == HandleMode::Free);
     }
 
     SECTION("Last keyframe inherits when added as third keyframe") {
         // Add first keyframe
-        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
+        ch.create_keyframe(1.0, 10.0, Function::Linear, HandleMode::Free);
         // Add second keyframe with different function/handle mode
-        ch.create_keyframe(2.0, 20.0, Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(2.0, 20.0, Function::Bezier, HandleMode::Smooth);
         // Add third keyframe that becomes the last
-        ch.create_keyframe(3.0, 30.0, Function::constant, HandleMode::aligned);
+        ch.create_keyframe(3.0, 30.0, Function::Constant, HandleMode::Aligned);
         
         // The last keyframe should inherit from the second-to-last (middle) keyframe
-        REQUIRE(ch.keyframe(2).function == Function::bezier);
-        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::smooth);
+        REQUIRE(ch.keyframe(2).function == Function::Bezier);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::Smooth);
     }
 
     SECTION("Last keyframe inherits when middle keyframe function is changed") {
         // Add three keyframes
-        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
-        ch.create_keyframe(2.0, 20.0, Function::bezier, HandleMode::smooth);
-        ch.create_keyframe(3.0, 30.0, Function::constant, HandleMode::aligned);
+        ch.create_keyframe(1.0, 10.0, Function::Linear, HandleMode::Free);
+        ch.create_keyframe(2.0, 20.0, Function::Bezier, HandleMode::Smooth);
+        ch.create_keyframe(3.0, 30.0, Function::Constant, HandleMode::Aligned);
         
         // Change the second keyframe's function
-        ch.set_keyframe_function(1, Function::constant);
+        ch.set_keyframe_function(1, Function::Constant);
         
         // The last keyframe should inherit the new function
-        REQUIRE(ch.keyframe(2).function == Function::constant);
-        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::smooth); // handle mode should remain from second keyframe
+        REQUIRE(ch.keyframe(2).function == Function::Constant);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::Smooth); // handle mode should remain from second keyframe
     }
 
     SECTION("Last keyframe inherits when middle keyframe handle mode is changed") {
         // Add three keyframes
-        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
-        ch.create_keyframe(2.0, 20.0, Function::bezier, HandleMode::smooth);
-        ch.create_keyframe(3.0, 30.0, Function::constant, HandleMode::aligned);
+        ch.create_keyframe(1.0, 10.0, Function::Linear, HandleMode::Free);
+        ch.create_keyframe(2.0, 20.0, Function::Bezier, HandleMode::Smooth);
+        ch.create_keyframe(3.0, 30.0, Function::Constant, HandleMode::Aligned);
         
         // Change the second keyframe's handle mode
-        ch.set_keyframe_handle_mode(1, HandleMode::flat);
+        ch.set_keyframe_handle_mode(1, HandleMode::Flat);
         
         // The last keyframe should inherit the new handle mode
-        REQUIRE(ch.keyframe(2).function == Function::bezier); // function should remain from second keyframe
-        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::flat);
+        REQUIRE(ch.keyframe(2).function == Function::Bezier); // function should remain from second keyframe
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::Flat);
     }
 
     SECTION("Last keyframe inherits when a keyframe is inserted that becomes second-to-last") {
         // Add two keyframes
-        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
-        ch.create_keyframe(3.0, 30.0, Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(1.0, 10.0, Function::Linear, HandleMode::Free);
+        ch.create_keyframe(3.0, 30.0, Function::Bezier, HandleMode::Smooth);
         
         // Insert a keyframe in the middle that becomes the new second-to-last
-        ch.create_keyframe(2.0, 20.0, Function::constant, HandleMode::aligned);
+        ch.create_keyframe(2.0, 20.0, Function::Constant, HandleMode::Aligned);
         
         // The last keyframe should inherit from the new second-to-last keyframe
-        REQUIRE(ch.keyframe(2).function == Function::constant);
-        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::aligned);
+        REQUIRE(ch.keyframe(2).function == Function::Constant);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::Aligned);
     }
 
     SECTION("Single keyframe is not affected") {
         // Add only one keyframe
-        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
+        ch.create_keyframe(1.0, 10.0, Function::Linear, HandleMode::Free);
         
         // Single keyframe should remain unchanged
-        REQUIRE(ch.keyframe(0).function == Function::linear);
-        REQUIRE(ch.keyframe(0).handle_mode == HandleMode::free);
+        REQUIRE(ch.keyframe(0).function == Function::Linear);
+        REQUIRE(ch.keyframe(0).handle_mode == HandleMode::Free);
     }
 }
 
@@ -1279,83 +1279,83 @@ TEST_CASE("Advanced keyframe inheritance scenarios", "[channel][inheritance_adva
 
     SECTION("Complex sequential addition with multiple transitions") {
         // Test 1: Add 4 keyframes, make changes, append 4th with different mode/function
-        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
-        ch.create_keyframe(2.0, 20.0, Function::bezier, HandleMode::smooth);
-        ch.create_keyframe(3.0, 30.0, Function::constant, HandleMode::aligned);
+        ch.create_keyframe(1.0, 10.0, Function::Linear, HandleMode::Free);
+        ch.create_keyframe(2.0, 20.0, Function::Bezier, HandleMode::Smooth);
+        ch.create_keyframe(3.0, 30.0, Function::Constant, HandleMode::Aligned);
         
         // Verify the 3rd keyframe (current last) inherits from 2nd
-        REQUIRE(ch.keyframe(2).function == Function::bezier);
-        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::smooth);
+        REQUIRE(ch.keyframe(2).function == Function::Bezier);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::Smooth);
         
         // Add 4th keyframe with different properties
-        ch.create_keyframe(4.0, 40.0, Function::linear, HandleMode::flat);
+        ch.create_keyframe(4.0, 40.0, Function::Linear, HandleMode::Flat);
         
         // With the fix: 3rd keyframe (C) should be restored to its original values (constant, aligned)
         // when the 4th keyframe is added
-        REQUIRE(ch.keyframe(2).function == Function::constant);
-        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::aligned);
+        REQUIRE(ch.keyframe(2).function == Function::Constant);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::Aligned);
         
         // Verify 4th keyframe inherits from 3rd's restored original values
-        REQUIRE(ch.keyframe(3).function == Function::constant);
-        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::aligned);
+        REQUIRE(ch.keyframe(3).function == Function::Constant);
+        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::Aligned);
         
         // Add 5th keyframe with different properties
-        ch.create_keyframe(5.0, 50.0, Function::bezier, HandleMode::free);
+        ch.create_keyframe(5.0, 50.0, Function::Bezier, HandleMode::Free);
         
         // With the fix: 4th keyframe (D) should be restored to its original values (linear, flat)
         // when the 5th keyframe is added
-        REQUIRE(ch.keyframe(3).function == Function::linear);
-        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::flat);
+        REQUIRE(ch.keyframe(3).function == Function::Linear);
+        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::Flat);
         
         // Verify 5th keyframe inherits from 4th's restored original values
-        REQUIRE(ch.keyframe(4).function == Function::linear);
-        REQUIRE(ch.keyframe(4).handle_mode == HandleMode::flat);
+        REQUIRE(ch.keyframe(4).function == Function::Linear);
+        REQUIRE(ch.keyframe(4).handle_mode == HandleMode::Flat);
     }
 
     SECTION("Edit last keyframe then append - second-to-last keeps edited values") {
         // Test 2: Add keyframes, edit the last, append another - ensure second-to-last doesn't change
-        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
-        ch.create_keyframe(2.0, 20.0, Function::bezier, HandleMode::smooth);
-        ch.create_keyframe(3.0, 30.0, Function::constant, HandleMode::aligned);
+        ch.create_keyframe(1.0, 10.0, Function::Linear, HandleMode::Free);
+        ch.create_keyframe(2.0, 20.0, Function::Bezier, HandleMode::Smooth);
+        ch.create_keyframe(3.0, 30.0, Function::Constant, HandleMode::Aligned);
         
         // Edit the last keyframe's properties
-        ch.set_keyframe_function(2, Function::linear);
-        ch.set_keyframe_handle_mode(2, HandleMode::free);
+        ch.set_keyframe_function(2, Function::Linear);
+        ch.set_keyframe_handle_mode(2, HandleMode::Free);
         
         // Verify the last keyframe has the edited values
-        REQUIRE(ch.keyframe(2).function == Function::linear);
-        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::free);
+        REQUIRE(ch.keyframe(2).function == Function::Linear);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::Free);
         
         // Add another keyframe
-        ch.create_keyframe(4.0, 40.0, Function::bezier, HandleMode::smooth);
+        ch.create_keyframe(4.0, 40.0, Function::Bezier, HandleMode::Smooth);
         
         // Verify the now second-to-last keyframe keeps its edited values
-        REQUIRE(ch.keyframe(2).function == Function::linear);
-        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::free);
+        REQUIRE(ch.keyframe(2).function == Function::Linear);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::Free);
         
         // Verify the new last keyframe inherits from the edited second-to-last keyframe
-        REQUIRE(ch.keyframe(3).function == Function::linear);
-        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::free);
+        REQUIRE(ch.keyframe(3).function == Function::Linear);
+        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::Free);
     }
 
     SECTION("Large scale sequential addition - 20 keyframes") {
         // Test 3: Add 20 keyframes sequentially with various function/mode combinations
         std::vector<Function> functions = {
-            Function::linear, Function::bezier, Function::constant,
-            Function::linear, Function::bezier, Function::constant,
-            Function::linear, Function::bezier, Function::constant,
-            Function::linear, Function::bezier, Function::constant,
-            Function::linear, Function::bezier, Function::constant,
-            Function::linear, Function::bezier, Function::constant,
-            Function::linear, Function::bezier
+            Function::Linear, Function::Bezier, Function::Constant,
+            Function::Linear, Function::Bezier, Function::Constant,
+            Function::Linear, Function::Bezier, Function::Constant,
+            Function::Linear, Function::Bezier, Function::Constant,
+            Function::Linear, Function::Bezier, Function::Constant,
+            Function::Linear, Function::Bezier, Function::Constant,
+            Function::Linear, Function::Bezier
         };
         
         std::vector<HandleMode> handle_modes = {
-            HandleMode::free, HandleMode::smooth, HandleMode::aligned, HandleMode::flat,
-            HandleMode::free, HandleMode::smooth, HandleMode::aligned, HandleMode::flat,
-            HandleMode::free, HandleMode::smooth, HandleMode::aligned, HandleMode::flat,
-            HandleMode::free, HandleMode::smooth, HandleMode::aligned, HandleMode::flat,
-            HandleMode::free, HandleMode::smooth, HandleMode::aligned, HandleMode::flat
+            HandleMode::Free, HandleMode::Smooth, HandleMode::Aligned, HandleMode::Flat,
+            HandleMode::Free, HandleMode::Smooth, HandleMode::Aligned, HandleMode::Flat,
+            HandleMode::Free, HandleMode::Smooth, HandleMode::Aligned, HandleMode::Flat,
+            HandleMode::Free, HandleMode::Smooth, HandleMode::Aligned, HandleMode::Flat,
+            HandleMode::Free, HandleMode::Smooth, HandleMode::Aligned, HandleMode::Flat
         };
         
         // Add all 20 keyframes sequentially
@@ -1400,12 +1400,12 @@ TEST_CASE("Advanced keyframe inheritance scenarios", "[channel][inheritance_adva
         // Test 4: Complex scenarios with various operations
         
         // Start with 3 keyframes
-        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
-        ch.create_keyframe(3.0, 30.0, Function::bezier, HandleMode::smooth);
-        ch.create_keyframe(5.0, 50.0, Function::constant, HandleMode::aligned);
+        ch.create_keyframe(1.0, 10.0, Function::Linear, HandleMode::Free);
+        ch.create_keyframe(3.0, 30.0, Function::Bezier, HandleMode::Smooth);
+        ch.create_keyframe(5.0, 50.0, Function::Constant, HandleMode::Aligned);
         
         // Insert a keyframe in the middle
-        ch.create_keyframe(2.0, 20.0, Function::linear, HandleMode::flat);
+        ch.create_keyframe(2.0, 20.0, Function::Linear, HandleMode::Flat);
         REQUIRE(ch.num_keyframes() == 4);
         
         // Verify correct ordering and inheritance
@@ -1414,8 +1414,8 @@ TEST_CASE("Advanced keyframe inheritance scenarios", "[channel][inheritance_adva
         REQUIRE(ch.keyframe(2).time() == 3.0);  // bezier, smooth
         REQUIRE(ch.keyframe(3).time() == 5.0);  // Should inherit from keyframe 2
         
-        REQUIRE(ch.keyframe(3).function == Function::bezier);
-        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::smooth);
+        REQUIRE(ch.keyframe(3).function == Function::Bezier);
+        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::Smooth);
         
         // Delete the middle keyframe (index 1)
         ch.delete_keyframe(1);
@@ -1426,78 +1426,78 @@ TEST_CASE("Advanced keyframe inheritance scenarios", "[channel][inheritance_adva
         REQUIRE(ch.keyframe(1).time() == 3.0);  // bezier, smooth
         REQUIRE(ch.keyframe(2).time() == 5.0);  // Should inherit from keyframe 1
         
-        REQUIRE(ch.keyframe(2).function == Function::bezier);
-        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::smooth);
+        REQUIRE(ch.keyframe(2).function == Function::Bezier);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::Smooth);
         
         // Modify the second-to-last keyframe
-        ch.set_keyframe_function(1, Function::constant);
+        ch.set_keyframe_function(1, Function::Constant);
         
         // Verify last keyframe inherits the change
-        REQUIRE(ch.keyframe(2).function == Function::constant);
-        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::smooth);
+        REQUIRE(ch.keyframe(2).function == Function::Constant);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::Smooth);
         
         // Add more keyframes
-        ch.create_keyframe(6.0, 60.0, Function::linear, HandleMode::free);
-        ch.create_keyframe(7.0, 70.0, Function::bezier, HandleMode::aligned);
+        ch.create_keyframe(6.0, 60.0, Function::Linear, HandleMode::Free);
+        ch.create_keyframe(7.0, 70.0, Function::Bezier, HandleMode::Aligned);
         
         // With the fix: keyframe 2 (time=5.0) was created with original values (constant, aligned)
         // When keyframe 3 (time=6.0) was added, keyframe 2 was restored to its original values
         // When keyframe 4 (time=7.0) was added, keyframe 3 was restored to its original values (linear, free) 
-        REQUIRE(ch.keyframe(3).function == Function::linear);   // KF3 restored to original
-        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::free);
+        REQUIRE(ch.keyframe(3).function == Function::Linear);   // KF3 restored to original
+        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::Free);
         
-        REQUIRE(ch.keyframe(4).function == Function::linear);   // KF4 inherits from restored KF3
-        REQUIRE(ch.keyframe(4).handle_mode == HandleMode::free);
+        REQUIRE(ch.keyframe(4).function == Function::Linear);   // KF4 inherits from restored KF3
+        REQUIRE(ch.keyframe(4).handle_mode == HandleMode::Free);
     }
 
     SECTION("Edge cases - handle constraints and mode updates") {
         // Test various handle mode scenarios that may affect inheritance
         
-        ch.create_keyframe(0.0, 0.0, Function::bezier, HandleMode::smooth);
-        ch.create_keyframe(1.0, 10.0, Function::bezier, HandleMode::aligned);
-        ch.create_keyframe(2.0, 20.0, Function::bezier, HandleMode::flat);
+        ch.create_keyframe(0.0, 0.0, Function::Bezier, HandleMode::Smooth);
+        ch.create_keyframe(1.0, 10.0, Function::Bezier, HandleMode::Aligned);
+        ch.create_keyframe(2.0, 20.0, Function::Bezier, HandleMode::Flat);
         
         // Verify last keyframe inherits
-        REQUIRE(ch.keyframe(2).function == Function::bezier);
-        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::aligned);
+        REQUIRE(ch.keyframe(2).function == Function::Bezier);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::Aligned);
         
         // Change handle mode of second-to-last and verify inheritance
-        ch.set_keyframe_handle_mode(1, HandleMode::free);
-        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::free);
+        ch.set_keyframe_handle_mode(1, HandleMode::Free);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::Free);
         
         // Add keyframe with different function
-        ch.create_keyframe(3.0, 30.0, Function::constant, HandleMode::smooth);
+        ch.create_keyframe(3.0, 30.0, Function::Constant, HandleMode::Smooth);
         
         // Verify previous last gets restored and new last inherits
-        REQUIRE(ch.keyframe(2).function == Function::bezier);
-        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::free);  // Due to cache bug, stays at inherited value
+        REQUIRE(ch.keyframe(2).function == Function::Bezier);
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::Free);  // Due to cache bug, stays at inherited value
         
-        REQUIRE(ch.keyframe(3).function == Function::bezier);    // Inherits from keyframe 2's current state
-        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::free);
+        REQUIRE(ch.keyframe(3).function == Function::Bezier);    // Inherits from keyframe 2's current state
+        REQUIRE(ch.keyframe(3).handle_mode == HandleMode::Free);
     }
 
     SECTION("Inheritance with emplace_keyframe") {
         // Test inheritance behavior with emplace_keyframe method
         
-        ch.create_keyframe(1.0, 10.0, Function::linear, HandleMode::free);
+        ch.create_keyframe(1.0, 10.0, Function::Linear, HandleMode::Free);
         
-        Keyframe kf2(2.0, 20.0, Function::bezier, HandleMode::smooth);
+        Keyframe kf2(2.0, 20.0, Function::Bezier, HandleMode::Smooth);
         ch.emplace_keyframe(std::move(kf2));
         
         // Verify inheritance applies to emplaced keyframe
-        REQUIRE(ch.keyframe(1).function == Function::linear);
-        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::free);
+        REQUIRE(ch.keyframe(1).function == Function::Linear);
+        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::Free);
         
         // Emplace another keyframe
-        Keyframe kf3(3.0, 30.0, Function::constant, HandleMode::aligned);
+        Keyframe kf3(3.0, 30.0, Function::Constant, HandleMode::Aligned);
         ch.emplace_keyframe(std::move(kf3));
         
         // Verify inheritance chain
-        REQUIRE(ch.keyframe(1).function == Function::bezier);    // Restored original
-        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::smooth);
+        REQUIRE(ch.keyframe(1).function == Function::Bezier);    // Restored original
+        REQUIRE(ch.keyframe(1).handle_mode == HandleMode::Smooth);
         
-        REQUIRE(ch.keyframe(2).function == Function::bezier);    // Inherits from keyframe 1
-        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::smooth);
+        REQUIRE(ch.keyframe(2).function == Function::Bezier);    // Inherits from keyframe 1
+        REQUIRE(ch.keyframe(2).handle_mode == HandleMode::Smooth);
     }
 }
 
@@ -1554,8 +1554,8 @@ TEST_CASE("Channel Equality Operators", "[channel][equality]") {
     }
 
     SECTION("Channels with different keyframe properties are not equal") {
-        ch1.create_keyframe(1.0, 10.0, Function::linear, HandleMode::smooth);
-        ch2.create_keyframe(1.0, 10.0, Function::bezier, HandleMode::smooth); // Different function
+        ch1.create_keyframe(1.0, 10.0, Function::Linear, HandleMode::Smooth);
+        ch2.create_keyframe(1.0, 10.0, Function::Bezier, HandleMode::Smooth); // Different function
         
         REQUIRE_FALSE(ch1 == ch2);
         REQUIRE(ch1 != ch2);
@@ -1593,8 +1593,8 @@ TEST_CASE("Channel Extend Functionality", "[channel]") {
     Channel& ch = anim.create_channel("extend_test");
     
     // Create keyframes from time 1.0 to 3.0, values 10.0 to 30.0
-    ch.create_keyframe(1.0, 10.0, Function::linear);
-    ch.create_keyframe(3.0, 30.0, Function::linear);
+    ch.create_keyframe(1.0, 10.0, Function::Linear);
+    ch.create_keyframe(3.0, 30.0, Function::Linear);
 
     SECTION("Default extend behavior is Hold") {
         REQUIRE(ch.extend_start() == Extend::Hold);

@@ -394,13 +394,13 @@ namespace anim {
             }
         }
 
-        double current_magnitude = keyframe.handle_mode != HandleMode::alignAdjustable ? length(vec_kf_to_source) : length(vec_kf_to_target);
+        double current_magnitude = keyframe.handle_mode != HandleMode::AlignAdjustable ? length(vec_kf_to_source) : length(vec_kf_to_target);
         Vector dir_source = normalize(vec_kf_to_source);
         Vector dir_target = invert(dir_source);
         const double infinity = std::numeric_limits<double>::infinity();
 
         // --- Option 2: Maintain Symmetry ---
-        if (keyframe.handle_mode == HandleMode::alignStrict) {
+        if (keyframe.handle_mode == HandleMode::AlignStrict) {
             double max_mag_source = calculate_max_magnitude(kf_pos, dir_source, prev_keyframe_ptr, next_keyframe_ptr, source_is_out);
             double max_mag_target = calculate_max_magnitude(kf_pos, dir_target, prev_keyframe_ptr, next_keyframe_ptr, !source_is_out);
 
