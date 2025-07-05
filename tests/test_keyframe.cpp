@@ -10,13 +10,13 @@ TEST_CASE("Keyframe construction with Point objects", "[keyframe]") {
     Point out_handle(1.5, 2.5);
     
     SECTION("Full constructor with all parameters") {
-        Keyframe kf(pos, Function::linear, HandleMode::free, in_handle, out_handle);
+        Keyframe kf(pos, Function::Linear, HandleMode::Free, in_handle, out_handle);
         
         REQUIRE(kf.position == pos);
         REQUIRE(kf.in_handle == in_handle);
         REQUIRE(kf.out_handle == out_handle);
-        REQUIRE(kf.function == Function::linear);
-        REQUIRE(kf.handle_mode == HandleMode::free);
+        REQUIRE(kf.function == Function::Linear);
+        REQUIRE(kf.handle_mode == HandleMode::Free);
     }
     
     SECTION("Constructor with default function and handle mode") {
@@ -25,8 +25,8 @@ TEST_CASE("Keyframe construction with Point objects", "[keyframe]") {
         REQUIRE(kf.position == pos);
         REQUIRE(kf.in_handle.is_zero());
         REQUIRE(kf.out_handle.is_zero());
-        REQUIRE(kf.function == Function::bezier);
-        REQUIRE(kf.handle_mode == HandleMode::smooth);
+        REQUIRE(kf.function == Function::Bezier);
+        REQUIRE(kf.handle_mode == HandleMode::Smooth);
     }
 }
 
@@ -35,14 +35,14 @@ TEST_CASE("Keyframe construction with time/value and Point handles", "[keyframe]
     Point out_handle(1.5, 2.5);
     
     SECTION("Full constructor") {
-        Keyframe kf(1.0, 2.0, Function::constant, HandleMode::aligned, in_handle, out_handle);
+        Keyframe kf(1.0, 2.0, Function::Constant, HandleMode::Aligned, in_handle, out_handle);
         
         REQUIRE(kf.position.time == 1.0);
         REQUIRE(kf.position.value == 2.0);
         REQUIRE(kf.in_handle == in_handle);
         REQUIRE(kf.out_handle == out_handle);
-        REQUIRE(kf.function == Function::constant);
-        REQUIRE(kf.handle_mode == HandleMode::aligned);
+        REQUIRE(kf.function == Function::Constant);
+        REQUIRE(kf.handle_mode == HandleMode::Aligned);
     }
     
     SECTION("Constructor with default handles and types") {
@@ -52,21 +52,21 @@ TEST_CASE("Keyframe construction with time/value and Point handles", "[keyframe]
         REQUIRE(kf.position.value == 2.0);
         REQUIRE(kf.in_handle.is_zero());
         REQUIRE(kf.out_handle.is_zero());
-        REQUIRE(kf.function == Function::bezier);
-        REQUIRE(kf.handle_mode == HandleMode::smooth);
+        REQUIRE(kf.function == Function::Bezier);
+        REQUIRE(kf.handle_mode == HandleMode::Smooth);
     }
 }
 
 TEST_CASE("Keyframe construction with simplified constructor", "[keyframe]") {
     SECTION("Constructor with function type only") {
-        Keyframe kf(1.0, 2.0, Function::linear);
+        Keyframe kf(1.0, 2.0, Function::Linear);
         
         REQUIRE(kf.position.time == 1.0);
         REQUIRE(kf.position.value == 2.0);
         REQUIRE(kf.in_handle.is_zero());
         REQUIRE(kf.out_handle.is_zero());
-        REQUIRE(kf.function == Function::linear);
-        REQUIRE(kf.handle_mode == HandleMode::smooth);
+        REQUIRE(kf.function == Function::Linear);
+        REQUIRE(kf.handle_mode == HandleMode::Smooth);
     }
     
     SECTION("Default constructor") {
@@ -75,8 +75,8 @@ TEST_CASE("Keyframe construction with simplified constructor", "[keyframe]") {
         REQUIRE(kf.position.is_zero());
         REQUIRE(kf.in_handle.is_zero());
         REQUIRE(kf.out_handle.is_zero());
-        REQUIRE(kf.function == Function::bezier);
-        REQUIRE(kf.handle_mode == HandleMode::smooth);
+        REQUIRE(kf.function == Function::Bezier);
+        REQUIRE(kf.handle_mode == HandleMode::Smooth);
     }
 }
 
@@ -85,9 +85,9 @@ TEST_CASE("Keyframe comparison operators", "[keyframe]") {
     Point in_handle(0.5, 1.5);
     Point out_handle(1.5, 2.5);
     
-    Keyframe kf1(pos, Function::linear, HandleMode::free, in_handle, out_handle);
-    Keyframe kf2(pos, Function::linear, HandleMode::free, in_handle, out_handle);
-    Keyframe kf3(Point(2.0, 3.0), Function::bezier, HandleMode::smooth, Point(1.0, 2.0), Point(2.0, 3.0));
+    Keyframe kf1(pos, Function::Linear, HandleMode::Free, in_handle, out_handle);
+    Keyframe kf2(pos, Function::Linear, HandleMode::Free, in_handle, out_handle);
+    Keyframe kf3(Point(2.0, 3.0), Function::Bezier, HandleMode::Smooth, Point(1.0, 2.0), Point(2.0, 3.0));
     
     SECTION("Equality") {
         REQUIRE(kf1 == kf2);
@@ -100,12 +100,12 @@ TEST_CASE("Keyframe comparison operators", "[keyframe]") {
     }
     
     SECTION("Different functions are not equal") {
-        Keyframe kf_diff_func(pos, Function::constant, HandleMode::free, in_handle, out_handle);
+        Keyframe kf_diff_func(pos, Function::Constant, HandleMode::Free, in_handle, out_handle);
         REQUIRE(kf1 != kf_diff_func);
     }
     
     SECTION("Different handle modes are not equal") {
-        Keyframe kf_diff_handle(pos, Function::linear, HandleMode::aligned, in_handle, out_handle);
+        Keyframe kf_diff_handle(pos, Function::Linear, HandleMode::Aligned, in_handle, out_handle);
         REQUIRE(kf1 != kf_diff_handle);
     }
 }
@@ -114,7 +114,7 @@ TEST_CASE("Keyframe copy and move semantics", "[keyframe]") {
     Point pos(1.0, 2.0);
     Point in_handle(0.5, 1.5);
     Point out_handle(1.5, 2.5);
-    Keyframe original(pos, Function::linear, HandleMode::free, in_handle, out_handle);
+    Keyframe original(pos, Function::Linear, HandleMode::Free, in_handle, out_handle);
     
     SECTION("Copy constructor") {
         Keyframe copy(original);
@@ -163,13 +163,13 @@ TEST_CASE("Keyframe with different enum values", "[keyframe]") {
         Point pos(1.0, 1.0);
         Point handle;
         
-        Keyframe constant_kf(pos, Function::constant);
-        Keyframe linear_kf(pos, Function::linear);
-        Keyframe bezier_kf(pos, Function::bezier);
+        Keyframe constant_kf(pos, Function::Constant);
+        Keyframe linear_kf(pos, Function::Linear);
+        Keyframe bezier_kf(pos, Function::Bezier);
         
-        REQUIRE(constant_kf.function == Function::constant);
-        REQUIRE(linear_kf.function == Function::linear);
-        REQUIRE(bezier_kf.function == Function::bezier);
+        REQUIRE(constant_kf.function == Function::Constant);
+        REQUIRE(linear_kf.function == Function::Linear);
+        REQUIRE(bezier_kf.function == Function::Bezier);
         
         REQUIRE(constant_kf != linear_kf);
         REQUIRE(linear_kf != bezier_kf);
@@ -180,15 +180,15 @@ TEST_CASE("Keyframe with different enum values", "[keyframe]") {
         Point pos(1.0, 1.0);
         Point handle;
         
-        Keyframe flat_kf(pos, Function::bezier, HandleMode::flat);
-        Keyframe smooth_kf(pos, Function::bezier, HandleMode::smooth);
-        Keyframe aligned_kf(pos, Function::bezier, HandleMode::aligned);
-        Keyframe free_kf(pos, Function::bezier, HandleMode::free);
+        Keyframe flat_kf(pos, Function::Bezier, HandleMode::Flat);
+        Keyframe smooth_kf(pos, Function::Bezier, HandleMode::Smooth);
+        Keyframe aligned_kf(pos, Function::Bezier, HandleMode::Aligned);
+        Keyframe free_kf(pos, Function::Bezier, HandleMode::Free);
         
-        REQUIRE(flat_kf.handle_mode == HandleMode::flat);
-        REQUIRE(smooth_kf.handle_mode == HandleMode::smooth);
-        REQUIRE(aligned_kf.handle_mode == HandleMode::aligned);
-        REQUIRE(free_kf.handle_mode == HandleMode::free);
+        REQUIRE(flat_kf.handle_mode == HandleMode::Flat);
+        REQUIRE(smooth_kf.handle_mode == HandleMode::Smooth);
+        REQUIRE(aligned_kf.handle_mode == HandleMode::Aligned);
+        REQUIRE(free_kf.handle_mode == HandleMode::Free);
         
         REQUIRE(flat_kf != smooth_kf);
         REQUIRE(smooth_kf != aligned_kf);

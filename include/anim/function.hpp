@@ -6,10 +6,10 @@
 namespace anim {
 
 enum class Function : uint8_t {
-    constant = 0,
-    linear = 1,
-    bezier = 2,
-    count = 3
+    Constant = 0,
+    Linear = 1,
+    Bezier = 2,
+    Count = 3
 };
 
 } // namespace anim

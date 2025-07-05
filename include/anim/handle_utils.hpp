@@ -62,12 +62,12 @@ namespace anim {
         const Keyframe* prev_keyframe_ptr, 
         const Keyframe* next_keyframe_ptr);
 
-    // HandleMode::flat
+    // HandleMode::Flat
     // Handles have the same 'value' as the keyframe's position (parallel to the time axis).
     // Their 'time' values are independently adjustable but clamped.
     void apply_flat_handles(Keyframe& keyframe, const Keyframe* prev_keyframe_ptr, const Keyframe* next_keyframe_ptr);
 
-    // HandleMode::smooth 
+    // HandleMode::Smooth 
     // Handles are auto-calculated to create a smooth (C1 continuous) transition.
     // They are collinear, and their magnitude is typically a factor of the distance to adjacent keyframes.
     void apply_smooth_handles(
