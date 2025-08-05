@@ -175,14 +175,14 @@ namespace anim {
             ensure_handle_time_boundary(keyframe.position, keyframe.in_handle, prev_keyframe_ptr->position, true);
             ensure_handle_time_boundary(keyframe.position, keyframe.out_handle, next_keyframe_ptr->position, false);
         } else if (prev_keyframe_ptr) { // keyframe is the last keyframe
+            keyframe.in_handle  = Point(keyframe.in_handle.time, keyframe.position.value);
             double time_offset = (prev_keyframe_ptr->position.time - keyframe.position.time) / 3.0;
-            keyframe.in_handle  = Point(keyframe.position.time + time_offset, keyframe.position.value);
             keyframe.out_handle = Point(keyframe.position.time - time_offset, keyframe.position.value);
             ensure_handle_time_boundary(keyframe.position, keyframe.in_handle, prev_keyframe_ptr->position, true);
         } else if (next_keyframe_ptr) { // keyframe is the first keyframe
             double time_offset = (next_keyframe_ptr->position.time - keyframe.position.time) / 3.0;
             keyframe.in_handle = Point(keyframe.position.time + time_offset, keyframe.position.value);
-            keyframe.out_handle = Point(keyframe.position.time + time_offset, keyframe.position.value);
+            keyframe.out_handle = Point(keyframe.out_handle.time, keyframe.position.value);
             ensure_handle_time_boundary(keyframe.position, keyframe.out_handle, next_keyframe_ptr->position, false);
         } else { // keyframe is the only keyframe
             keyframe.in_handle = Point(keyframe.position.time - 1.0, keyframe.position.value);
