@@ -170,10 +170,8 @@ namespace anim {
 
     void apply_flat_handles(Keyframe& keyframe, const Keyframe* prev_keyframe_ptr, const Keyframe* next_keyframe_ptr) {
         if (prev_keyframe_ptr && next_keyframe_ptr) { // keyframe is in the middle of two keyframes
-            double in_time_offset = (prev_keyframe_ptr->position.time - keyframe.position.time) / 3.0;
-            keyframe.in_handle  = Point(keyframe.position.time + in_time_offset, keyframe.position.value);
-            double out_time_offset = (next_keyframe_ptr->position.time - keyframe.position.time) / 3.0;
-            keyframe.out_handle = Point(keyframe.position.time + out_time_offset, keyframe.position.value);
+            keyframe.in_handle  = Point(keyframe.in_handle.time, keyframe.position.value);
+            keyframe.out_handle = Point(keyframe.out_handle.time, keyframe.position.value);
             ensure_handle_time_boundary(keyframe.position, keyframe.in_handle, prev_keyframe_ptr->position, true);
             ensure_handle_time_boundary(keyframe.position, keyframe.out_handle, next_keyframe_ptr->position, false);
         } else if (prev_keyframe_ptr) { // keyframe is the last keyframe
