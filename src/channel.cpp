@@ -1,8 +1,6 @@
 #include "anim/channel.hpp"
 #include "anim/bezier_utils.hpp"
 
-#include <iostream>
-
 namespace anim {
 
 const Keyframe& Channel::create_keyframe(double time, 
@@ -396,11 +394,6 @@ double Channel::evaluate(double time, double* prev_t) const {
     } else if (start_kf.function == Function::Constant) {
         return start_kf.value();
     }
-    // auto p0 = start_kf.position;
-    // auto p1 = start_kf.out_handle;
-    // auto p2 = end_kf.in_handle;
-    // auto p3 = end_kf.position;
-    
 
     double t = bezier_utils::solve_t_for_time(
         start_kf.position, start_kf.out_handle, 
@@ -534,12 +527,7 @@ const Keyframe &Channel::create_default_keyframe(const Point &position, Function
     // initialize the handles with smooth mode
     Keyframe new_keyframe(position, function, HandleMode::Smooth);
     update_handles(new_keyframe, prev_kf_ptr, next_kf_ptr);
-    // std::cout << "New Keyframe, time: " << new_keyframe.time() << ", value: " << new_keyframe.value()
-    //             << ", in_handle.time: " << new_keyframe.in_handle.time << ", in_handle.value: " << new_keyframe.in_handle.value
-    //             << ", out_handle.time: " << new_keyframe.out_handle.time << ", out_handle.value: " << new_keyframe.out_handle.value
-    //             << ", function: " << static_cast<int>(new_keyframe.function)
-    //             << ", handle_mode: " << static_cast<int>(new_keyframe.handle_mode) << std::endl;
-    new_keyframe.handle_mode = handle_mode; // set to requested mode, inser_keyframe will call update_local_handles
+    new_keyframe.handle_mode = handle_mode; // set to requested mode, insert_keyframe will call update_local_handles
     return insert_keyframe(next_it, std::move(new_keyframe));
 }
 
