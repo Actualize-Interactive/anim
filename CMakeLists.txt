@@ -66,7 +66,7 @@ if(ANIM_BUILD_SHARED)
     endif()
 endif()
 
-if(ANIM_BUILD_TESTS)
+if(ANIM_BUILD_TESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests")
     enable_testing()
 
     include(FetchContent)
@@ -91,7 +91,7 @@ if(ANIM_BUILD_TESTS)
 endif()
 
 # Examples
-if(ANIM_BUILD_EXAMPLES)
+if(ANIM_BUILD_EXAMPLES AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples/CMakeLists.txt")
     add_subdirectory(examples)
 endif()
 

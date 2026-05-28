@@ -1,5 +1,10 @@
 # anim — Animation Curve Library
 
+[![CI](https://github.com/Actualize-Interactive/anim/actions/workflows/ci.yml/badge.svg)](https://github.com/Actualize-Interactive/anim/actions/workflows/ci.yml)
+[![Docs](https://github.com/Actualize-Interactive/anim/actions/workflows/docs.yml/badge.svg)](https://actualize-interactive.github.io/anim/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)
+
 A modern C++ library for creating, managing, and evaluating animation curves
 built from keyframes and cubic Bézier interpolation.
 
@@ -174,9 +179,13 @@ With `ANIM_BUILD_EXAMPLES` enabled, the `examples/` directory builds:
 
 ## Documentation
 
-The full API reference is generated from the in-header documentation with
-Doxygen and Sphinx. See `docs/` for the build scripts, and the published site
-linked from the repository.
+The full API reference and guide are published at
+**https://actualize-interactive.github.io/anim/**, generated from the in-header
+documentation with Doxygen and Sphinx. To build the docs locally:
+
+```bash
+bash docs/build_docs.sh   # output in docs/build/html
+```
 
 ## License
 
