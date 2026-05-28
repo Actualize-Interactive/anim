@@ -6,6 +6,15 @@ animation curves built from keyframes and cubic Bézier interpolation.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents
+   :caption: Guide
+
+   introduction
+   installation
+   quickstart
+   examples
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Reference
 
    api/library_root
