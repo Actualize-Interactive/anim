@@ -7,40 +7,46 @@
 
 namespace anim {
 
-// 1. Define Id as a struct (or class)
+/**
+ * @brief A unique, immutable identifier for a Channel.
+ *
+ * Each Channel is assigned an Id on creation that never changes for its
+ * lifetime (notably, it survives copies and is distinct from the channel's
+ * name). Ids are cheap value types and can be used as keys in both ordered
+ * (std::map / std::set, via operator<) and unordered (std::unordered_map /
+ * std::unordered_set, via the std::hash specialization below) containers.
+ */
 struct Id {
-    // Make the 'id' member const
-    const uint64_t id;
+    const uint64_t id; ///< The underlying identifier value (immutable).
 
-    // Constructor: 'id' MUST be initialized in the member initializer list
+    /// @brief Constructs an Id wrapping @p value.
     explicit Id(uint64_t value) : id(value) {}
 
-    // Default constructor could initialize to a specific "invalid" or "null" ID
-    // For example, if 0 is a valid ID, you might need a different sentinel.
-    // Or, ensure users always provide an ID.
-    // Let's assume for now 0 could be valid, and we'll use a static factory for invalid.
-    // Id() : id(0) {} // Or some other default if 0 isn't special
-
-    // Allow explicit conversion back to uint64_t if needed
+    /// @brief Explicit conversion back to the underlying integer value.
     explicit operator uint64_t() const { return id; }
 
-    // For comparisons
+    /// @brief True if the two Ids share the same underlying value.
     bool operator==(const Id& other) const {
         return id == other.id;
     }
+    /// @brief Negation of operator==.
     bool operator!=(const Id& other) const {
         return !(*this == other);
     }
+    /// @brief Orders Ids by their underlying value (for use as a std::map / std::set key).
     bool operator<(const Id& other) const {
         return id < other.id;
     }
 
-    // Define a sentinel value for an invalid handle
+    /**
+     * @brief Returns the sentinel "invalid" Id (the maximum uint64_t value).
+     * @return An Id for which isValid() is false.
+     */
     static Id invalid() {
-        // Using static_cast<uint64_t>(-1) which is max uint64_t
         return Id(static_cast<uint64_t>(-1));
     }
 
+    /// @brief True unless this Id equals the invalid() sentinel.
     bool isValid() const {
         return id != static_cast<uint64_t>(-1);
     }
@@ -48,7 +54,7 @@ struct Id {
 
 } // namespace anim
 
-// 2. Provide a hash function specialization if you plan to use Id as a key in std::unordered_map
+/// @brief std::hash specialization so Id can key unordered containers.
 namespace std {
     template <>
     struct hash<anim::Id> {
