@@ -11,7 +11,7 @@ namespace anim {
  * A Point is the fundamental coordinate type of the library. Its two
  * components are named @c time (the horizontal axis of an animation curve)
  * and @c value (the vertical axis). The same type doubles as a 2D vector for
- * direction and displacement math; see the @ref Vector alias.
+ * direction and displacement math; see the Vector alias.
  */
 struct Point {
     double time;   ///< Position along the time (horizontal) axis.

@@ -16,10 +16,10 @@ namespace anim {
 /**
  * @brief A named collection of animation channels.
  *
- * An Animation owns its @ref Channel objects and is the only way to create
- * them, assigning each a unique @ref Id. Channels can be looked up by index,
+ * An Animation owns its Channel objects and is the only way to create
+ * them, assigning each a unique Id. Channels can be looked up by index,
  * by name, or by id, reordered, and removed. The animation also carries an
- * overall time range (@ref start_time / @ref end_time) used for sampling.
+ * overall time range (start_time() / end_time()) used for sampling.
  */
 class Animation {
 public:

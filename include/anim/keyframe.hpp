@@ -12,9 +12,9 @@ namespace anim {
  * @brief A single control point on an animation curve.
  *
  * A keyframe is a value at a point in time together with the data needed to
- * interpolate towards its neighbours: the interpolation @ref Function, the
- * @ref HandleMode, and the two Bézier handles. The handles are only used when
- * @ref function is Function::Bezier.
+ * interpolate towards its neighbours: the interpolation Function, the
+ * HandleMode, and the two Bézier handles. The handles are only used when
+ * the function is Function::Bezier.
  *
  * Keyframes are value types: they can be constructed, copied and compared
  * freely. To place a keyframe in a channel (which keeps them time-sorted and

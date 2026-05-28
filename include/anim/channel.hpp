@@ -24,12 +24,12 @@ class Animation;
  * A Channel owns its keyframes, keeps them sorted by time, and applies the
  * appropriate handle constraints as they are added or edited. Evaluating the
  * channel at a given time interpolates between the surrounding keyframes
- * according to each keyframe's @ref Function; times outside the keyframe range
- * are resolved using the channel's @ref Extend settings.
+ * according to each keyframe's Function; times outside the keyframe range
+ * are resolved using the channel's Extend settings.
  *
- * Channels are created and owned by an @ref Animation (the constructor is not
+ * Channels are created and owned by an Animation (the constructor is not
  * public) via Animation::create_channel, which assigns each channel a unique,
- * immutable @ref Id. Channels are non-copyable; use Animation::copy_channel to
+ * immutable Id. Channels are non-copyable; use Animation::copy_channel to
  * duplicate one.
  */
 class Channel {
@@ -147,7 +147,7 @@ public:
      * @brief Evaluates the channel's value at @p time.
      *
      * Interpolates between the surrounding keyframes; times outside the
-     * keyframe range follow the channel's @ref Extend settings. An empty
+     * keyframe range follow the channel's Extend settings. An empty
      * channel returns 0.
      * @param time The time to evaluate at.
      * @param prev_t Optional Bézier solver seed (a previous parameter in [0,1])
@@ -162,6 +162,8 @@ public:
     std::vector<double> evaluate_range(double start_time, double end_time, int num_samples) const;
     /**
      * @brief Evaluates values from @p start_time to @p end_time at a fixed sample rate.
+     * @param start_time First time to sample.
+     * @param end_time Last time to sample.
      * @param sample_rate Samples per unit time; must be positive.
      * @return A vector of sampled values.
      */

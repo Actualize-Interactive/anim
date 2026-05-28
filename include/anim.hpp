@@ -5,8 +5,8 @@
  * @file anim.hpp
  * @brief Umbrella header for the anim animation-curve library.
  *
- * Including this single header pulls in the full public API: the @ref anim::Animation
- * and @ref anim::Channel containers, the @ref anim::Keyframe value type, and the
+ * Including this single header pulls in the full public API: the anim::Animation
+ * and anim::Channel containers, the anim::Keyframe value type, and the
  * Bézier evaluation helpers. Individual headers under @c anim/ may also be
  * included directly.
  */

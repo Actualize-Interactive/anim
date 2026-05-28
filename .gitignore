@@ -54,6 +54,11 @@ Makefile
 # Generated test outputs
 Testing/
 
+# Generated documentation (Doxygen XML, Exhale API rst, Sphinx HTML)
+docs/doxygen/
+docs/build/
+docs/sphinx/api/
+
 # OS-specific files
 .DS_Store
 Thumbs.db
