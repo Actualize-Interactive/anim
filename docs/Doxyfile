@@ -1,0 +1,36 @@
+# Doxygen configuration for the anim library.
+# Generates XML only; Sphinx (via Breathe/Exhale) turns it into the HTML site.
+# Run from the docs/ directory:  doxygen Doxyfile
+
+PROJECT_NAME           = "anim"
+PROJECT_NUMBER         = 0.1.0
+PROJECT_BRIEF          = "Animation curve library"
+
+OUTPUT_DIRECTORY       = doxygen
+INPUT                  = ../include
+FILE_PATTERNS          = *.hpp
+RECURSIVE              = YES
+
+# Only emit entities that carry documentation comments (keeps private,
+# undocumented internals out of the public reference).
+EXTRACT_ALL            = NO
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = NO
+HIDE_UNDOC_MEMBERS     = YES
+HIDE_UNDOC_CLASSES     = YES
+
+# Treat the first sentence as the brief, and read /// and /** */ blocks.
+JAVADOC_AUTOBRIEF      = YES
+MARKDOWN_SUPPORT       = YES
+OPTIMIZE_OUTPUT_FOR_C  = NO
+BUILTIN_STL_SUPPORT    = YES
+
+# Output: XML for Breathe, nothing else.
+GENERATE_HTML          = NO
+GENERATE_LATEX         = NO
+GENERATE_XML           = YES
+XML_OUTPUT             = xml
+XML_PROGRAMLISTING     = NO
+
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO
