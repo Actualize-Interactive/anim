@@ -132,26 +132,20 @@ TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
         
         REQUIRE(ch.size() == 1);
         
-        // Now create a keyframe from the reference - it should have the same time
-        const Keyframe& copy = ch.create_keyframe(original);
-        // NOTE: The copy has exactly the same time as the original, so this test expects replacement behavior
-        // However, looking at the implementation in insert_keyframe, there seems to be a bug where it both 
-        // replaces AND inserts. For now, let's verify our method works correctly by checking the actual behavior.
-        REQUIRE(ch.size() == 2); // For now, accept the current behavior until the insert_keyframe logic is fixed
-        
-        // Since there are 2 keyframes with the same time, let's verify the second one (index 1) has the copied properties
-        const Keyframe& first_kf = ch.keyframe(0);
-        const Keyframe& last_kf = ch.keyframe(1);
-        
-        // Both should have the same time (3.0) since they were created with the same reference
-        REQUIRE(first_kf.time() == 3.0);
-        REQUIRE(last_kf.time() == 3.0);
-        
-        // Verify all properties are copied correctly in the last keyframe
-        REQUIRE(last_kf.time() == first_kf.time());
-        REQUIRE(last_kf.value() == first_kf.value());
-        REQUIRE(last_kf.function == Function::Linear);
-        REQUIRE(last_kf.handle_mode == HandleMode::Free);
+        // Creating another keyframe at the same time (within 0.005s) must
+        // REPLACE the existing one in place, not insert a duplicate. Use
+        // distinct properties so we can verify the replacement actually took.
+        Keyframe replacement(3.0, 99.0, Function::Constant, HandleMode::Aligned);
+        const Keyframe& copy = ch.create_keyframe(replacement);
+        REQUIRE(ch.size() == 1); // replaced, not duplicated
+
+        // The single remaining keyframe carries the replacement's properties
+        const Keyframe& replaced_kf = ch.keyframe(0);
+        REQUIRE(replaced_kf.time() == 3.0);
+        REQUIRE(replaced_kf.value() == 99.0);
+        REQUIRE(replaced_kf.function == Function::Constant);
+        REQUIRE(replaced_kf.handle_mode == HandleMode::Aligned);
+        REQUIRE(copy.value() == 99.0);
 
         // Test creating a copy with different properties by using a fresh channel to avoid inheritance issues
         Animation anim2;

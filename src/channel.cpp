@@ -569,15 +569,19 @@ const Keyframe &Channel::insert_keyframe(KeyframeIt it, Keyframe&& keyframe, Gra
         }
     }
     
-    // If the keyframe already with 1 / 200th of a second, replace it
+    // If a keyframe already exists within 1/200th of a second, replace it in
+    // place rather than inserting a duplicate at the same time.
     if (it != m_keyframes.end() && nearly_equal(it->time(), keyframe.time(), 0.005)) {
         *it = std::move(keyframe);
+        update_local_handles(it, grabbed_handle);
+        apply_last_keyframe_inheritance(false);
+        return *it;
     }
 
     it = m_keyframes.insert(it, std::move(keyframe));
     update_local_handles(it, grabbed_handle);
     apply_last_keyframe_inheritance(false); // Don't restore cache again, just apply inheritance and cache new last keyframe
-    
+
     return *it;
 }
 
