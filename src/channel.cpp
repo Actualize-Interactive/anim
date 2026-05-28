@@ -372,8 +372,21 @@ double Channel::evaluate(double time, double* prev_t) const {
                                  [](double t, const Keyframe& kf) {
                                      return t < kf.time();
                                  });
+
+    // Guard the boundaries before forming the bracketing pair. When the
+    // (possibly extend-remapped) time lands exactly on the last keyframe,
+    // upper == end() and dereferencing it is undefined behaviour -- silent in
+    // release builds, but a checked-iterator assertion in debug builds.
+    // Symmetrically, upper == begin() means time is at/before the first
+    // keyframe. In both cases the answer is the boundary keyframe's value.
+    if (upper == m_keyframes.end()) {
+        return m_keyframes.back().value();
+    }
+    if (upper == m_keyframes.begin()) {
+        return m_keyframes.front().value();
+    }
     auto lower = upper - 1;
-    
+
     const Keyframe& start_kf = *lower;
     const Keyframe& end_kf = *upper;
     
