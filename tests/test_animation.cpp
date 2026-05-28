@@ -1115,3 +1115,74 @@ TEST_CASE("Animation Equality Operators", "[Animation][equality]") {
     }
 }
 
+TEST_CASE("Animation copy_channel default name and independence", "[Animation]") {
+    Animation anim("doc");
+    Channel& src = anim.create_channel("position");
+    src.create_keyframe(0.0, 0.0, Function::Linear);
+    src.create_keyframe(2.0, 20.0, Function::Linear);
+
+    SECTION("Default new_name appends _copy") {
+        Channel& copy = anim.copy_channel(src);
+        REQUIRE(copy.name() == "position_copy");
+        REQUIRE(copy.id() != src.id());      // copy gets a fresh id
+        REQUIRE(copy.size() == src.size());
+    }
+
+    SECTION("Copy is deep: mutating the source does not affect the copy") {
+        Channel& copy = anim.copy_channel(src, "position2");
+        REQUIRE(copy.size() == 2);
+
+        // Mutate the source after copying
+        src.set_keyframe_value(0, 999.0);
+        src.create_keyframe(5.0, 50.0, Function::Linear);
+
+        // Copy must be unchanged
+        REQUIRE(copy.size() == 2);
+        REQUIRE(copy.keyframe(0).value() == Catch::Approx(0.0));
+    }
+}
+
+TEST_CASE("Animation Id-based access error paths", "[Animation][Id]") {
+    Animation anim;
+    Channel& a = anim.create_channel("a");
+    Channel& b = anim.create_channel("b");
+    Id id_a = a.id();
+    Id id_b = b.id();
+
+    SECTION("channel(Id) returns the matching channel") {
+        REQUIRE(anim.channel(id_a) == &a);
+        REQUIRE(anim[id_b] == &b);
+        const Animation& canim = anim;
+        REQUIRE(canim.channel(id_a) == &a);
+        REQUIRE(canim[id_b] == &b);
+    }
+
+    SECTION("channel(Id) throws for a non-existent id") {
+        REQUIRE_THROWS_AS(anim.channel(Id(999999)), std::out_of_range);
+        const Animation& canim = anim;
+        REQUIRE_THROWS_AS(canim.channel(Id(999999)), std::out_of_range);
+    }
+
+    SECTION("remove_channel(Id) removes the right channel") {
+        anim.remove_channel(id_a);
+        REQUIRE(anim.num_channels() == 1);
+        REQUIRE(anim.channel(0).name() == "b");
+        REQUIRE(anim.channel(id_b) == &b);
+        // The removed id is gone from the map
+        REQUIRE_THROWS_AS(anim.channel(id_a), std::out_of_range);
+    }
+
+    SECTION("remove_channel(Id) throws for a non-existent id") {
+        REQUIRE_THROWS_AS(anim.remove_channel(Id(999999)), std::out_of_range);
+        REQUIRE(anim.num_channels() == 2); // unchanged
+    }
+
+    SECTION("reorder_channel(Id) throws for a non-existent id") {
+        REQUIRE_THROWS_AS(anim.reorder_channel(Id(999999), 0), std::out_of_range);
+    }
+
+    SECTION("reorder_channel(Id) throws for an out-of-range target index") {
+        REQUIRE_THROWS_AS(anim.reorder_channel(id_a, 99), std::out_of_range);
+    }
+}
+

@@ -488,3 +488,50 @@ TEST_CASE("Edge cases and error conditions", "[Animation][Id]") {
         REQUIRE(animation.channel(2).name() == "ch4");
     }
 }
+
+TEST_CASE("Id ordering and hashing", "[Id]") {
+    SECTION("operator< gives a strict weak ordering") {
+        REQUIRE(Id(1) < Id(2));
+        REQUIRE_FALSE(Id(2) < Id(1));
+        REQUIRE_FALSE(Id(5) < Id(5)); // irreflexive
+    }
+
+    SECTION("Id is usable as a std::set key (relies on operator<)") {
+        std::set<Id> ids;
+        ids.insert(Id(3));
+        ids.insert(Id(1));
+        ids.insert(Id(2));
+        ids.insert(Id(1)); // duplicate, must not grow the set
+        REQUIRE(ids.size() == 3);
+
+        // std::set iterates in ascending order
+        auto it = ids.begin();
+        REQUIRE(it->id == 1); ++it;
+        REQUIRE(it->id == 2); ++it;
+        REQUIRE(it->id == 3);
+    }
+
+    SECTION("std::hash<Id> enables use in unordered containers") {
+        std::unordered_set<Id> ids;
+        ids.insert(Id(10));
+        ids.insert(Id(20));
+        ids.insert(Id(10)); // duplicate: same hash and equality
+        REQUIRE(ids.size() == 2);
+        REQUIRE(ids.count(Id(10)) == 1);
+        REQUIRE(ids.count(Id(99)) == 0);
+
+        // Equal ids must hash equally
+        std::hash<Id> hasher;
+        REQUIRE(hasher(Id(42)) == hasher(Id(42)));
+    }
+
+    SECTION("explicit conversion and invalid() sentinel") {
+        Id id(12345);
+        REQUIRE(static_cast<uint64_t>(id) == 12345);
+        REQUIRE(id.isValid());
+
+        Id invalid = Id::invalid();
+        REQUIRE_FALSE(invalid.isValid());
+        REQUIRE(invalid.id == static_cast<uint64_t>(-1));
+    }
+}
