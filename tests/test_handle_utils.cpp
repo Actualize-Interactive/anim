@@ -227,14 +227,20 @@ TEST_CASE("Handle mode functions", "[handle_utils]") {
         Keyframe prev_kf(0.0, 0.0);
         Keyframe current_kf(5.0, 10.0);
         Keyframe next_kf(10.0, 5.0);
-        
+
+        // Flat handles are adjustable in time, so apply_flat_handles preserves
+        // each handle's existing time and only flattens its value. Give the
+        // handles meaningful times within their valid bounds up front.
+        current_kf.in_handle  = Point(4.0, 0.0);
+        current_kf.out_handle = Point(6.0, 0.0);
+
         apply_flat_handles(current_kf, &prev_kf, &next_kf);
-        
-        // Handles should have same value as keyframe, but different time
+
+        // Handles should be flattened to the keyframe value while keeping time
         REQUIRE(current_kf.in_handle.value == current_kf.position.value);
         REQUIRE(current_kf.out_handle.value == current_kf.position.value);
-        REQUIRE(current_kf.in_handle.time != current_kf.position.time);
-        REQUIRE(current_kf.out_handle.time != current_kf.position.time);
+        REQUIRE(current_kf.in_handle.time == Catch::Approx(4.0));
+        REQUIRE(current_kf.out_handle.time == Catch::Approx(6.0));
     }
     
     SECTION("apply_smooth_handles function") {
