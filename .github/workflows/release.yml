@@ -6,6 +6,11 @@ on:
       - 'v*.*.*'
   workflow_dispatch:
 
+# checkout/cache still ship on Node.js 20; opt their JS actions into Node 24
+# ahead of the forced cutover (2026-06-02). Remove once the actions ship Node 24.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     strategy:
@@ -26,7 +31,7 @@ jobs:
         cmakeVersion: '3.26.0'
 
     - name: Cache CMake Build
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           build
@@ -53,15 +58,16 @@ jobs:
       working-directory: build
       run: ctest -C Release --output-on-failure
 
-    # Create platform-specific archives
+    # Create platform-specific archives (buildable source: headers + sources +
+    # CMake config, so the release can be built via add_subdirectory or standalone)
     - name: Create Archive (Unix)
       if: matrix.os != 'windows-latest'
-      run: zip -r anim-release-${{ matrix.os }}.zip include README.md LICENSE
+      run: zip -r anim-release-${{ matrix.os }}.zip include src cmake CMakeLists.txt README.md LICENSE CONTRIBUTING.md
 
     - name: Create Archive (Windows)
       if: matrix.os == 'windows-latest'
       shell: powershell
-      run: Compress-Archive -Path include,README.md,LICENSE -DestinationPath anim-release-${{ matrix.os }}.zip
+      run: Compress-Archive -Path include,src,cmake,CMakeLists.txt,README.md,LICENSE,CONTRIBUTING.md -DestinationPath anim-release-${{ matrix.os }}.zip
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
@@ -82,7 +88,7 @@ jobs:
         path: artifacts
 
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: |
           artifacts/anim-release-ubuntu-latest/anim-release-ubuntu-latest.zip

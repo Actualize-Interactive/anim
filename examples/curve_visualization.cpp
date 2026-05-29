@@ -251,7 +251,14 @@ int main() {
         }
 
 
-        ImGui::Begin("Curves Plot");
+        ImGui::Begin("Curves Plot — Ctrl-click to move keyframes & handles (panning disabled)###CurvesPlot");
+
+        // Disable ImPlot's click-drag panning so it doesn't fight with dragging
+        // keyframes/handles. This must be set BEFORE BeginPlot to take effect for
+        // the current frame; it is restored after EndPlot.
+        ImPlotInputMap& plot_input = ImPlot::GetInputMap();
+        const ImGuiMouseButton original_pan = plot_input.Pan;
+        plot_input.Pan = ImGuiMouseButton_COUNT; // no mouse button pans
 
         if (ImPlot::BeginPlot("Animation Curves", ImVec2(-1,-1), ImPlotFlags_NoLegend)) {
             ImPlot::SetupAxes("Time (s)", "Value");
@@ -262,7 +269,7 @@ int main() {
             bool mouse_clicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
             bool mouse_down = ImGui::IsMouseDown(ImGuiMouseButton_Left);
             bool mouse_released = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
-            bool alt_pressed = ImGui::GetIO().KeyAlt;
+            bool ctrl_pressed = ImGui::GetIO().KeyCtrl;
             
             auto mouse_pnt = ImPlot::GetPlotMousePos();
             ImVec2 mouse_plot_pos = ImVec2(mouse_pnt.x, mouse_pnt.y);
@@ -306,18 +313,9 @@ int main() {
                 }
             }
 
-            // Store original input map values
-            ImGuiMouseButton original_pan = ImPlot::GetInputMap().Pan;
-            ImGuiMouseButton original_menu = ImPlot::GetInputMap().Menu;
-            
-            // Only allow plot navigation when Alt is pressed
-            if (!alt_pressed) {
-                ImPlot::GetInputMap().Pan = ImGuiMouseButton_COUNT;
-                ImPlot::GetInputMap().Menu = ImGuiMouseButton_COUNT;
-            }
-            
-            // Start selection/dragging
-            if (plot_hovered && mouse_clicked && mouse_over_interactive_element) {
+            // Start selection/dragging. Requires Ctrl held (the title documents
+            // this); panning is disabled above so the drag won't be hijacked.
+            if (plot_hovered && mouse_clicked && ctrl_pressed && mouse_over_interactive_element) {
                 s_selection = Selection{}; // Reset selection
                 
                 // Check for keyframe/handle selection
@@ -418,10 +416,12 @@ int main() {
                 }
                 
                 if (!x_data.empty()) {
-                    // ImPlot expects float pointers, so we need to convert or use a wrapper if available
-                    // For simplicity, let's prepare float vectors for ImPlot
-                    std::vector<float> x_data_f(x_data.begin(), x_data.end());
-                    std::vector<float> y_data_f(y_data.begin(), y_data.end());
+                    // ImPlot expects float pointers, so convert the sampled doubles.
+                    std::vector<float> x_data_f, y_data_f;
+                    x_data_f.reserve(x_data.size());
+                    y_data_f.reserve(y_data.size());
+                    for (double v : x_data) x_data_f.push_back(static_cast<float>(v));
+                    for (double v : y_data) y_data_f.push_back(static_cast<float>(v));
                     ImPlot::PlotLine(curve.name().c_str(), x_data_f.data(), y_data_f.data(), x_data_f.size());
                 }
 
@@ -525,8 +525,7 @@ int main() {
                 }
             }
             // Restore input map after all plot operations are complete
-            ImPlot::GetInputMap().Pan = original_pan;
-            ImPlot::GetInputMap().Menu = original_menu;
+            plot_input.Pan = original_pan;
             
             ImPlot::EndPlot();
         }

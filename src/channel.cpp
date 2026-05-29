@@ -1,8 +1,6 @@
 #include "anim/channel.hpp"
 #include "anim/bezier_utils.hpp"
 
-#include <iostream>
-
 namespace anim {
 
 const Keyframe& Channel::create_keyframe(double time, 
@@ -372,8 +370,21 @@ double Channel::evaluate(double time, double* prev_t) const {
                                  [](double t, const Keyframe& kf) {
                                      return t < kf.time();
                                  });
+
+    // Guard the boundaries before forming the bracketing pair. When the
+    // (possibly extend-remapped) time lands exactly on the last keyframe,
+    // upper == end() and dereferencing it is undefined behaviour -- silent in
+    // release builds, but a checked-iterator assertion in debug builds.
+    // Symmetrically, upper == begin() means time is at/before the first
+    // keyframe. In both cases the answer is the boundary keyframe's value.
+    if (upper == m_keyframes.end()) {
+        return m_keyframes.back().value();
+    }
+    if (upper == m_keyframes.begin()) {
+        return m_keyframes.front().value();
+    }
     auto lower = upper - 1;
-    
+
     const Keyframe& start_kf = *lower;
     const Keyframe& end_kf = *upper;
     
@@ -383,11 +394,6 @@ double Channel::evaluate(double time, double* prev_t) const {
     } else if (start_kf.function == Function::Constant) {
         return start_kf.value();
     }
-    // auto p0 = start_kf.position;
-    // auto p1 = start_kf.out_handle;
-    // auto p2 = end_kf.in_handle;
-    // auto p3 = end_kf.position;
-    
 
     double t = bezier_utils::solve_t_for_time(
         start_kf.position, start_kf.out_handle, 
@@ -521,12 +527,7 @@ const Keyframe &Channel::create_default_keyframe(const Point &position, Function
     // initialize the handles with smooth mode
     Keyframe new_keyframe(position, function, HandleMode::Smooth);
     update_handles(new_keyframe, prev_kf_ptr, next_kf_ptr);
-    // std::cout << "New Keyframe, time: " << new_keyframe.time() << ", value: " << new_keyframe.value()
-    //             << ", in_handle.time: " << new_keyframe.in_handle.time << ", in_handle.value: " << new_keyframe.in_handle.value
-    //             << ", out_handle.time: " << new_keyframe.out_handle.time << ", out_handle.value: " << new_keyframe.out_handle.value
-    //             << ", function: " << static_cast<int>(new_keyframe.function)
-    //             << ", handle_mode: " << static_cast<int>(new_keyframe.handle_mode) << std::endl;
-    new_keyframe.handle_mode = handle_mode; // set to requested mode, inser_keyframe will call update_local_handles
+    new_keyframe.handle_mode = handle_mode; // set to requested mode, insert_keyframe will call update_local_handles
     return insert_keyframe(next_it, std::move(new_keyframe));
 }
 
@@ -556,15 +557,19 @@ const Keyframe &Channel::insert_keyframe(KeyframeIt it, Keyframe&& keyframe, Gra
         }
     }
     
-    // If the keyframe already with 1 / 200th of a second, replace it
+    // If a keyframe already exists within 1/200th of a second, replace it in
+    // place rather than inserting a duplicate at the same time.
     if (it != m_keyframes.end() && nearly_equal(it->time(), keyframe.time(), 0.005)) {
         *it = std::move(keyframe);
+        update_local_handles(it, grabbed_handle);
+        apply_last_keyframe_inheritance(false);
+        return *it;
     }
 
     it = m_keyframes.insert(it, std::move(keyframe));
     update_local_handles(it, grabbed_handle);
     apply_last_keyframe_inheritance(false); // Don't restore cache again, just apply inheritance and cache new last keyframe
-    
+
     return *it;
 }
 

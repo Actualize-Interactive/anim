@@ -432,3 +432,31 @@ TEST_CASE("Bezier time solving edge cases", "[bezier_utils]") {
         }
     }
 }
+
+TEST_CASE("Bezier endpoint and robustness edge cases", "[bezier_utils]") {
+    SECTION("evaluate_cubic_bezier returns exact endpoints at t=0 and t=1") {
+        Point p0(1.0, 2.0), p1(2.0, 5.0), p2(4.0, -1.0), p3(5.0, 3.0);
+        Point at0 = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, 0.0);
+        Point at1 = bezier_utils::evaluate_cubic_bezier(p0, p1, p2, p3, 1.0);
+        REQUIRE(at0.time == p0.time);
+        REQUIRE(at0.value == p0.value);
+        REQUIRE(at1.time == p3.time);
+        REQUIRE(at1.value == p3.value);
+    }
+
+    SECTION("solve_t_for_time clamps targets outside the segment") {
+        Point p0(1.0, 0.0), p1(2.0, 1.0), p2(3.0, 2.0), p3(4.0, 3.0);
+        REQUIRE(bezier_utils::solve_t_for_time(p0, p1, p2, p3, 0.0) == 0.0);  // <= p0.time
+        REQUIRE(bezier_utils::solve_t_for_time(p0, p1, p2, p3, 9.0) == 1.0);  // >= p3.time
+    }
+
+    SECTION("solve_t_for_time stays in [0,1] for a non-monotonic time curve") {
+        // Endpoints advance in time, but the interior control points run time
+        // backwards (P1.time > P2.time), making the time curve non-monotonic.
+        // The solver must still return a usable parameter, never NaN/out-of-range.
+        Point p0(0.0, 0.0), p1(3.0, 1.0), p2(-1.0, 2.0), p3(2.0, 3.0);
+        double t = bezier_utils::solve_t_for_time(p0, p1, p2, p3, 1.0);
+        REQUIRE(t >= 0.0); // NaN would fail this
+        REQUIRE(t <= 1.0);
+    }
+}

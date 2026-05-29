@@ -132,26 +132,20 @@ TEST_CASE("Channel Keyframe Creation and Basic Properties", "[channel]") {
         
         REQUIRE(ch.size() == 1);
         
-        // Now create a keyframe from the reference - it should have the same time
-        const Keyframe& copy = ch.create_keyframe(original);
-        // NOTE: The copy has exactly the same time as the original, so this test expects replacement behavior
-        // However, looking at the implementation in insert_keyframe, there seems to be a bug where it both 
-        // replaces AND inserts. For now, let's verify our method works correctly by checking the actual behavior.
-        REQUIRE(ch.size() == 2); // For now, accept the current behavior until the insert_keyframe logic is fixed
-        
-        // Since there are 2 keyframes with the same time, let's verify the second one (index 1) has the copied properties
-        const Keyframe& first_kf = ch.keyframe(0);
-        const Keyframe& last_kf = ch.keyframe(1);
-        
-        // Both should have the same time (3.0) since they were created with the same reference
-        REQUIRE(first_kf.time() == 3.0);
-        REQUIRE(last_kf.time() == 3.0);
-        
-        // Verify all properties are copied correctly in the last keyframe
-        REQUIRE(last_kf.time() == first_kf.time());
-        REQUIRE(last_kf.value() == first_kf.value());
-        REQUIRE(last_kf.function == Function::Linear);
-        REQUIRE(last_kf.handle_mode == HandleMode::Free);
+        // Creating another keyframe at the same time (within 0.005s) must
+        // REPLACE the existing one in place, not insert a duplicate. Use
+        // distinct properties so we can verify the replacement actually took.
+        Keyframe replacement(3.0, 99.0, Function::Constant, HandleMode::Aligned);
+        const Keyframe& copy = ch.create_keyframe(replacement);
+        REQUIRE(ch.size() == 1); // replaced, not duplicated
+
+        // The single remaining keyframe carries the replacement's properties
+        const Keyframe& replaced_kf = ch.keyframe(0);
+        REQUIRE(replaced_kf.time() == 3.0);
+        REQUIRE(replaced_kf.value() == 99.0);
+        REQUIRE(replaced_kf.function == Function::Constant);
+        REQUIRE(replaced_kf.handle_mode == HandleMode::Aligned);
+        REQUIRE(copy.value() == 99.0);
 
         // Test creating a copy with different properties by using a fresh channel to avoid inheritance issues
         Animation anim2;
@@ -1729,4 +1723,92 @@ TEST_CASE("Channel Extend Functionality", "[channel]") {
         REQUIRE(empty_ch.evaluate(0.0) == Catch::Approx(0.0));
         REQUIRE(empty_ch.evaluate(5.0) == Catch::Approx(0.0));
     }
+}
+
+TEST_CASE("Channel copy_keyframes_from", "[channel]") {
+    Animation anim;
+    Channel& src = anim.create_channel("src");
+    src.create_keyframe(1.0, 10.0, Function::Linear);
+    src.create_keyframe(3.0, 30.0, Function::Bezier);
+
+    Channel& dst = anim.create_channel("dst");
+    dst.create_keyframe(99.0, 99.0); // pre-existing content that must be replaced
+
+    dst.copy_keyframes_from(src);
+
+    REQUIRE(dst.size() == src.size()); // replaced wholesale, not appended
+    for (size_t i = 0; i < src.size(); ++i) {
+        REQUIRE(dst.keyframe(i).time() == src.keyframe(i).time());
+        REQUIRE(dst.keyframe(i).value() == src.keyframe(i).value());
+        REQUIRE(dst.keyframe(i).function == src.keyframe(i).function);
+    }
+
+    // Deep copy: mutating the source afterwards must not affect the destination
+    src.set_keyframe_value(0, -1.0);
+    REQUIRE(dst.keyframe(0).value() == Catch::Approx(10.0));
+}
+
+TEST_CASE("Channel evaluate prev_t hint does not change the result", "[channel]") {
+    Animation anim;
+    Channel& ch = anim.create_channel("bez");
+    ch.create_keyframe(0.0, 0.0, Function::Bezier);
+    ch.create_keyframe(4.0, 40.0, Function::Bezier);
+
+    double baseline = ch.evaluate(1.5);
+
+    // prev_t is an input seed for the Newton-Raphson solver, not an output; it
+    // may speed convergence but must never change the evaluated value.
+    double good_guess = 0.4;  // a plausible seed within [0,1]
+    double bad_guess = -3.0;  // out of range -> ignored, falls back to linear seed
+    REQUIRE(ch.evaluate(1.5, &good_guess) == Catch::Approx(baseline));
+    REQUIRE(ch.evaluate(1.5, &bad_guess) == Catch::Approx(baseline));
+}
+
+TEST_CASE("Channel single-keyframe extend behavior", "[channel]") {
+    Animation anim;
+    Channel& ch = anim.create_channel("single");
+    ch.create_keyframe(2.0, 20.0, Function::Linear);
+
+    // A lone keyframe has zero duration; every extend mode must just hold its value.
+    for (Extend mode : {Extend::Hold, Extend::Repeat, Extend::Mirror}) {
+        ch.set_extend_start(mode);
+        ch.set_extend_end(mode);
+        REQUIRE(ch.evaluate(-5.0) == Catch::Approx(20.0));
+        REQUIRE(ch.evaluate(2.0) == Catch::Approx(20.0));
+        REQUIRE(ch.evaluate(9.0) == Catch::Approx(20.0));
+    }
+}
+
+TEST_CASE("Channel evaluate at exact end boundary (regression)", "[channel]") {
+    // Regression guard for the upper-boundary iterator: evaluating exactly at the
+    // last keyframe time, and Repeat remapping that lands exactly on end_time,
+    // must return the final value without dereferencing past the keyframe vector.
+    Animation anim;
+    Channel& ch = anim.create_channel("c");
+    ch.create_keyframe(1.0, 10.0, Function::Linear);
+    ch.create_keyframe(3.0, 30.0, Function::Linear);
+
+    REQUIRE(ch.evaluate(3.0) == Catch::Approx(30.0)); // exactly end_time
+
+    ch.set_extend_end(Extend::Repeat);
+    // duration is 2.0; time 5.0 maps to exactly end_time 3.0
+    REQUIRE(ch.evaluate(5.0) == Catch::Approx(30.0));
+}
+
+TEST_CASE("Channel set_keyframe_time clamps within neighbors", "[channel]") {
+    Animation anim;
+    Channel& ch = anim.create_channel("c");
+    ch.create_keyframe(1.0, 10.0);
+    ch.create_keyframe(2.0, 20.0);
+    ch.create_keyframe(3.0, 30.0);
+
+    // Move the middle keyframe past its next neighbor (3.0): must clamp.
+    ch.set_keyframe_time(1, 3.5);
+    REQUIRE(ch.keyframe(1).time() <= ch.keyframe(2).time());
+    REQUIRE(ch.keyframe(1).time() == Catch::Approx(3.0));
+
+    // Move it past its previous neighbor (1.0): must clamp.
+    ch.set_keyframe_time(1, -5.0);
+    REQUIRE(ch.keyframe(1).time() >= ch.keyframe(0).time());
+    REQUIRE(ch.keyframe(1).time() == Catch::Approx(1.0));
 }

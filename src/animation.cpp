@@ -5,14 +5,6 @@ namespace anim {
 // Static member definition
 uint64_t Animation::s_next_channel_id = 1;
 
-// we can't use std::make_unique here because the constructor is protected
-// Channel& Animation::create_channel(const std::string& channel_name) {
-//     uint64_t new_id = next_channel_id();
-//     auto raw_ptr = m_channels.emplace_back(std::make_unique<Channel>(channel_name, new_id)).get();
-//     m_channel_map[Id(new_id)] = raw_ptr;
-//     return *raw_ptr;
-// }
-
 // not as concise as std::make_unique, but necessary due to protected constructor
 Channel& Animation::create_channel(const std::string& channel_name) {
     uint64_t new_id = next_channel_id();

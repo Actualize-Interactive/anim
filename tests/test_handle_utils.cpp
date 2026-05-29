@@ -227,14 +227,20 @@ TEST_CASE("Handle mode functions", "[handle_utils]") {
         Keyframe prev_kf(0.0, 0.0);
         Keyframe current_kf(5.0, 10.0);
         Keyframe next_kf(10.0, 5.0);
-        
+
+        // Flat handles are adjustable in time, so apply_flat_handles preserves
+        // each handle's existing time and only flattens its value. Give the
+        // handles meaningful times within their valid bounds up front.
+        current_kf.in_handle  = Point(4.0, 0.0);
+        current_kf.out_handle = Point(6.0, 0.0);
+
         apply_flat_handles(current_kf, &prev_kf, &next_kf);
-        
-        // Handles should have same value as keyframe, but different time
+
+        // Handles should be flattened to the keyframe value while keeping time
         REQUIRE(current_kf.in_handle.value == current_kf.position.value);
         REQUIRE(current_kf.out_handle.value == current_kf.position.value);
-        REQUIRE(current_kf.in_handle.time != current_kf.position.time);
-        REQUIRE(current_kf.out_handle.time != current_kf.position.time);
+        REQUIRE(current_kf.in_handle.time == Catch::Approx(4.0));
+        REQUIRE(current_kf.out_handle.time == Catch::Approx(6.0));
     }
     
     SECTION("apply_smooth_handles function") {
@@ -461,7 +467,100 @@ TEST_CASE("Function and HandleMode constraints for in_handle time", "[handle_uti
         
         // Apply constraints again
         constrain_in_handle_time(current_kf, prev_kf);
-        
+
         REQUIRE(current_kf.in_handle.time <= current_kf.position.time);
+    }
+}
+
+TEST_CASE("apply_flat_handles isolated and degenerate cases", "[handle_utils]") {
+    SECTION("Only keyframe (no neighbors) uses +/-1.0 time offset") {
+        Keyframe kf(5.0, 10.0);
+        apply_flat_handles(kf, nullptr, nullptr);
+        REQUIRE(kf.in_handle.time == Catch::Approx(4.0));
+        REQUIRE(kf.out_handle.time == Catch::Approx(6.0));
+        REQUIRE(kf.in_handle.value == Catch::Approx(10.0));
+        REQUIRE(kf.out_handle.value == Catch::Approx(10.0));
+    }
+
+    SECTION("Neighbor sharing the keyframe time does not crash and flattens value") {
+        Keyframe prev_kf(5.0, 0.0);     // same time as current keyframe
+        Keyframe current_kf(5.0, 10.0);
+        Keyframe next_kf(7.0, 5.0);
+        current_kf.in_handle = Point(4.0, 0.0);
+        current_kf.out_handle = Point(6.0, 0.0);
+
+        apply_flat_handles(current_kf, &prev_kf, &next_kf);
+
+        // Values are flattened to the keyframe value
+        REQUIRE(current_kf.in_handle.value == Catch::Approx(10.0));
+        REQUIRE(current_kf.out_handle.value == Catch::Approx(10.0));
+        // in_handle clamped into [prev.time, kf.time] == [5,5]
+        REQUIRE(current_kf.in_handle.time == Catch::Approx(5.0));
+    }
+}
+
+TEST_CASE("apply_aligned_handles source selection and modes", "[handle_utils]") {
+    auto collinearity = [](const Keyframe& kf) {
+        Vector in_vec = vector(kf.in_handle, kf.position);
+        Vector out_vec = vector(kf.position, kf.out_handle);
+        return std::abs(cross_product(normalize(in_vec), normalize(out_vec)));
+    };
+
+    SECTION("in_handle as source aligns the out_handle") {
+        Keyframe kf(5.0, 5.0);
+        kf.in_handle = Point(3.0, 4.0);
+        kf.out_handle = Point(7.0, 7.0);
+        apply_aligned_handles(kf, nullptr, nullptr, GrabbedHandle::in_handle);
+        REQUIRE(collinearity(kf) < 1e-9);
+    }
+
+    SECTION("GrabbedHandle::none picks the larger handle as source and aligns") {
+        Keyframe kf(5.0, 5.0);
+        kf.in_handle = Point(4.5, 4.8);    // small magnitude
+        kf.out_handle = Point(9.0, 9.0);   // large magnitude -> chosen as source
+        apply_aligned_handles(kf, nullptr, nullptr, GrabbedHandle::none);
+        REQUIRE(collinearity(kf) < 1e-9);
+    }
+
+    SECTION("AlignStrict makes both handle magnitudes equal") {
+        Keyframe kf(5.0, 5.0);
+        kf.handle_mode = HandleMode::AlignStrict;
+        kf.out_handle = Point(7.0, 7.0);
+        kf.in_handle = Point(4.0, 4.5);
+        apply_aligned_handles(kf, nullptr, nullptr, GrabbedHandle::out_handle);
+
+        double in_mag = distance(kf.position, kf.in_handle);
+        double out_mag = distance(kf.position, kf.out_handle);
+        REQUIRE(in_mag == Catch::Approx(out_mag));
+        REQUIRE(collinearity(kf) < 1e-9);
+    }
+}
+
+TEST_CASE("ensure_handle_time_boundary direct behavior", "[handle_utils]") {
+    SECTION("in_handle crossing the prev boundary is scaled back onto it") {
+        Point kf_pos(5.0, 5.0);
+        Point in_handle(2.0, 2.0);     // time 2.0 is before boundary 3.0 -> violation
+        Point boundary(3.0, 0.0);
+        ensure_handle_time_boundary(kf_pos, in_handle, boundary, true);
+        REQUIRE(in_handle.time == Catch::Approx(3.0));
+        REQUIRE(in_handle.value == Catch::Approx(3.0)); // stays on the kf->handle line
+    }
+
+    SECTION("out_handle crossing the next boundary is scaled back onto it") {
+        Point kf_pos(5.0, 5.0);
+        Point out_handle(8.0, 8.0);    // time 8.0 is past boundary 7.0 -> violation
+        Point boundary(7.0, 0.0);
+        ensure_handle_time_boundary(kf_pos, out_handle, boundary, false);
+        REQUIRE(out_handle.time == Catch::Approx(7.0));
+        REQUIRE(out_handle.value == Catch::Approx(7.0));
+    }
+
+    SECTION("Vertical handle (zero time delta) is left unchanged") {
+        Point kf_pos(5.0, 5.0);
+        Point in_handle(5.0, 2.0);     // same time as keyframe -> zero time delta
+        Point boundary(6.0, 0.0);      // would be a violation, but the guard bails out
+        ensure_handle_time_boundary(kf_pos, in_handle, boundary, true);
+        REQUIRE(in_handle.time == Catch::Approx(5.0));
+        REQUIRE(in_handle.value == Catch::Approx(2.0));
     }
 }

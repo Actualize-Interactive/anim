@@ -7,25 +7,9 @@
 
 namespace anim {
 
-    bool nearly_equal(double a, double b, double epsilon) { 
+    bool nearly_equal(double a, double b, double epsilon) {
         return std::abs(a - b) < epsilon;
     }
-
-    // Better for really small numbers, but we don't need it for our use case.
-    // bool nearly_equal(double a, double b, double epsilon) { 
-    //     if (epsilon <= 0.0) {
-    //         epsilon = std::numeric_limits<double>::epsilon();
-    //     }
-        
-    //     // For very small numbers, use absolute comparison
-    //     if (std::abs(a) < 1e-12 && std::abs(b) < 1e-12) {
-    //         return std::abs(a - b) < epsilon;
-    //     }
-        
-    //     // For larger numbers, use relative comparison
-    //     double max_val = std::max(std::abs(a), std::abs(b));
-    //     return std::abs(a - b) < epsilon * max_val;
-    // }
 
     double distance(const Point& p1, const Point& p2) {
         double dt = p1.time - p2.time;

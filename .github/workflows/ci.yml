@@ -7,6 +7,11 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# checkout/cache still ship on Node.js 20; opt their JS actions into Node 24
+# ahead of the forced cutover (2026-06-02). Remove once the actions ship Node 24.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -25,7 +30,7 @@ jobs:
         cmakeVersion: '3.26.0'
 
     - name: Cache CMake Build
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           build
