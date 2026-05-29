@@ -6,7 +6,7 @@
 project = 'anim'
 copyright = '2025, Actualize Interactive Inc.'
 author = 'Actualize Interactive Inc.'
-release = '0.1.0'
+release = '0.1.2'
 
 extensions = [
     'breathe',
