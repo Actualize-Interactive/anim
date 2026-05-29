@@ -12,6 +12,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # Build and test on every platform as the release gate.
   build:
     strategy:
       matrix:
@@ -58,42 +59,24 @@ jobs:
       working-directory: build
       run: ctest -C Release --output-on-failure
 
-    # Create platform-specific archives (buildable source: headers + sources +
-    # CMake config, so the release can be built via add_subdirectory or standalone)
-    - name: Create Archive (Unix)
-      if: matrix.os != 'windows-latest'
-      run: zip -r anim-release-${{ matrix.os }}.zip include src cmake CMakeLists.txt README.md LICENSE CONTRIBUTING.md
-
-    - name: Create Archive (Windows)
-      if: matrix.os == 'windows-latest'
-      shell: powershell
-      run: Compress-Archive -Path include,src,cmake,CMakeLists.txt,README.md,LICENSE,CONTRIBUTING.md -DestinationPath anim-release-${{ matrix.os }}.zip
-
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: anim-release-${{ matrix.os }}
-        path: anim-release-${{ matrix.os }}.zip
-        retention-days: 7
-
+  # Package a single source archive and publish the release.
   release:
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-    - name: Download Artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts
+    - uses: actions/checkout@v4
+
+    # One platform-independent, buildable source archive (headers + sources +
+    # CMake config). GitHub also attaches auto-generated "Source code" archives.
+    - name: Package source archive
+      run: zip -r anim-${{ github.ref_name }}-src.zip include src cmake CMakeLists.txt README.md LICENSE CONTRIBUTING.md
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
-        files: |
-          artifacts/anim-release-ubuntu-latest/anim-release-ubuntu-latest.zip
-          artifacts/anim-release-macos-latest/anim-release-macos-latest.zip
-          artifacts/anim-release-windows-latest/anim-release-windows-latest.zip
+        files: anim-${{ github.ref_name }}-src.zip
         name: Release ${{ github.ref_name }}
         draft: false
         prerelease: false
