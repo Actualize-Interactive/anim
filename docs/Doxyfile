@@ -3,7 +3,7 @@
 # Run from the docs/ directory:  doxygen Doxyfile
 
 PROJECT_NAME           = "anim"
-PROJECT_NUMBER         = 0.1.0
+PROJECT_NUMBER         = 0.1.2
 PROJECT_BRIEF          = "Animation curve library"
 
 OUTPUT_DIRECTORY       = doxygen
