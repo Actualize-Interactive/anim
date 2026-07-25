@@ -265,7 +265,7 @@ TEST_CASE("Handle mode functions", "[handle_utils]") {
         kf.out_handle = Point(7.0, 7.0);
         kf.in_handle = Point(3.0, 4.0);
         
-        apply_aligned_handles(kf, nullptr, nullptr, GrabbedHandle::out_handle); // out_handle is source
+        apply_aligned_handles(kf, nullptr, nullptr, GrabbedHandle::OutHandle); // out_handle is source
         
         // in_handle should be aligned with out_handle
         Vector in_vec = vector(kf.in_handle, kf.position);
@@ -510,15 +510,15 @@ TEST_CASE("apply_aligned_handles source selection and modes", "[handle_utils]") 
         Keyframe kf(5.0, 5.0);
         kf.in_handle = Point(3.0, 4.0);
         kf.out_handle = Point(7.0, 7.0);
-        apply_aligned_handles(kf, nullptr, nullptr, GrabbedHandle::in_handle);
+        apply_aligned_handles(kf, nullptr, nullptr, GrabbedHandle::InHandle);
         REQUIRE(collinearity(kf) < 1e-9);
     }
 
-    SECTION("GrabbedHandle::none picks the larger handle as source and aligns") {
+    SECTION("GrabbedHandle::None picks the larger handle as source and aligns") {
         Keyframe kf(5.0, 5.0);
         kf.in_handle = Point(4.5, 4.8);    // small magnitude
         kf.out_handle = Point(9.0, 9.0);   // large magnitude -> chosen as source
-        apply_aligned_handles(kf, nullptr, nullptr, GrabbedHandle::none);
+        apply_aligned_handles(kf, nullptr, nullptr, GrabbedHandle::None);
         REQUIRE(collinearity(kf) < 1e-9);
     }
 
@@ -527,7 +527,7 @@ TEST_CASE("apply_aligned_handles source selection and modes", "[handle_utils]") 
         kf.handle_mode = HandleMode::AlignStrict;
         kf.out_handle = Point(7.0, 7.0);
         kf.in_handle = Point(4.0, 4.5);
-        apply_aligned_handles(kf, nullptr, nullptr, GrabbedHandle::out_handle);
+        apply_aligned_handles(kf, nullptr, nullptr, GrabbedHandle::OutHandle);
 
         double in_mag = distance(kf.position, kf.in_handle);
         double out_mag = distance(kf.position, kf.out_handle);

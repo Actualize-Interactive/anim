@@ -40,14 +40,14 @@ struct Id {
 
     /**
      * @brief Returns the sentinel "invalid" Id (the maximum uint64_t value).
-     * @return An Id for which isValid() is false.
+     * @return An Id for which is_valid() is false.
      */
     static Id invalid() {
         return Id(static_cast<uint64_t>(-1));
     }
 
     /// @brief True unless this Id equals the invalid() sentinel.
-    bool isValid() const {
+    bool is_valid() const {
         return id != static_cast<uint64_t>(-1);
     }
 };
