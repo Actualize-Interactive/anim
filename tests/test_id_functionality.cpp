@@ -5,6 +5,7 @@
 #include <anim/id.hpp>
 #include <unordered_set>
 #include <set>
+#include <type_traits>
 
 using namespace anim;
 
@@ -434,11 +435,16 @@ TEST_CASE("Static channel ID counter", "[Animation][Id]") {
 
 TEST_CASE("Edge cases and error conditions", "[Animation][Id]") {
     SECTION("Cannot create channel without ID") {
-        // This test verifies that the Channel() default constructor is deleted
-        // The test is implicit - if this compiles, the test passes
-        // If Channel() were available, this would not compile:
-        // Channel ch; // This should not compile
-        REQUIRE(true); // Placeholder assertion
+        // Channels may only be created by Animation, which is what guarantees
+        // every channel gets a unique Id. Enforce that contract at compile time
+        // rather than asserting it in prose.
+        static_assert(!std::is_default_constructible_v<Channel>,
+                      "Channel must not be default-constructible; Animation owns creation.");
+        static_assert(!std::is_copy_constructible_v<Channel>,
+                      "Channel must not be copy-constructible; a copy would duplicate its Id.");
+        static_assert(!std::is_copy_assignable_v<Channel>,
+                      "Channel must not be copy-assignable; assignment would overwrite its Id.");
+        SUCCEED("Channel construction is restricted to Animation");
     }
     
     SECTION("Remove non-existent channel by ID throws exception") {
