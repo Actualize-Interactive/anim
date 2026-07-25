@@ -6,10 +6,8 @@ on:
       - 'v*.*.*'
   workflow_dispatch:
 
-# checkout/cache still ship on Node.js 20; opt their JS actions into Node 24
-# ahead of the forced cutover (2026-06-02). Remove once the actions ship Node 24.
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+permissions:
+  contents: read
 
 jobs:
   # Build and test on every platform as the release gate.
@@ -22,17 +20,17 @@ jobs:
     timeout-minutes: 15
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
 
     - name: Setup cmake
-      uses: lukka/get-cmake@latest
+      uses: lukka/get-cmake@v4.4.0
       with:
         cmakeVersion: '3.26.0'
 
     - name: Cache CMake Build
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: |
           build
@@ -66,15 +64,15 @@ jobs:
     permissions:
       contents: write
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     # One platform-independent, buildable source archive (headers + sources +
     # CMake config). GitHub also attaches auto-generated "Source code" archives.
     - name: Package source archive
-      run: zip -r anim-${{ github.ref_name }}-src.zip include src cmake CMakeLists.txt README.md LICENSE CONTRIBUTING.md
+      run: zip -r anim-${{ github.ref_name }}-src.zip include src cmake CMakeLists.txt README.md LICENSE CONTRIBUTING.md CHANGELOG.md
 
     - name: Create Release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         files: anim-${{ github.ref_name }}-src.zip
         name: Release ${{ github.ref_name }}
