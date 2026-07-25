@@ -36,6 +36,13 @@ conventions; both are mechanical find-and-replace changes for callers.
 - CI now builds with CMake 4.4. The `windows-latest` runner image ships Visual
   Studio 2026, for which a generator first exists in CMake 4.2; the previously
   pinned CMake 3.26 fell back to NMake and could not find a compiler at all.
+- Releases now take their description from this file's entry for the tag, with
+  GitHub's generated notes appended, instead of being published with an empty
+  body and filled in by hand. Tagging a version with no changelog entry now
+  fails the release rather than publishing a blank description.
+- The release workflow no longer fails when started manually. Publishing needs
+  a tag, so on `workflow_dispatch` it skips the publish step and runs purely as
+  a dry run of the cross-platform build and test gate.
 
 ### Added
 

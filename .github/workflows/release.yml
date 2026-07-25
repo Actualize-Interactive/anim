@@ -58,7 +58,12 @@ jobs:
       run: ctest -C Release --output-on-failure
 
   # Package a single source archive and publish the release.
+  #
+  # Only runs for tag pushes. A release cannot be published from a branch, so on
+  # workflow_dispatch this job is skipped and the workflow acts as a dry run of
+  # the cross-platform build and test gate above.
   release:
+    if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -71,10 +76,33 @@ jobs:
     - name: Package source archive
       run: zip -r anim-${{ github.ref_name }}-src.zip include src cmake CMakeLists.txt README.md LICENSE CONTRIBUTING.md CHANGELOG.md
 
+    # Use the CHANGELOG entry for this tag as the release body, so the notes are
+    # written once and reviewed in the pull request that introduced them.
+    - name: Extract release notes from CHANGELOG
+      run: |
+        version="${GITHUB_REF_NAME#v}"
+        awk -v v="$version" '
+          $0 ~ "^## \\[" v "\\]" { found = 1; next }   # heading for this version
+          found && /^## \[/       { exit }             # next version heading
+          found && /^\[.*\]: /    { exit }             # link reference block
+          found && /^<!--/        { exit }             # trailing comments
+          found                   { print }
+        ' CHANGELOG.md \
+          | sed -e '/./,$!d' -e :a -e '/^\n*$/{$d;N;};/\n$/ba' > RELEASE_NOTES.md
+
+        if [ ! -s RELEASE_NOTES.md ]; then
+          echo "::error::CHANGELOG.md has no '## [$version]' section. Add one before tagging $GITHUB_REF_NAME." >&2
+          exit 1
+        fi
+        echo "Release notes for $version:"
+        cat RELEASE_NOTES.md
+
     - name: Create Release
       uses: softprops/action-gh-release@v3
       with:
         files: anim-${{ github.ref_name }}-src.zip
         name: Release ${{ github.ref_name }}
+        body_path: RELEASE_NOTES.md
+        generate_release_notes: true
         draft: false
         prerelease: false
