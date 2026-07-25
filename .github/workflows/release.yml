@@ -27,7 +27,7 @@ jobs:
     - name: Setup cmake
       uses: lukka/get-cmake@v4.4.0
       with:
-        cmakeVersion: '3.26.0'
+        cmakeVersion: '4.4.0'
 
     - name: Cache CMake Build
       uses: actions/cache@v6
@@ -37,9 +37,9 @@ jobs:
           ~/.ccache
           ~/Library/Caches/ccache # macOS
           ~\AppData\Local\ccache  # Windows
-        key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}
+        key: ${{ runner.os }}-cmake4.4.0-${{ hashFiles('**/CMakeLists.txt') }}
         restore-keys: |
-          ${{ runner.os }}-cmake-
+          ${{ runner.os }}-cmake4.4.0-
 
     - name: Install system dependencies (Ubuntu)
       if: matrix.os == 'ubuntu-latest'

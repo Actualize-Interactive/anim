@@ -7,6 +7,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(FetchContent)
 set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_deps CACHE PATH "Base directory for FetchContent downloads")
 
+# glad 0.1.36 declares cmake_minimum_required(VERSION 3.0), and CMake 4.0
+# removed compatibility with anything below 3.5, so configuring the examples
+# fails outright without this. Scoped to the examples: the library and the test
+# suite do not depend on it, and it is not inherited by anyone consuming anim.
+# Remove once glad is bumped to a release that requires 3.5 or newer.
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
 # Fetch GLFW first (required by ImGui)
 FetchContent_Declare(
     glfw

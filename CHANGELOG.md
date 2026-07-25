@@ -33,6 +33,9 @@ conventions; both are mechanical find-and-replace changes for callers.
   release cannot break the Pages deploy without a reviewed change.
 - CI, docs, and release workflows updated to current action versions, with
   explicit least-privilege `permissions` blocks.
+- CI now builds with CMake 4.4. The `windows-latest` runner image ships Visual
+  Studio 2026, for which a generator first exists in CMake 4.2; the previously
+  pinned CMake 3.26 fell back to NMake and could not find a compiler at all.
 
 ### Added
 
