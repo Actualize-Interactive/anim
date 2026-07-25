@@ -5,6 +5,7 @@
 #include <anim/id.hpp>
 #include <unordered_set>
 #include <set>
+#include <type_traits>
 
 using namespace anim;
 
@@ -22,9 +23,9 @@ TEST_CASE("Channel ID Management", "[Animation][Id]") {
         REQUIRE(ch2.id() != ch3.id());
         
         // IDs should be valid
-        REQUIRE(ch1.id().isValid());
-        REQUIRE(ch2.id().isValid());
-        REQUIRE(ch3.id().isValid());
+        REQUIRE(ch1.id().is_valid());
+        REQUIRE(ch2.id().is_valid());
+        REQUIRE(ch3.id().is_valid());
         
         // IDs should be incrementing (implementation detail but good to check)
         REQUIRE(static_cast<uint64_t>(ch2.id()) > static_cast<uint64_t>(ch1.id()));
@@ -50,7 +51,7 @@ TEST_CASE("Channel ID Management", "[Animation][Id]") {
         
         Animation animation("test");
         Channel& ch = animation.create_channel("managed_channel");
-        REQUIRE(ch.id().isValid());
+        REQUIRE(ch.id().is_valid());
         REQUIRE(ch.name() == "managed_channel");
     }
 }
@@ -104,9 +105,9 @@ TEST_CASE("Channel ID functionality", "[Channel][Id]") {
         Channel& ch3 = animation.create_channel("channel3");
         
         // Check that IDs are assigned and unique
-        REQUIRE(ch1.id().isValid());
-        REQUIRE(ch2.id().isValid());
-        REQUIRE(ch3.id().isValid());
+        REQUIRE(ch1.id().is_valid());
+        REQUIRE(ch2.id().is_valid());
+        REQUIRE(ch3.id().is_valid());
         
         REQUIRE(ch1.id() != ch2.id());
         REQUIRE(ch1.id() != ch3.id());
@@ -125,7 +126,7 @@ TEST_CASE("Channel ID functionality", "[Channel][Id]") {
         Channel& ch = animation.create_channel("test_channel");
         
         Id channel_id = ch.id();
-        REQUIRE(channel_id.isValid());
+        REQUIRE(channel_id.is_valid());
         REQUIRE(static_cast<uint64_t>(channel_id) >= 1);
     }
     
@@ -434,11 +435,16 @@ TEST_CASE("Static channel ID counter", "[Animation][Id]") {
 
 TEST_CASE("Edge cases and error conditions", "[Animation][Id]") {
     SECTION("Cannot create channel without ID") {
-        // This test verifies that the Channel() default constructor is deleted
-        // The test is implicit - if this compiles, the test passes
-        // If Channel() were available, this would not compile:
-        // Channel ch; // This should not compile
-        REQUIRE(true); // Placeholder assertion
+        // Channels may only be created by Animation, which is what guarantees
+        // every channel gets a unique Id. Enforce that contract at compile time
+        // rather than asserting it in prose.
+        static_assert(!std::is_default_constructible_v<Channel>,
+                      "Channel must not be default-constructible; Animation owns creation.");
+        static_assert(!std::is_copy_constructible_v<Channel>,
+                      "Channel must not be copy-constructible; a copy would duplicate its Id.");
+        static_assert(!std::is_copy_assignable_v<Channel>,
+                      "Channel must not be copy-assignable; assignment would overwrite its Id.");
+        SUCCEED("Channel construction is restricted to Animation");
     }
     
     SECTION("Remove non-existent channel by ID throws exception") {
@@ -528,10 +534,10 @@ TEST_CASE("Id ordering and hashing", "[Id]") {
     SECTION("explicit conversion and invalid() sentinel") {
         Id id(12345);
         REQUIRE(static_cast<uint64_t>(id) == 12345);
-        REQUIRE(id.isValid());
+        REQUIRE(id.is_valid());
 
         Id invalid = Id::invalid();
-        REQUIRE_FALSE(invalid.isValid());
+        REQUIRE_FALSE(invalid.is_valid());
         REQUIRE(invalid.id == static_cast<uint64_t>(-1));
     }
 }

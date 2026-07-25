@@ -215,17 +215,17 @@ private:
     using KeyframeIt = std::vector<Keyframe>::iterator;
 
     const Keyframe& create_default_keyframe(const Point& position, Function function, HandleMode handle_mode);
-    const Keyframe& insert_keyframe(Keyframe&& keyframe, GrabbedHandle grabbed_handle = GrabbedHandle::none);
-    const Keyframe& insert_keyframe(KeyframeIt it, Keyframe&& keyframe, GrabbedHandle grabbed_handle = GrabbedHandle::none);
+    const Keyframe& insert_keyframe(Keyframe&& keyframe, GrabbedHandle grabbed_handle = GrabbedHandle::None);
+    const Keyframe& insert_keyframe(KeyframeIt it, Keyframe&& keyframe, GrabbedHandle grabbed_handle = GrabbedHandle::None);
 
     void update_keyframe_position(KeyframeIt it, const Point& position);
     void clamp_keyframe_time(KeyframeIt it, double time);
 
-    void update_local_handles(KeyframeIt it, GrabbedHandle grabbed_handle = GrabbedHandle::none);
+    void update_local_handles(KeyframeIt it, GrabbedHandle grabbed_handle = GrabbedHandle::None);
     void update_handles(
         Keyframe& keyframe,
         Keyframe* prev_keyframe_ptr, Keyframe* next_keyframe_ptr,
-        GrabbedHandle grabbed_handle = GrabbedHandle::none);
+        GrabbedHandle grabbed_handle = GrabbedHandle::None);
 
     void apply_last_keyframe_inheritance(bool restore_cache = true) const;
     void invalidate_cache() const;

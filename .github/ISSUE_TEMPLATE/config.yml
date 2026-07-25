@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: API documentation
+    url: https://actualize-interactive.github.io/anim/
+    about: The full API reference and guide — worth checking before filing.
+  - name: Report a security vulnerability
+    url: https://github.com/Actualize-Interactive/anim/security/advisories/new
+    about: Please report security issues privately, not as a public issue.

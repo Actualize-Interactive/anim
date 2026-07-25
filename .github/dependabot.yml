@@ -1,0 +1,29 @@
+version: 2
+
+updates:
+  # Keep the workflow actions current. The repository has no package-manager
+  # manifest for Dependabot to track: C++ dependencies (Catch2, GLFW, ImGui,
+  # ImPlot, glad) are pinned as FetchContent git tags in CMakeLists.txt, which
+  # Dependabot cannot parse, so those are bumped by hand.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "ci"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # Documentation toolchain (Sphinx, Breathe, Exhale, the RTD theme).
+  - package-ecosystem: "pip"
+    directory: "/docs/sphinx"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "docs"
+    groups:
+      sphinx:
+        patterns:
+          - "*"

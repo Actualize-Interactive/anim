@@ -61,45 +61,29 @@ void CreateExampleCurves() {
     // Reset selection when curves change
     s_selection = Selection{};
 
-    if (true) { // Placeholder for future curves, currently only sine wave
-        // Curve 1: Simple Sine Wave (8 points) - only curve for now
-        anim::Channel& sine_curve = animation.create_channel("Sine Wave");
-        for (float t = 0; t <= 32.f; t += 8.f) { 
-            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)));
+    // The same sine wave once per interpolation style, offset in value so the
+    // curves stack legibly in the plot rather than overlapping.
+    struct CurveSpec {
+        const char*      name;
+        double           value_offset;
+        anim::Function   function;
+        anim::HandleMode handle_mode;
+    };
+    static const CurveSpec curve_specs[] = {
+        {"Sine Wave",         0.00, anim::Function::Bezier, anim::HandleMode::Smooth},
+        {"Sine Wave Linear",  0.25, anim::Function::Linear, anim::HandleMode::Smooth},
+        {"Sine Wave Flat",    0.50, anim::Function::Bezier, anim::HandleMode::Flat},
+        {"Sine Wave Aligned", 0.75, anim::Function::Bezier, anim::HandleMode::Aligned},
+        {"Sine Wave Free",    1.00, anim::Function::Bezier, anim::HandleMode::Free},
+    };
+
+    for (const CurveSpec& spec : curve_specs) {
+        anim::Channel& sine_curve = animation.create_channel(spec.name);
+        for (double t = 0.0; t <= 32.0; t += 8.0) {
+            sine_curve.create_keyframe(t, sin(t) + spec.value_offset,
+                                       spec.function, spec.handle_mode);
         }
     }
-
-    if (true){
-        // Curve 2: Simple Sine Wave (8 points) - linear interpolation
-        anim::Channel& sine_curve = animation.create_channel("Sine Wave Linear");
-        for (float t = 0; t <= 32.f; t += 8.f) { 
-            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + .25, anim::Function::Linear);
-        }
-    }
-
-    if (true){
-        // Curve 3: Simple Sine Wave (8 points) - flat handles
-        anim::Channel& sine_curve = animation.create_channel("Sine Wave Flat");
-        for (float t = 0; t <= 32.f; t += 8.f) { 
-            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + .5, anim::Function::Bezier, anim::HandleMode::Flat);
-        }
-    }
-
-    if (true){
-        // Curve 4: Simple Sine Wave (8 points) - aligned handles
-        anim::Channel& sine_curve = animation.create_channel("Sine Wave Aligned");
-        for (float t = 0; t <= 32.f; t += 8.f) { 
-            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + .75, anim::Function::Bezier, anim::HandleMode::Aligned);
-        }
-    }   
-
-    if (true){
-        // Curve 5: Simple Sine Wave (8 points) - free handles
-        anim::Channel& sine_curve = animation.create_channel("Sine Wave Free");
-        for (float t = 0; t <= 32.f; t += 8.f) { 
-            sine_curve.create_keyframe(static_cast<double>(t), static_cast<double>(sin(t)) + 1.0, anim::Function::Bezier, anim::HandleMode::Free);
-        }
-    }   
 
     // Initialize visibility data after curves are created
     s_keyframe_visibilities.resize(animation.num_channels());

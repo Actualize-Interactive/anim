@@ -36,7 +36,13 @@ automatically by CMake) and lives in `tests/`.
 ## Coding conventions
 
 - **C++20**, no compiler extensions.
-- **Enumerators are PascalCase** (e.g. `Function::Bezier`, `HandleMode::Smooth`).
+- **Naming:**
+  - Types, classes, structs, enums, and enumerators are **PascalCase** —
+    `Animation`, `Channel`, `Keyframe`, `Function::Bezier`, `HandleMode::Smooth`,
+    `GrabbedHandle::OutHandle`.
+  - Functions, methods, parameters, and variables are **lower_snake_case** —
+    `create_keyframe`, `evaluate_range_by_rate`, `is_valid`, `handle_mode`.
+  - Private data members are prefixed `m_` — `m_keyframes`, `m_channel_map`.
 - **Public interfaces are stable.** Avoid changing existing public signatures;
   prefer additive changes. Call out any unavoidable break in your PR.
 - **Document the public API in the headers** with Doxygen comments
@@ -62,6 +68,8 @@ same change.
 - Use clear, imperative commit messages with a type prefix (`fix:`, `feat:`,
   `docs:`, `test:`, `chore:`, `ci:`).
 - Make sure the build and tests pass before opening the PR.
+- Add an entry under `[Unreleased]` in [CHANGELOG.md](CHANGELOG.md) for any
+  user-visible change, and call out breaking changes explicitly.
 
 ## License
 

@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest a capability or API addition
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: >
+        Describe the use case rather than the implementation. What are you
+        trying to do that the library makes hard or impossible today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API
+      description: >
+        If you have a shape in mind, sketch it. Additive changes are much
+        easier to accept than changes to existing public signatures.
+      render: cpp
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Anything you tried, or workarounds you are using now.
+    validations:
+      required: false

@@ -43,13 +43,17 @@ cmake-build-*/
 *.swp
 *~
 
-# CMake generated files
+# CMake generated files (from an accidental in-source build; out-of-source
+# artifacts are already covered by the build directory rules above).
+# Listed by name rather than as *.cmake so hand-written modules under cmake/
+# are not silently ignored.
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
+CTestTestfile.cmake
+CPackConfig.cmake
+CPackSourceConfig.cmake
 Makefile
-*.cmake
-!anim-config.cmake.in
 
 # Generated test outputs
 Testing/

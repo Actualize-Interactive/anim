@@ -200,7 +200,7 @@ void Channel::set_keyframe_in_handle(size_t index, const Point& in_handle)
     }
     auto it = m_keyframes.begin() + index;
     it->in_handle = in_handle;
-    update_local_handles(it, GrabbedHandle::in_handle);
+    update_local_handles(it, GrabbedHandle::InHandle);
     
     // Invalidate cache if we updated the last keyframe's handles
     if (index == m_keyframes.size() - 1) {
@@ -215,7 +215,7 @@ void Channel::set_keyframe_out_handle(size_t index, const Point& out_handle)
     }
     auto it = m_keyframes.begin() + index;
     it->out_handle = out_handle;
-    update_local_handles(it, GrabbedHandle::out_handle);
+    update_local_handles(it, GrabbedHandle::OutHandle);
     
     // Invalidate cache if we updated the last keyframe's handles
     if (index == m_keyframes.size() - 1) {

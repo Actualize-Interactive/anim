@@ -8,9 +8,9 @@ namespace anim {
 
     /// @brief Identifies which handle of a keyframe is being dragged, driving alignment behavior.
     enum class GrabbedHandle {
-        none,       ///< No specific handle; the implementation picks a source automatically.
-        in_handle,  ///< The incoming handle is the one being manipulated.
-        out_handle  ///< The outgoing handle is the one being manipulated.
+        None,       ///< No specific handle; the implementation picks a source automatically.
+        InHandle,   ///< The incoming handle is the one being manipulated.
+        OutHandle   ///< The outgoing handle is the one being manipulated.
     };
 
     /**
@@ -66,7 +66,7 @@ namespace anim {
     Vector reflect(const Vector& vec, const Vector& normal_unit_vector);
 
     /// @brief Returns @p vec with both components negated.
-    Vector invert(const Vector& vec) ;
+    Vector invert(const Vector& vec);
 
     /// @brief Clamps a keyframe's in-handle time into [prev keyframe time, keyframe time].
     void constrain_in_handle_time(Keyframe& keyframe, const Keyframe& prev_keyframe);
@@ -149,7 +149,7 @@ namespace anim {
             Keyframe& keyframe,
             const Keyframe* prev_keyframe_ptr,
             const Keyframe* next_keyframe_ptr,
-            GrabbedHandle grabbed_handle = GrabbedHandle::none);
+            GrabbedHandle grabbed_handle = GrabbedHandle::None);
 
 } // namespace anim
 

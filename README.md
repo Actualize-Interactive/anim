@@ -177,6 +177,17 @@ With `ANIM_BUILD_EXAMPLES` enabled, the `examples/` directory builds:
 - **`curve_visualization`** — an interactive ImGui/ImPlot viewer for inspecting
   curves and handle modes.
 
+The helper scripts above build the library and tests only. To build and launch
+the viewer (which fetches GLFW, ImGui and ImPlot on first configure):
+
+```bash
+./examples/run_example.sh       # Linux / macOS
+```
+
+```powershell
+.\examples\run_example.ps1      # Windows (PowerShell)
+```
+
 ## Documentation
 
 The full API reference and guide are published at
@@ -184,7 +195,11 @@ The full API reference and guide are published at
 documentation with Doxygen and Sphinx. To build the docs locally:
 
 ```bash
-bash docs/build_docs.sh   # output in docs/build/html
+bash docs/build_docs.sh     # Linux / macOS — output in docs/build/html
+```
+
+```powershell
+.\docs\build_docs.ps1       # Windows (PowerShell)
 ```
 
 ## License

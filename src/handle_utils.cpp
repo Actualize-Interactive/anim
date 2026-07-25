@@ -314,11 +314,11 @@ namespace anim {
 
 
         // Determine source and target handles
-        if (grabbed_handle == GrabbedHandle::out_handle) {
+        if (grabbed_handle == GrabbedHandle::OutHandle) {
             source_handle_ptr = &(keyframe.out_handle);
             target_handle_ptr = &(keyframe.in_handle);
             source_is_out = true;
-        } else if (grabbed_handle == GrabbedHandle::in_handle) {
+        } else if (grabbed_handle == GrabbedHandle::InHandle) {
             source_handle_ptr = &(keyframe.in_handle);
             target_handle_ptr = &(keyframe.out_handle);
             source_is_out = false;
