@@ -3,27 +3,22 @@ param(
     [string]$Config = "Release"
 )
 
-# Store the current location to restore it later
-$originalLocation = Get-Location
+# Configure, build, and test the anim library (library + test suite).
+# To build and run the examples, use examples\run_example.ps1 instead.
+$ErrorActionPreference = "Stop"
 
+# Run from the repository root regardless of where the script was invoked from.
+$RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+Push-Location $RepoRoot
 try {
-    
-    # Create build directory
-    $null = New-Item -Path .\build -ItemType Directory -Force
-    Set-Location -Path .\build
+    # CMAKE_BUILD_TYPE covers single-config generators (Ninja/Make);
+    # --config covers multi-config generators (Visual Studio).
+    cmake -B build -S . -DCMAKE_BUILD_TYPE="$Config" -DANIM_BUILD_TESTS=ON -DANIM_BUILD_EXAMPLES=OFF
+    cmake --build build --config $Config
 
-    # Configure using CMake
-    # Explicitly enable tests and examples for CI/standalone builds
-    cmake .. -DANIM_BUILD_TESTS=ON -DANIM_BUILD_EXAMPLES=OFF
-
-    # Build
-    cmake --build . --config $Config # --verbose 
-
-    # Run tests
-    ctest # --verbose
-
-    Pop-Location
+    # -C is required for multi-config generators; without it ctest finds no tests.
+    ctest --test-dir build -C $Config --output-on-failure
 } finally {
-    # Ensure we always return to the original directory, even if errors occur
-    Set-Location -Path $originalLocation
+    Pop-Location
 }
