@@ -1,4 +1,11 @@
-sphinx
-breathe
-exhale
-sphinx_rtd_theme
+# Pinned so an upstream release cannot break the Pages deploy without a
+# reviewed change. Compatible-release ranges allow patch/minor updates while
+# holding majors back until they are tested; Dependabot proposes major bumps
+# as reviewable pull requests that CI validates.
+#
+# Verified building the full site cleanly against: Sphinx 9.1.0, breathe 4.36.0,
+# exhale 0.3.7, sphinx-rtd-theme 3.1.0, docutils 0.22.4.
+sphinx~=9.1
+breathe~=4.36
+exhale~=0.3.7
+sphinx-rtd-theme~=3.1
