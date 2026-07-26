@@ -70,6 +70,22 @@ jobs:
       contents: write
     steps:
     - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+
+    # Squash-merging a pull request rewrites the commit, so a tag pushed to the
+    # pre-merge branch tip builds and tests green while pointing at a commit
+    # reachable only from the tag. Publishing that produces a release whose
+    # history is not on main, which is only noticed much later by whoever pins
+    # it. Refuse the tag instead.
+    - name: Verify the tag is on main
+      run: |
+        git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+        if ! git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main; then
+          echo "::error::$GITHUB_REF_NAME ($GITHUB_SHA) is not an ancestor of main. Delete the tag, then re-tag the merged commit on main." >&2
+          exit 1
+        fi
+        echo "$GITHUB_REF_NAME is on main."
 
     # One platform-independent, buildable source archive (headers + sources +
     # CMake config). GitHub also attaches auto-generated "Source code" archives.
@@ -81,12 +97,16 @@ jobs:
     - name: Extract release notes from CHANGELOG
       run: |
         version="${GITHUB_REF_NAME#v}"
-        awk -v v="$version" '
-          $0 ~ "^## \\[" v "\\]" { found = 1; next }   # heading for this version
-          found && /^## \[/       { exit }             # next version heading
-          found && /^\[.*\]: /    { exit }             # link reference block
-          found && /^<!--/        { exit }             # trailing comments
-          found                   { print }
+        # Match the heading by prefix rather than by regex: a version string
+        # interpolated into a regex turns "[0.3.0]" into a character class, and
+        # whether the escaping survives depends on the awk in use (mawk keeps
+        # the backslash, gawk drops it and silently matches nothing).
+        awk -v head="## [$version]" '
+          index($0, head) == 1      { found = 1; next }  # heading for this version
+          found && index($0, "## [") == 1 { exit }       # next version heading
+          found && /^\[.*\]: /      { exit }             # link reference block
+          found && index($0, "<!--") == 1 { exit }       # trailing comments
+          found                     { print }
         ' CHANGELOG.md \
           | sed -e '/./,$!d' -e :a -e '/^\n*$/{$d;N;};/\n$/ba' > RELEASE_NOTES.md
 
