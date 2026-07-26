@@ -1,5 +1,4 @@
 #include <anim.hpp>
-#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -159,11 +158,10 @@ int main() {
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable vsync
 
-    // Initialize OpenGL loader
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        std::cerr << "Failed to initialize OpenGL loader" << std::endl;
-        return 1;
-    }
+    // No explicit loader is needed: the ImGui OpenGL3 backend resolves the
+    // modern entry points it uses through its own bundled loader, and the few
+    // calls made directly below (glViewport / glClearColor / glClear) are
+    // OpenGL 1.1 core, provided by the GL header GLFW includes.
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();

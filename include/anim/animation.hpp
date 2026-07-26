@@ -67,18 +67,18 @@ public:
     /// @brief Name lookup. @throws std::out_of_range if none matches.
     Channel& operator[](const std::string& channel_name);
     /// @brief Returns the channel with @p channel_id. @throws std::out_of_range if none matches.
-    Channel* channel(Id channel_id);
+    Channel& channel(Id channel_id);
     /// @brief Id lookup. @throws std::out_of_range if none matches.
-    Channel* operator[](Id channel_id);
+    Channel& operator[](Id channel_id);
 
     /// @brief Returns the first channel named @p channel_name. @throws std::out_of_range if none matches.
     const Channel& channel(const std::string& channel_name) const;
     /// @brief Name lookup. @throws std::out_of_range if none matches.
     const Channel& operator[](const std::string& channel_name) const;
     /// @brief Returns the channel with @p channel_id. @throws std::out_of_range if none matches.
-    const Channel* channel(Id channel_id) const;
+    const Channel& channel(Id channel_id) const;
     /// @brief Id lookup. @throws std::out_of_range if none matches.
-    const Channel* operator[](Id channel_id) const;
+    const Channel& operator[](Id channel_id) const;
 
     /// @brief Number of channels.
     inline size_t size() const { return m_channels.size(); }

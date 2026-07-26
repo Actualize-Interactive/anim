@@ -185,9 +185,9 @@ TEST_CASE("Animation Channel Management", "[Animation]") {
         REQUIRE(animation.channel(2).name() == "channel1");
         
         // IDs should still work
-        REQUIRE(animation.channel(id0) == &ch0);
-        REQUIRE(animation.channel(id1) == &ch1);
-        REQUIRE(animation.channel(id2) == &ch2);
+        REQUIRE(&animation.channel(id0) == &ch0);
+        REQUIRE(&animation.channel(id1) == &ch1);
+        REQUIRE(&animation.channel(id2) == &ch2);
     }
       SECTION("Reorder by name") {
         Channel& ch0 = animation.create_channel("channel0");
@@ -205,7 +205,7 @@ TEST_CASE("Animation Channel Management", "[Animation]") {
         REQUIRE(animation.channel(2).name() == "channel0");
         
         // ID access should still work
-        REQUIRE(animation.channel(id0) == &ch0);
+        REQUIRE(&animation.channel(id0) == &ch0);
     }
     
     SECTION("Reorder by ID") {
@@ -224,7 +224,7 @@ TEST_CASE("Animation Channel Management", "[Animation]") {
         REQUIRE(animation.channel(2).name() == "channel1");
         
         // ID access should still work
-        REQUIRE(animation.channel(id1) == &ch1);
+        REQUIRE(&animation.channel(id1) == &ch1);
     }
 
     SECTION("Reorder to current position") {
@@ -246,9 +246,9 @@ TEST_CASE("Animation Channel Management", "[Animation]") {
         REQUIRE(animation.channel(2).name() == "channel2");
         
         // ID access should still work
-        REQUIRE(animation.channel(id0) == &ch0);
-        REQUIRE(animation.channel(id1) == &ch1);
-        REQUIRE(animation.channel(id2) == &ch2);
+        REQUIRE(&animation.channel(id0) == &ch0);
+        REQUIRE(&animation.channel(id1) == &ch1);
+        REQUIRE(&animation.channel(id2) == &ch2);
     }
 
 }
@@ -1150,11 +1150,11 @@ TEST_CASE("Animation Id-based access error paths", "[Animation][Id]") {
     Id id_b = b.id();
 
     SECTION("channel(Id) returns the matching channel") {
-        REQUIRE(anim.channel(id_a) == &a);
-        REQUIRE(anim[id_b] == &b);
+        REQUIRE(&anim.channel(id_a) == &a);
+        REQUIRE(&anim[id_b] == &b);
         const Animation& canim = anim;
-        REQUIRE(canim.channel(id_a) == &a);
-        REQUIRE(canim[id_b] == &b);
+        REQUIRE(&canim.channel(id_a) == &a);
+        REQUIRE(&canim[id_b] == &b);
     }
 
     SECTION("channel(Id) throws for a non-existent id") {
@@ -1167,7 +1167,7 @@ TEST_CASE("Animation Id-based access error paths", "[Animation][Id]") {
         anim.remove_channel(id_a);
         REQUIRE(anim.num_channels() == 1);
         REQUIRE(anim.channel(0).name() == "b");
-        REQUIRE(anim.channel(id_b) == &b);
+        REQUIRE(&anim.channel(id_b) == &b);
         // The removed id is gone from the map
         REQUIRE_THROWS_AS(anim.channel(id_a), std::out_of_range);
     }

@@ -98,11 +98,11 @@ Channel& Animation::operator[](const std::string& channel_name) {
     return channel(channel_name);
 }
 
-Channel* Animation::channel(Id channel_id) {
-    return m_channel_map.at(channel_id);
+Channel& Animation::channel(Id channel_id) {
+    return *m_channel_map.at(channel_id);
 }
 
-Channel* Animation::operator[](Id channel_id) {
+Channel& Animation::operator[](Id channel_id) {
     return channel(channel_id);
 }
 
@@ -120,11 +120,11 @@ const Channel& Animation::operator[](const std::string& channel_name) const {
     return channel(channel_name);
 }
 
-const Channel* Animation::channel(Id channel_id) const {
-    return m_channel_map.at(channel_id);
+const Channel& Animation::channel(Id channel_id) const {
+    return *m_channel_map.at(channel_id);
 }
 
-const Channel* Animation::operator[](Id channel_id) const {
+const Channel& Animation::operator[](Id channel_id) const {
     return channel(channel_id);
 }
 
