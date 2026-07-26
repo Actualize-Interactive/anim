@@ -85,20 +85,24 @@ While the major version is `0`, breaking changes may land in a minor release.
 
 ### Removed
 
-- **Breaking:** `Channel::num_samples`, along with the `Channel::sample_times`
-  and `Channel::sample_times_by_rate` added earlier in this release. Each took a
-  rate or a count and silently sampled the channel's keyframe extent, which is
-  an editing concept: it is where a curve's data happens to lie, not the range a
-  host samples over. A channel bound to a timeline would be counted over the
-  wrong span with no error, and a channel cannot see the animation that owns it
-  to do otherwise.
+- **Breaking:** `Channel::num_samples`. It took a rate and silently counted over
+  the channel's keyframe extent, which is an editing concept: it is where a
+  curve's data happens to lie, not the range a host samples over. A channel
+  bound to a timeline was counted over the wrong span with nothing to indicate
+  it, and a channel holds no reference to the animation that owns it to answer
+  otherwise. Every other sampling entry point already names its range, so this
+  was the only one that guessed.
 
-  Every other sampling entry point already states its range, so these were the
-  only ones that guessed. Count samples over a timeline with
-  `Animation::num_samples` or `Animation::sample_times_by_rate`, and over any
-  other span with the free `sample_times` functions, which name the range they
-  cover. `Channel::start_time`, `end_time` and `length` are unchanged: keyframe
-  extent is still what an editor wants.
+  Count over a timeline with `Animation::num_samples` or
+  `Animation::sample_times_by_rate`, and over any other span with the free
+  `sample_times` functions. The direct replacement for the old behaviour is
+  `sample_times_by_rate(ch.start_time(), ch.end_time(), rate).size()`.
+  `Channel::start_time`, `end_time` and `length` are unchanged: keyframe extent
+  is still what an editor wants.
+- `CODE_OF_CONDUCT.md`. The Contributor Covenant sets out a moderation and
+  enforcement process that overstates how this project is run. `CONTRIBUTING.md`
+  covers how to take part, and security reports have their own private channel
+  in `SECURITY.md`.
 
 ## [0.3.0] - 2026-07-26
 
