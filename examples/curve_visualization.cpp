@@ -158,11 +158,6 @@ int main() {
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable vsync
 
-    // No explicit loader is needed: the ImGui OpenGL3 backend resolves the
-    // modern entry points it uses through its own bundled loader, and the few
-    // calls made directly below (glViewport / glClearColor / glClear) are
-    // OpenGL 1.1 core, provided by the GL header GLFW includes.
-
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
