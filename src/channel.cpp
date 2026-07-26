@@ -1,5 +1,6 @@
 #include "anim/channel.hpp"
 #include "anim/bezier_utils.hpp"
+#include "sampling.hpp"
 
 namespace anim {
 
@@ -440,14 +441,30 @@ std::vector<double> Channel::evaluate_range_by_rate(double start_time, double en
     if (start_time > end_time) {
         throw std::invalid_argument("Start time must be less than or equal to end time");
     }
-    
+
     // For equal times, just return the value at that time
     if (start_time == end_time) {
         return {evaluate(start_time)};
     }
-    
-    int num_samples = static_cast<int>(std::ceil((end_time - start_time) * sample_rate)) + 1;
-    return evaluate_range(start_time, end_time, num_samples);
+
+    // The range is half-open: end_time is not sampled, so a span of n sample
+    // periods yields n samples rather than n + 1. This cannot delegate to
+    // evaluate_range, which spreads a sample count across a closed interval and
+    // so would only produce a spacing of 1 / sample_rate for one particular
+    // count -- and not even then when the span is not a whole number of periods.
+    const size_t count = detail::sample_count(end_time - start_time, sample_rate);
+    std::vector<double> result(count);
+
+    double* prev_t = nullptr;
+    for (size_t i = 0; i < count; i++) {
+        // Derived from the index rather than accumulated, so every sample sits
+        // exactly one period from the last with no drift along a long range.
+        double time = start_time + static_cast<double>(i) / sample_rate;
+        result[i] = evaluate(time, prev_t);
+        prev_t = &result[i]; // Update prev_t to point to the current value
+    }
+
+    return result;
 }
 
 double Channel::start_time() const {
@@ -482,8 +499,12 @@ size_t Channel::num_samples(double sample_rate) const
     }
     
     double duration = end_time() - start_time();
-    return static_cast<size_t>(std::ceil(duration * sample_rate)) + 1; // +1 to include the start time
-    
+    if (duration == 0.0) {
+        // A single keyframe, or several sharing one time: there is no span to
+        // divide, and evaluate_range_by_rate returns the value at that time.
+        return 1;
+    }
+    return detail::sample_count(duration, sample_rate);
 }
 
 Extend Channel::extend_start() const {

@@ -159,6 +159,11 @@ public:
 
     /**
      * @brief Number of samples spanning the animation at @p sample_rate.
+     *
+     * The span is half-open, matching Channel::evaluate_range_by_rate(): the
+     * result is length() * sample_rate rounded up, so 4 seconds at 30 Hz gives
+     * 120 rather than 121. An animation with no channels gives 0; one with no
+     * length gives 1.
      * @param sample_rate Samples per unit time; must be positive.
      * @return Sample count (0 when there are no channels).
      * @throws std::invalid_argument if @p sample_rate is not positive.

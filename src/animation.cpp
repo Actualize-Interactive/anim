@@ -1,4 +1,5 @@
 #include "anim/animation.hpp"
+#include "sampling.hpp"
 
 namespace anim {
 
@@ -281,7 +282,11 @@ int Animation::num_samples(double sample_rate) const {
     if (m_channels.empty()) {
         return 0;
     }
-    return static_cast<int>(std::ceil(length() * sample_rate)) + 1; // +1 to include the start time
+    if (length() == 0.0) {
+        // No span to divide, so the single sample at the start time.
+        return 1;
+    }
+    return static_cast<int>(detail::sample_count(length(), sample_rate));
 }
 
 bool Animation::operator==(const Animation& other) const {

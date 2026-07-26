@@ -328,26 +328,25 @@ TEST_CASE("Animation Sample Calculation", "[Animation]") {
     animation.create_channel("SampleChan");
 
     SECTION("Valid sample rate") {
-        // length = 1.0, sample_rate = 10.0
-        // samples = ceil(1.0 * 10.0) + 1 = 10 + 1 = 11
-        REQUIRE(animation.num_samples(10.0) == 11);
+        // The range is half-open, so the count is length * sample_rate rounded
+        // up: length = 1.0 at 10.0 gives 10 samples spanning [0.0, 1.0).
+        REQUIRE(animation.num_samples(10.0) == 10);
 
-        // length = 1.0, sample_rate = 1.0
-        // samples = ceil(1.0 * 1.0) + 1 = 1 + 1 = 2
-        REQUIRE(animation.num_samples(1.0) == 2);
+        // length = 1.0, sample_rate = 1.0 -> 1 sample, at the start time
+        REQUIRE(animation.num_samples(1.0) == 1);
 
         animation.set_end_time(0.9); // Length = 0.9
-        // samples = ceil(0.9 * 10.0) + 1 = ceil(9.0) + 1 = 9 + 1 = 10
-        REQUIRE(animation.num_samples(10.0) == 10);
-        
+        // 0.9 * 10.0 = 9 exactly, so 9 samples and no rounding up
+        REQUIRE(animation.num_samples(10.0) == 9);
+
         animation.set_end_time(0.95); // Length = 0.95
-        // samples = ceil(0.95 * 10.0) + 1 = ceil(9.5) + 1 = 10 + 1 = 11
-        REQUIRE(animation.num_samples(10.0) == 11);
+        // 0.95 * 10.0 = 9.5, rounded up so the whole span is covered
+        REQUIRE(animation.num_samples(10.0) == 10);
     }
-    
+
     SECTION("Zero length animation") {
         animation.set_end_time(0.0); // Length = 0.0
-        // samples = ceil(0.0 * 10.0) + 1 = 0 + 1 = 1
+        // No span to divide, so the single sample at the start time
         REQUIRE(animation.num_samples(10.0) == 1);
     }
 
@@ -507,12 +506,12 @@ TEST_CASE("Animation API Comprehensive Test", "[Animation]") {
         
         // Test zero length animation samples
         animation.create_channel("test_channel");
-        REQUIRE(animation.num_samples(30.0) == 1); // Zero length + 1 = 1 sample
-        
+        REQUIRE(animation.num_samples(30.0) == 1); // Zero length, single sample
+
         // Test normal timing
         animation.set_start_time(0.0);
         animation.set_end_time(1.0);
-        REQUIRE(animation.num_samples(30.0) == 31); // 1 second at 30fps + 1 = 31 samples
+        REQUIRE(animation.num_samples(30.0) == 30); // 1 second at 30fps = 30 samples
     }
     
     SECTION("Animation with no channels edge cases") {
@@ -529,7 +528,7 @@ TEST_CASE("Animation API Comprehensive Test", "[Animation]") {
         
         // After adding a channel, samples should be calculated
         animation.create_channel("new_channel");
-        REQUIRE(animation.num_samples(30.0) == 151); // 5 seconds at 30fps + 1 = 151 samples
+        REQUIRE(animation.num_samples(30.0) == 150); // 5 seconds at 30fps = 150 samples
     }
     
     SECTION("Animation const correctness") {

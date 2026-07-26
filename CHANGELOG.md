@@ -8,6 +8,32 @@ While the major version is `0`, breaking changes may land in a minor release.
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** sampling by rate now covers a half-open range. `end_time` is no
+  longer sampled, so a span of n sample periods yields n samples rather than
+  n + 1: `evaluate_range_by_rate(0, 4, 30)` returns 120 values, the last at
+  3.9667, and `num_samples(30)` over a 4 second channel returns 120 rather than
+  121. This is the convention frame- and audio-rate hosts expect, and it makes
+  the sample count the product of duration and rate as callers assume. Callers
+  who want the closing sample can use `Channel::evaluate_range`, which is
+  unchanged and still spans a closed range, or extend the end by one period.
+  Affects `Channel::evaluate_range_by_rate`, `Channel::num_samples` and
+  `Animation::num_samples`.
+
+### Fixed
+
+- `Channel::evaluate_range_by_rate` did not sample at the requested rate when
+  the range was not a whole number of sample periods. It rounded the count up
+  and then handed it to `evaluate_range`, which spreads a count across a closed
+  range, compressing the spacing to fit: 1.05 seconds at 30 Hz came back as 33
+  values 0.0328 apart rather than 30 Hz. Sample times are now derived from the
+  sample index, so the spacing is exactly `1 / sample_rate` for any range.
+- The sample count is no longer inflated by floating-point error. It was
+  computed with `ceil`, so a duration whose product with the rate landed a few
+  ulps above a whole number, as 4.0 seconds at 30 Hz can, produced an extra
+  sample spanning a fraction of a period.
+
 ## [0.3.0] - 2026-07-26
 
 Two breaking changes that tighten the public API: `Id` lookups return
