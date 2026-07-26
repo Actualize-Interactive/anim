@@ -631,8 +631,20 @@ TEST_CASE("Channel Evaluation Range", "[channel]") {
     ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::Linear);
     ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::Linear);
 
-    SECTION("evaluate_range") {
+    SECTION("evaluate_range defaults to a half-open range") {
+        // Step is 2.0 / 5, so the samples are at 0.0, 0.4, 0.8, 1.2 and 1.6.
         auto result = ch.evaluate_range(0.0, 2.0, 5);
+        REQUIRE(result.size() == 5);
+        REQUIRE(result[0] == Catch::Approx(0.0));
+        REQUIRE(result[1] == Catch::Approx(4.0));
+        REQUIRE(result[2] == Catch::Approx(8.0));
+        REQUIRE(result[3] == Catch::Approx(12.0));
+        REQUIRE(result[4] == Catch::Approx(16.0));
+    }
+
+    SECTION("evaluate_range closed lands the last sample on the end") {
+        // Step is 2.0 / 4, so the samples are at 0.0, 0.5, 1.0, 1.5 and 2.0.
+        auto result = ch.evaluate_range(0.0, 2.0, 5, RangeEnd::Inclusive);
         REQUIRE(result.size() == 5);
         REQUIRE(result[0] == Catch::Approx(0.0));
         REQUIRE(result[1] == Catch::Approx(5.0));
@@ -676,6 +688,14 @@ TEST_CASE("Channel Evaluation Range", "[channel]") {
         REQUIRE(result.size() == 2); // 0, 1 -- the range is half-open, 2 is excluded
         REQUIRE(result[0] == Catch::Approx(0.0));
         REQUIRE(result[1] == Catch::Approx(10.0));
+    }
+
+    SECTION("evaluate_range_by_rate closed adds the closing sample") {
+        auto result = ch.evaluate_range_by_rate(0.0, 2.0, 1.0, RangeEnd::Inclusive);
+        REQUIRE(result.size() == 3); // 0, 1, 2
+        REQUIRE(result[0] == Catch::Approx(0.0));
+        REQUIRE(result[1] == Catch::Approx(10.0));
+        REQUIRE(result[2] == Catch::Approx(20.0));
     }
 
     SECTION("evaluate_range_by_rate invalid arguments") {
@@ -770,15 +790,57 @@ TEST_CASE("Channel evaluate_range_by_rate samples a half-open range", "[channel]
         }
     }
 
-    SECTION("evaluate_range still covers the closed range") {
+    SECTION("A closed range adds the closing sample and keeps the spacing") {
         Animation anim;
         Channel& ch = ramp(anim, 4.0);
 
-        // The count-based overload is unchanged: both endpoints are included.
-        auto result = ch.evaluate_range(0.0, 4.0, 121);
+        auto result = ch.evaluate_range_by_rate(0.0, 4.0, 30.0, RangeEnd::Inclusive);
+        REQUIRE(result.size() == 121); // the 120 half-open samples, plus 4.0
+        REQUIRE(ch.num_samples(30.0, RangeEnd::Inclusive) == result.size());
+        REQUIRE(result.front() == Catch::Approx(0.0).margin(1e-9));
+        REQUIRE(result.back() == Catch::Approx(4.0).margin(1e-9));
+        for (size_t i = 1; i < result.size(); ++i) {
+            REQUIRE((result[i] - result[i - 1]) == Catch::Approx(1.0 / 30.0).margin(1e-9));
+        }
+    }
+
+    SECTION("The two ends agree when the span is not a whole number of periods") {
+        Animation anim;
+        Channel& ch = ramp(anim, 2.0);
+
+        // 1.05 * 30 = 31.5, so no sample lands on the end and asking for it
+        // changes nothing: the next one would be past the end either way.
+        auto open = ch.evaluate_range_by_rate(0.0, 1.05, 30.0);
+        auto closed = ch.evaluate_range_by_rate(0.0, 1.05, 30.0, RangeEnd::Inclusive);
+        REQUIRE(open.size() == closed.size());
+        REQUIRE(open.size() == 32);
+    }
+
+    SECTION("A span shorter than one period gives the single opening sample") {
+        Animation anim;
+        Channel& ch = ramp(anim, 2.0);
+
+        // 0.02 * 30 = 0.6, so only the sample at the start falls inside the
+        // range; the next period lands past the end for either range end.
+        REQUIRE(ch.evaluate_range_by_rate(0.0, 0.02, 30.0).size() == 1);
+        auto closed = ch.evaluate_range_by_rate(0.0, 0.02, 30.0, RangeEnd::Inclusive);
+        REQUIRE(closed.size() == 1);
+        REQUIRE(closed.front() == Catch::Approx(0.0).margin(1e-12));
+    }
+
+    SECTION("evaluate_range covers the closed range when asked") {
+        Animation anim;
+        Channel& ch = ramp(anim, 4.0);
+
+        auto result = ch.evaluate_range(0.0, 4.0, 121, RangeEnd::Inclusive);
         REQUIRE(result.size() == 121);
         REQUIRE(result.front() == Catch::Approx(0.0).margin(1e-12));
         REQUIRE(result.back() == Catch::Approx(4.0).margin(1e-12));
+
+        // The default half-open call over the same range stops one step short.
+        auto open = ch.evaluate_range(0.0, 4.0, 121);
+        REQUIRE(open.size() == 121);
+        REQUIRE(open.back() < result.back());
     }
 }
 

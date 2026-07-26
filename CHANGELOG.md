@@ -22,11 +22,29 @@ While the major version is `0`, breaking changes may land in a minor release.
   `Animation::num_samples`.
 - **Breaking:** `Animation::num_samples` returns `size_t`, matching
   `Channel::num_samples`. The two counted the same thing in different types.
+- **Breaking:** `Channel::evaluate_range` samples a half-open range too, so both
+  range methods now share one convention. `evaluate_range(0, 4, 5)` gives 0.0,
+  0.8, 1.6, 2.4 and 3.2 rather than 0.0 through 4.0.
 - **Breaking:** `Channel::evaluate_range` now returns exactly the requested
   number of samples in every case. It previously collapsed to a single sample
   when `start_time` and `end_time` were equal, which silently broke callers
   sizing a buffer from the count they passed in. An empty range now gives that
   many copies of the value at that time.
+
+### Added
+
+- `RangeEnd`, selecting whether a sampled range includes its end time, accepted
+  as a trailing argument by `Channel::evaluate_range`,
+  `Channel::evaluate_range_by_rate`, `Channel::num_samples` and
+  `Animation::num_samples`. It defaults to `RangeEnd::Exclusive` everywhere,
+  which treats a sample as covering the interval that follows it, so the end of
+  a range is an edge rather than a sample.
+
+  `RangeEnd::Inclusive` treats samples as points on the curve instead, which is
+  what plotting a curve, building an interpolation lookup table, or integrating
+  numerically all need: without it the last point falls short of the end. For a
+  rate, the two differ only when the span is a whole number of sample periods,
+  because that is the only case where a sample lands on the end at all.
 
 ### Fixed
 

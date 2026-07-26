@@ -5,6 +5,7 @@
 #include "anim/handle_utils.hpp"
 #include "anim/id.hpp"
 #include "anim/extend.hpp"
+#include "anim/range_end.hpp"
 #include <vector>
 #include <algorithm>
 #include <optional>
@@ -158,38 +159,53 @@ public:
     /**
      * @brief Evaluates @p num_samples evenly spaced values from @p start_time to @p end_time.
      *
-     * The range is closed: the first sample is at @p start_time and the last is
-     * at @p end_time, so the spacing is (end_time - start_time) / (num_samples - 1).
-     * Use evaluate_range_by_rate() to sample at a fixed rate instead.
+     * By default the range is half-open, as in evaluate_range_by_rate(): sample
+     * @c i is at <tt>start_time + i * (end_time - start_time) / num_samples</tt>,
+     * so the last sample is one step short of @p end_time and @p end_time itself
+     * is not sampled. Sampling 0 to 4 with 5 samples gives 0.0, 0.8, 1.6, 2.4
+     * and 3.2.
+     *
+     * Pass RangeEnd::Inclusive to divide the span by one less and land the last
+     * sample on @p end_time, giving 0.0, 1.0, 2.0, 3.0 and 4.0 for the same
+     * call. That is what plotting a curve or building a lookup table wants,
+     * where a sample is a point rather than the interval that follows it.
      *
      * Exactly @p num_samples values are returned, including when @p start_time
      * and @p end_time are equal, in which case they are all the value at that
      * time.
+     * @param range_end Whether @p end_time is sampled; half-open by default.
      * @return A vector of @p num_samples values; empty if @p num_samples is 0.
      * @throws std::invalid_argument if @p num_samples is negative, or if
      *         @p start_time is after @p end_time.
      */
-    std::vector<double> evaluate_range(double start_time, double end_time, int num_samples) const;
+    std::vector<double> evaluate_range(double start_time, double end_time, int num_samples,
+                                       RangeEnd range_end = RangeEnd::Exclusive) const;
     /**
      * @brief Evaluates values from @p start_time to @p end_time at a fixed sample rate.
      *
-     * The range is half-open: sample @c i is at <tt>start_time + i / sample_rate</tt>
-     * and @p end_time itself is not sampled, so a span of n sample periods gives
-     * n samples. Sampling 4 seconds at 30 Hz yields 120 values, the last at
-     * 3.9667, not 121 ending on 4.0. A span that is not a whole number of
-     * periods is rounded up, so the whole range is covered.
+     * Sample @c i is at <tt>start_time + i / sample_rate</tt>, so the spacing is
+     * exactly one sample period no matter what the range is.
      *
-     * To include @p end_time, either use evaluate_range(), or extend the range
-     * by one period.
+     * By default the range is half-open and @p end_time is not sampled, so a
+     * span of n periods gives n samples: 4 seconds at 30 Hz yields 120 values,
+     * the last at 3.9667, not 121 ending on 4.0. Pass RangeEnd::Inclusive for
+     * the closing sample, giving 121.
+     *
+     * The two differ only when the span is a whole number of periods, since that
+     * is the only case where a sample lands on @p end_time. A span that is not
+     * is rounded up either way, so the whole range is covered.
      * @param start_time First time to sample.
-     * @param end_time Exclusive upper bound of the range.
+     * @param end_time Upper bound of the range, sampled only if @p range_end
+     *        is RangeEnd::Inclusive.
      * @param sample_rate Samples per unit time; must be positive.
+     * @param range_end Whether @p end_time is sampled; half-open by default.
      * @return A vector of num_samples() values, or a single value if
      *         @p start_time and @p end_time are equal.
      * @throws std::invalid_argument if @p sample_rate is not positive, or if
      *         @p start_time is after @p end_time.
      */
-    std::vector<double> evaluate_range_by_rate(double start_time, double end_time, double sample_rate) const;
+    std::vector<double> evaluate_range_by_rate(double start_time, double end_time, double sample_rate,
+                                               RangeEnd range_end = RangeEnd::Exclusive) const;
 
     /// @brief Time of the first keyframe (0 if empty).
     double start_time() const;
@@ -200,12 +216,14 @@ public:
     /**
      * @brief Number of samples that length() would produce at @p sample_rate.
      *
-     * Matches what evaluate_range_by_rate() returns over the keyframe range: the
-     * span is half-open, so length() * sample_rate rounded up. An empty channel
-     * gives 0; a channel with no span gives 1.
+     * Matches what evaluate_range_by_rate() returns over the keyframe range for
+     * the same @p range_end: length() * sample_rate rounded up, plus the closing
+     * sample when the range is closed and the span is a whole number of periods.
+     * An empty channel gives 0; a channel with no span gives 1.
+     * @param range_end Whether the end time is counted; half-open by default.
      * @throws std::invalid_argument if @p sample_rate is not positive.
      */
-    size_t num_samples(double sample_rate) const;
+    size_t num_samples(double sample_rate, RangeEnd range_end = RangeEnd::Exclusive) const;
 
     /// @brief Extend behavior for times before the first keyframe.
     Extend extend_start() const;

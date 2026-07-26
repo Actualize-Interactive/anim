@@ -16,5 +16,6 @@
 #include "anim/channel.hpp"
 #include "anim/animation.hpp"
 #include "anim/extend.hpp"
+#include "anim/range_end.hpp"
 
 #endif // ANIM_HPP

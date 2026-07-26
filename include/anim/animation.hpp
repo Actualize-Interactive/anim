@@ -160,16 +160,17 @@ public:
     /**
      * @brief Number of samples spanning the animation at @p sample_rate.
      *
-     * The span is half-open, matching Channel::evaluate_range_by_rate(): the
-     * result is length() * sample_rate rounded up, so 4 seconds at 30 Hz gives
-     * 120 rather than 121. An animation with no channels gives 0; one with no
-     * length gives 1. Matches Channel::num_samples() in both convention and
-     * return type.
+     * The span is half-open by default, matching Channel::evaluate_range_by_rate():
+     * the result is length() * sample_rate rounded up, so 4 seconds at 30 Hz
+     * gives 120 rather than 121. Pass RangeEnd::Inclusive to count the closing
+     * sample. An animation with no channels gives 0; one with no length gives 1.
+     * Matches Channel::num_samples() in convention, return type and default.
      * @param sample_rate Samples per unit time; must be positive.
+     * @param range_end Whether the end time is counted; half-open by default.
      * @return Sample count (0 when there are no channels).
      * @throws std::invalid_argument if @p sample_rate is not positive.
      */
-    size_t num_samples(double sample_rate) const;
+    size_t num_samples(double sample_rate, RangeEnd range_end = RangeEnd::Exclusive) const;
 
     /// @brief Equality across name, time range and channels.
     bool operator==(const Animation& other) const;

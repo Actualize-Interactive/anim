@@ -408,7 +408,8 @@ double Channel::evaluate(double time, double* prev_t) const {
 
 
 
-std::vector<double> Channel::evaluate_range(double start_time, double end_time, int num_samples) const {
+std::vector<double> Channel::evaluate_range(double start_time, double end_time, int num_samples,
+                                            RangeEnd range_end) const {
     // Validate before any early return, so a reversed range is rejected for
     // every sample count rather than only for the ones that reach the loop.
     if (num_samples < 0) {
@@ -421,16 +422,20 @@ std::vector<double> Channel::evaluate_range(double start_time, double end_time, 
     if (num_samples == 0) {
         return {};
     }
-    // A single sample has no spacing to compute, and the step below would be a
-    // division by zero.
-    if (num_samples == 1) {
+    // A closed range with one sample has no spacing to derive, and the divisor
+    // below would be zero. The single sample is at start_time either way.
+    if (num_samples == 1 && range_end == RangeEnd::Inclusive) {
         return {evaluate(start_time)};
     }
 
     std::vector<double> result(num_samples);
-    // Zero when the range is empty, which is the right answer: the caller asked
-    // for num_samples values and every one of them is at start_time.
-    double step = (end_time - start_time) / (num_samples - 1);
+    // A half-open range divides the span by the sample count, so the last
+    // sample sits one step short of end_time; a closed range divides by one
+    // less, so the last sample lands on it. The step is zero when the range is
+    // empty, which is the right answer -- the caller asked for num_samples
+    // values and every one of them is at start_time.
+    const int divisor = (range_end == RangeEnd::Inclusive) ? num_samples - 1 : num_samples;
+    double step = (end_time - start_time) / divisor;
 
     double* prev_t = nullptr;
     for (int i = 0; i < num_samples; i++) {
@@ -442,7 +447,8 @@ std::vector<double> Channel::evaluate_range(double start_time, double end_time, 
     return result;
 }
 
-std::vector<double> Channel::evaluate_range_by_rate(double start_time, double end_time, double sample_rate) const {
+std::vector<double> Channel::evaluate_range_by_rate(double start_time, double end_time,
+                                                    double sample_rate, RangeEnd range_end) const {
     if (sample_rate <= 0.0) {
         throw std::invalid_argument("Sample rate must be positive");
     }
@@ -455,24 +461,18 @@ std::vector<double> Channel::evaluate_range_by_rate(double start_time, double en
         return {evaluate(start_time)};
     }
 
-    // The range is half-open: end_time is not sampled, so a span of n sample
-    // periods yields n samples rather than n + 1. This cannot delegate to
-    // evaluate_range, which spreads a sample count across a closed interval and
-    // so would only produce a spacing of 1 / sample_rate for one particular
-    // count -- and not even then when the span is not a whole number of periods.
-    const size_t count = detail::sample_count(end_time - start_time, sample_rate);
-    std::vector<double> result(count);
+    const size_t count = detail::sample_count(end_time - start_time, sample_rate, range_end);
 
-    double* prev_t = nullptr;
-    for (size_t i = 0; i < count; i++) {
-        // Derived from the index rather than accumulated, so every sample sits
-        // exactly one period from the last with no drift along a long range.
-        double time = start_time + static_cast<double>(i) / sample_rate;
-        result[i] = evaluate(time, prev_t);
-        prev_t = &result[i]; // Update prev_t to point to the current value
-    }
-
-    return result;
+    // Hand evaluate_range the span those samples actually cover rather than the
+    // requested one. The two differ when the range is not a whole number of
+    // sample periods, and passing the requested end_time would have
+    // evaluate_range divide it by the rounded count and so space the samples
+    // slightly closer than the rate asked for. The divisor evaluate_range will
+    // use is the count for a half-open range and one less for a closed one, so
+    // spanning exactly that many periods leaves it with a step of 1 / rate.
+    const size_t divisor = (range_end == RangeEnd::Inclusive) ? count - 1 : count;
+    const double covered_end = start_time + static_cast<double>(divisor) / sample_rate;
+    return evaluate_range(start_time, covered_end, static_cast<int>(count), range_end);
 }
 
 double Channel::start_time() const {
@@ -496,23 +496,23 @@ double Channel::length() const {
     return end_time() - start_time();
 }
 
-size_t Channel::num_samples(double sample_rate) const
+size_t Channel::num_samples(double sample_rate, RangeEnd range_end) const
 {
     if (sample_rate <= 0.0) {
         throw std::invalid_argument("Sample rate must be positive");
     }
-    
+
     if (m_keyframes.empty()) {
         return 0;
     }
-    
+
     double duration = end_time() - start_time();
     if (duration == 0.0) {
         // A single keyframe, or several sharing one time: there is no span to
         // divide, and evaluate_range_by_rate returns the value at that time.
         return 1;
     }
-    return detail::sample_count(duration, sample_rate);
+    return detail::sample_count(duration, sample_rate, range_end);
 }
 
 Extend Channel::extend_start() const {
