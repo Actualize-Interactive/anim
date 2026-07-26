@@ -8,6 +8,14 @@ While the major version is `0`, breaking changes may land in a minor release.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-26
+
+Two breaking changes that tighten the public API: `Id` lookups return
+references, and ids can no longer be constructed by callers. Both are small,
+mechanical changes for callers. The `glad` dependency is gone, so the examples
+now build with one fewer third-party package and without a CMake policy
+override.
+
 ### Changed
 
 - **Breaking:** the `Id` lookups on `Animation` now return references rather
@@ -15,7 +23,12 @@ While the major version is `0`, breaking changes may land in a minor release.
   `channel(Id)` and `operator[](Id)`, in both the const and non-const forms.
   They never returned null: the underlying `unordered_map::at` throws
   `std::out_of_range` on a miss, so the pointer return only invited dead null
-  checks. Behavior on a miss is unchanged; callers replace `->` with `.` ([#52]).
+  checks. Behavior on a miss is unchanged; callers replace `->` with `.`
+  ([#52](https://github.com/Actualize-Interactive/anim/issues/52)).
+- The release workflow now refuses to publish a tag that is not an ancestor of
+  `main`. Squash-merging a pull request rewrites the commit, so a tag pushed to
+  the pre-merge branch tip builds and tests green while pointing at a commit
+  reachable only from the tag itself.
 
 ### Added
 
@@ -35,7 +48,8 @@ While the major version is `0`, breaking changes may land in a minor release.
   already bundles, and the handful of direct GL calls in
   `curve_visualization` are OpenGL 1.1 core, resolved by linking `OpenGL::GL`.
   This also removes the `CMAKE_POLICY_VERSION_MINIMUM` workaround that glad
-  0.1.36 required under CMake 4 ([#53]).
+  0.1.36 required under CMake 4
+  ([#53](https://github.com/Actualize-Interactive/anim/issues/53)).
 
 ### Fixed
 
@@ -49,9 +63,6 @@ While the major version is `0`, breaking changes may land in a minor release.
 - `imgui.ini`, which the `curve_visualization` example writes to the working
   directory, is now ignored rather than showing up as untracked noise in the
   repository root. Alternate build directories (`build-*/`) are ignored too.
-
-[#52]: https://github.com/Actualize-Interactive/anim/issues/52
-[#53]: https://github.com/Actualize-Interactive/anim/issues/53
 
 ## [0.2.0] - 2026-07-25
 
@@ -133,7 +144,8 @@ Bézier handle constraints, sampling helpers, and the Catch2 test suite.
      in 0.2.0. History was rewritten between the v0.1.1 and v0.1.2 tags, so the
      compare links below are more reliable than a commit-by-commit listing. -->
 
-[Unreleased]: https://github.com/Actualize-Interactive/anim/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Actualize-Interactive/anim/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Actualize-Interactive/anim/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Actualize-Interactive/anim/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/Actualize-Interactive/anim/releases/tag/v0.1.2
 [0.1.1]: https://github.com/Actualize-Interactive/anim/releases/tag/v0.1.1
