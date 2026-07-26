@@ -233,6 +233,21 @@ int main() {
         }
 
 
+        // Give both windows a sensible first-run size and position. Without
+        // this the plot window auto-fits to its content, but its content is a
+        // plot sized ImVec2(-1,-1) ("fill the available space"), so on the
+        // first frame the two resolve to nothing and the window collapses to a
+        // few pixels — which ImGui then persists to imgui.ini. FirstUseEver
+        // means a layout the user has arranged is still respected.
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        const ImVec2 work_pos = viewport->WorkPos;
+        const ImVec2 work_size = viewport->WorkSize;
+        const float editor_width = std::max(320.0f, work_size.x * 0.22f);
+        const float pad = 12.0f;
+
+        ImGui::SetNextWindowPos(ImVec2(work_pos.x + pad, work_pos.y + pad), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(work_size.x - editor_width - pad * 3.0f,
+                                        work_size.y - pad * 2.0f), ImGuiCond_FirstUseEver);
         ImGui::Begin("Curves Plot — Ctrl-click to move keyframes & handles (panning disabled)###CurvesPlot");
 
         // Disable ImPlot's click-drag panning so it doesn't fight with dragging
@@ -513,6 +528,10 @@ int main() {
         }
         ImGui::End();
 
+        ImGui::SetNextWindowPos(ImVec2(work_pos.x + work_size.x - editor_width - pad,
+                                       work_pos.y + pad), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(editor_width, work_size.y - pad * 2.0f),
+                                 ImGuiCond_FirstUseEver);
         ImGui::Begin("Curve Editor");
         // No CollapsingHeader for "Edit Curves", content is directly in the curve's TreeNode
         for (size_t i = 0; i < animation.size(); ++i) {

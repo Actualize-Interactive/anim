@@ -27,6 +27,13 @@ While the major version is `0`, breaking changes may land in a minor release.
 
 ### Fixed
 
+- The `curve_visualization` example showed no plot on a first run. Its plot
+  window was opened without a size, so it auto-fitted to its content — but that
+  content is a plot sized `ImVec2(-1, -1)`, meaning "fill the available space".
+  On the first frame the two resolved to nothing, the window collapsed to a few
+  pixels behind the curve editor, and ImGui persisted that size to `imgui.ini`
+  from then on. Both windows now get a first-run position and size derived from
+  the viewport, using `ImGuiCond_FirstUseEver` so an arranged layout is kept.
 - `imgui.ini`, which the `curve_visualization` example writes to the working
   directory, is now ignored rather than showing up as untracked noise in the
   repository root. Alternate build directories (`build-*/`) are ignored too.
