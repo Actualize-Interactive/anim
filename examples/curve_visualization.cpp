@@ -406,12 +406,17 @@ int main() {
                         y_data = curve.evaluate_range(start_time, end_time, num_points,
                                                       anim::RangeEnd::Inclusive);
 
-                        // evaluate_range returns values only, so rebuild the
-                        // times it sampled at for the x axis.
-                        const double step = duration / (num_points - 1);
-                        x_data.reserve(y_data.size());
-                        for (size_t s = 0; s < y_data.size(); ++s) {
-                            x_data.push_back(start_time + static_cast<double>(s) * step);
+                        // Sampling returns values only; the matching times come
+                        // from sample_times, which computes them from the index
+                        // rather than storing a second buffer alongside them.
+                        // The range is stated rather than implied: this plots a
+                        // curve over its own keyframe extent, which is not the
+                        // animation's timeline.
+                        const anim::SampleTimes times = anim::sample_times(
+                            start_time, end_time, num_points, anim::RangeEnd::Inclusive);
+                        x_data.reserve(times.size());
+                        for (size_t s = 0; s < times.size(); ++s) {
+                            x_data.push_back(times[s]);
                         }
                     }
                 }

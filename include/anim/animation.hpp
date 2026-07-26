@@ -3,6 +3,7 @@
 
 #include "anim/channel.hpp"
 #include "anim/id.hpp"
+#include "anim/sample_times.hpp"
 #include <unordered_map>
 #include <memory>
 #include <vector>
@@ -171,6 +172,26 @@ public:
      * @throws std::invalid_argument if @p sample_rate is not positive.
      */
     size_t num_samples(double sample_rate, RangeEnd range_end = RangeEnd::Exclusive) const;
+
+    /**
+     * @brief Times spanning the animation, for @p num_samples samples.
+     *
+     * The range runs from start_time() to end_time(), so every channel baked
+     * over that range with the same count shares these times: they describe the
+     * animation's time base rather than any one channel's. Nothing is allocated.
+     * @throws std::invalid_argument if @p num_samples is negative.
+     */
+    SampleTimes sample_times(int num_samples, RangeEnd range_end = RangeEnd::Exclusive) const;
+
+    /**
+     * @brief Times spanning the animation at @p sample_rate.
+     *
+     * Its size() is what num_samples() reports for the same arguments, so an
+     * animation with no channels gives no times. Nothing is allocated.
+     * @throws std::invalid_argument if @p sample_rate is not positive.
+     */
+    SampleTimes sample_times_by_rate(double sample_rate,
+                                     RangeEnd range_end = RangeEnd::Exclusive) const;
 
     /// @brief Equality across name, time range and channels.
     bool operator==(const Animation& other) const;

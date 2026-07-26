@@ -213,18 +213,6 @@ public:
     double end_time() const;
     /// @brief Duration spanned by the keyframes (end_time() - start_time()).
     double length() const;
-    /**
-     * @brief Number of samples that length() would produce at @p sample_rate.
-     *
-     * Matches what evaluate_range_by_rate() returns over the keyframe range for
-     * the same @p range_end: length() * sample_rate rounded up, plus the closing
-     * sample when the range is closed and the span is a whole number of periods.
-     * An empty channel gives 0; a channel with no span gives 1.
-     * @param range_end Whether the end time is counted; half-open by default.
-     * @throws std::invalid_argument if @p sample_rate is not positive.
-     */
-    size_t num_samples(double sample_rate, RangeEnd range_end = RangeEnd::Exclusive) const;
-
     /// @brief Extend behavior for times before the first keyframe.
     Extend extend_start() const;
     /// @brief Extend behavior for times after the last keyframe.

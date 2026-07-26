@@ -496,25 +496,6 @@ double Channel::length() const {
     return end_time() - start_time();
 }
 
-size_t Channel::num_samples(double sample_rate, RangeEnd range_end) const
-{
-    if (sample_rate <= 0.0) {
-        throw std::invalid_argument("Sample rate must be positive");
-    }
-
-    if (m_keyframes.empty()) {
-        return 0;
-    }
-
-    double duration = end_time() - start_time();
-    if (duration == 0.0) {
-        // A single keyframe, or several sharing one time: there is no span to
-        // divide, and evaluate_range_by_rate returns the value at that time.
-        return 1;
-    }
-    return detail::sample_count(duration, sample_rate, range_end);
-}
-
 Extend Channel::extend_start() const {
     return m_extend_start;
 }

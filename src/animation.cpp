@@ -289,6 +289,22 @@ size_t Animation::num_samples(double sample_rate, RangeEnd range_end) const {
     return detail::sample_count(length(), sample_rate, range_end);
 }
 
+SampleTimes Animation::sample_times(int num_samples, RangeEnd range_end) const {
+    return anim::sample_times(m_start_time, m_end_time, num_samples, range_end);
+}
+
+SampleTimes Animation::sample_times_by_rate(double sample_rate, RangeEnd range_end) const {
+    if (sample_rate <= 0.0) {
+        throw std::invalid_argument("Sample rate must be positive");
+    }
+    // Matches num_samples, which reports nothing to sample until there is a
+    // channel to sample, whatever the animation's time range says.
+    if (m_channels.empty()) {
+        return SampleTimes(m_start_time, 0.0, 0);
+    }
+    return anim::sample_times_by_rate(m_start_time, m_end_time, sample_rate, range_end);
+}
+
 bool Animation::operator==(const Animation& other) const {
     // Compare all settings and channels
     if (m_name != other.m_name) {
