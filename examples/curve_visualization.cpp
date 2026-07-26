@@ -395,14 +395,23 @@ int main() {
                         y_data.push_back(curve.evaluate(start_time));
                     }
                     else if (start_time < end_time) {
-                         for (double t = start_time; t <= end_time; t += eval_step) {
-                            x_data.push_back(t);
-                            y_data.push_back(curve.evaluate(t));
-                        }
-                        // Ensure the last point is plotted if not caught by the loop condition
-                        if (x_data.empty() || x_data.back() < end_time) {
-                             x_data.push_back(end_time);
-                             y_data.push_back(curve.evaluate(end_time));
+                        // A closed range, so the plotted line reaches the last
+                        // keyframe rather than stopping a step short of it. The
+                        // count-based overload is what guarantees that: sampling
+                        // by rate would only land on end_time when the span
+                        // happens to be a whole number of steps.
+                        const double duration = end_time - start_time;
+                        const int num_points =
+                            static_cast<int>(std::ceil(duration / eval_step)) + 1;
+                        y_data = curve.evaluate_range(start_time, end_time, num_points,
+                                                      anim::RangeEnd::Inclusive);
+
+                        // evaluate_range returns values only, so rebuild the
+                        // times it sampled at for the x axis.
+                        const double step = duration / (num_points - 1);
+                        x_data.reserve(y_data.size());
+                        for (size_t s = 0; s < y_data.size(); ++s) {
+                            x_data.push_back(start_time + static_cast<double>(s) * step);
                         }
                     }
                 }

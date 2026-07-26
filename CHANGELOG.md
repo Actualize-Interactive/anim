@@ -16,8 +16,7 @@ While the major version is `0`, breaking changes may land in a minor release.
   3.9667, and `num_samples(30)` over a 4 second channel returns 120 rather than
   121. This is the convention frame- and audio-rate hosts expect, and it makes
   the sample count the product of duration and rate as callers assume. Callers
-  who want the closing sample can use `Channel::evaluate_range`, which is
-  unchanged and still spans a closed range, or extend the end by one period.
+  who want the closing sample can pass `RangeEnd::Inclusive`, described below.
   Affects `Channel::evaluate_range_by_rate`, `Channel::num_samples` and
   `Animation::num_samples`.
 - **Breaking:** `Animation::num_samples` returns `size_t`, matching
@@ -30,6 +29,11 @@ While the major version is `0`, breaking changes may land in a minor release.
   when `start_time` and `end_time` were equal, which silently broke callers
   sizing a buffer from the count they passed in. An empty range now gives that
   many copies of the value at that time.
+- The `curve_visualization` example plots from a single `evaluate_range` call
+  with `RangeEnd::Inclusive`, replacing a hand-rolled loop that accumulated
+  `t += step` and then appended the end point so the plotted line would reach
+  the last keyframe. The sampled points differ from the accumulated version by
+  at most 2e-12, and the last one now lands on the end time exactly.
 
 ### Added
 
@@ -52,8 +56,9 @@ While the major version is `0`, breaking changes may land in a minor release.
   the range was not a whole number of sample periods. It rounded the count up
   and then handed it to `evaluate_range`, which spreads a count across a closed
   range, compressing the spacing to fit: 1.05 seconds at 30 Hz came back as 33
-  values 0.0328 apart rather than 30 Hz. Sample times are now derived from the
-  sample index, so the spacing is exactly `1 / sample_rate` for any range.
+  values 0.0328 apart rather than 30 Hz. It now hands over the span the samples
+  actually cover rather than the requested end, so the spacing works out to
+  exactly `1 / sample_rate` for any range.
 - `Channel::evaluate_range` validated its range only for sample counts large
   enough to reach the sampling loop, so `evaluate_range(10, 0, 0)` returned a
   value while `evaluate_range(10, 0, 2)` threw on the same reversed range. The
