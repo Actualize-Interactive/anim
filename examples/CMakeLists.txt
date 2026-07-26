@@ -7,13 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(FetchContent)
 set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_deps CACHE PATH "Base directory for FetchContent downloads")
 
-# glad 0.1.36 declares cmake_minimum_required(VERSION 3.0), and CMake 4.0
-# removed compatibility with anything below 3.5, so configuring the examples
-# fails outright without this. Scoped to the examples: the library and the test
-# suite do not depend on it, and it is not inherited by anyone consuming anim.
-# Remove once glad is bumped to a release that requires 3.5 or newer.
-set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-
 # Fetch GLFW first (required by ImGui)
 FetchContent_Declare(
     glfw
@@ -34,15 +27,6 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(imgui)
-
-# Fetch glad (OpenGL loader)
-FetchContent_Declare(
-    glad
-    GIT_REPOSITORY https://github.com/Dav1dde/glad.git
-    GIT_TAG v0.1.36
-    GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(glad)
 
 # Fetch ImPlot
 FetchContent_Declare(
@@ -69,14 +53,14 @@ target_include_directories(imgui_lib PUBLIC
     ${imgui_SOURCE_DIR}/backends
 )
 
-target_link_libraries(imgui_lib PUBLIC glfw glad)
+target_link_libraries(imgui_lib PUBLIC glfw)
 
 # Find OpenGL
 find_package(OpenGL REQUIRED)
 target_link_libraries(imgui_lib PUBLIC OpenGL::GL)
 
-# Use glad as OpenGL loader for all platforms
-target_compile_definitions(imgui_lib PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD)
+# No loader definition: with none set, the ImGui OpenGL3 backend falls back to
+# its own bundled loader (backends/imgui_impl_opengl3_loader.h).
 
 # Create ImPlot library target
 add_library(implot_lib STATIC

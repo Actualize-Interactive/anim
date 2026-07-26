@@ -67,18 +67,18 @@ public:
     /// @brief Name lookup. @throws std::out_of_range if none matches.
     Channel& operator[](const std::string& channel_name);
     /// @brief Returns the channel with @p channel_id. @throws std::out_of_range if none matches.
-    Channel* channel(Id channel_id);
+    Channel& channel(Id channel_id);
     /// @brief Id lookup. @throws std::out_of_range if none matches.
-    Channel* operator[](Id channel_id);
+    Channel& operator[](Id channel_id);
 
     /// @brief Returns the first channel named @p channel_name. @throws std::out_of_range if none matches.
     const Channel& channel(const std::string& channel_name) const;
     /// @brief Name lookup. @throws std::out_of_range if none matches.
     const Channel& operator[](const std::string& channel_name) const;
     /// @brief Returns the channel with @p channel_id. @throws std::out_of_range if none matches.
-    const Channel* channel(Id channel_id) const;
+    const Channel& channel(Id channel_id) const;
     /// @brief Id lookup. @throws std::out_of_range if none matches.
-    const Channel* operator[](Id channel_id) const;
+    const Channel& operator[](Id channel_id) const;
 
     /// @brief Number of channels.
     inline size_t size() const { return m_channels.size(); }
@@ -104,6 +104,24 @@ public:
      * @throws std::out_of_range if the id is not found or @p to_index is out of range.
      */
     void reorder_channel(Id channel_id, size_t to_index);
+
+    /**
+     * @brief Sorts the channels by name, ascending.
+     *
+     * The sort is stable, so channels sharing a name keep their relative order.
+     * Only the index order changes: ids, names and keyframes are untouched, and
+     * because the channels themselves are not moved, references and pointers
+     * obtained before the sort — including those from channel(Id) — stay valid.
+     */
+    void sort_channels();
+
+    /**
+     * @brief Sorts the channels using a custom ordering.
+     * @param comparator A strict weak ordering; returns true when the first
+     *        channel should be placed before the second.
+     * @see sort_channels()
+     */
+    void sort_channels(const std::function<bool(const Channel&, const Channel&)>& comparator);
 
     /// @brief Removes all channels.
     void clear();

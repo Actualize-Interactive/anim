@@ -8,6 +8,51 @@ While the major version is `0`, breaking changes may land in a minor release.
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** the `Id` lookups on `Animation` now return references rather
+  than pointers, matching the index and name overloads —
+  `channel(Id)` and `operator[](Id)`, in both the const and non-const forms.
+  They never returned null: the underlying `unordered_map::at` throws
+  `std::out_of_range` on a miss, so the pointer return only invited dead null
+  checks. Behavior on a miss is unchanged; callers replace `->` with `.` ([#52]).
+
+### Added
+
+- `Animation::sort_channels()`, sorting channels by name, and an overload
+  taking a comparator for any other ordering. Both are stable. Only the index
+  order changes: the channels themselves are not moved, so ids keep resolving
+  and references taken beforehand stay valid.
+
+### Removed
+
+- **Breaking:** `Id`'s constructor is now private, so ids can only originate
+  from the library — obtain them from `Channel::id()`, or use `Id::invalid()`
+  for a sentinel. A fabricated id was never able to do anything a real one
+  could not, but because ids are handed out from one counter shared by every
+  `Animation`, a hand-made id could silently resolve to an unrelated channel.
+- The `glad` dependency. The examples now rely on the loader that Dear ImGui
+  already bundles, and the handful of direct GL calls in
+  `curve_visualization` are OpenGL 1.1 core, resolved by linking `OpenGL::GL`.
+  This also removes the `CMAKE_POLICY_VERSION_MINIMUM` workaround that glad
+  0.1.36 required under CMake 4 ([#53]).
+
+### Fixed
+
+- The `curve_visualization` example showed no plot on a first run. Its plot
+  window was opened without a size, so it auto-fitted to its content — but that
+  content is a plot sized `ImVec2(-1, -1)`, meaning "fill the available space".
+  On the first frame the two resolved to nothing, the window collapsed to a few
+  pixels behind the curve editor, and ImGui persisted that size to `imgui.ini`
+  from then on. Both windows now get a first-run position and size derived from
+  the viewport, using `ImGuiCond_FirstUseEver` so an arranged layout is kept.
+- `imgui.ini`, which the `curve_visualization` example writes to the working
+  directory, is now ignored rather than showing up as untracked noise in the
+  repository root. Alternate build directories (`build-*/`) are ignored too.
+
+[#52]: https://github.com/Actualize-Interactive/anim/issues/52
+[#53]: https://github.com/Actualize-Interactive/anim/issues/53
+
 ## [0.2.0] - 2026-07-25
 
 First release prepared for the public repository. It contains two small

@@ -19,9 +19,6 @@ namespace anim {
 struct Id {
     const uint64_t id; ///< The underlying identifier value (immutable).
 
-    /// @brief Constructs an Id wrapping @p value.
-    explicit Id(uint64_t value) : id(value) {}
-
     /// @brief Explicit conversion back to the underlying integer value.
     explicit operator uint64_t() const { return id; }
 
@@ -50,6 +47,20 @@ struct Id {
     bool is_valid() const {
         return id != static_cast<uint64_t>(-1);
     }
+
+private:
+    /**
+     * @brief Wraps a raw identifier value.
+     *
+     * Private so that ids can only originate from the library. An Id fabricated
+     * by a caller would either fail to resolve or, because ids are handed out
+     * from one counter shared by every Animation, resolve to some unrelated
+     * channel. Obtain ids from Channel::id(); use invalid() for a sentinel.
+     */
+    explicit Id(uint64_t value) : id(value) {}
+
+    friend class Animation; ///< Mints ids for the channels it creates.
+    friend class Channel;   ///< Stores the id it was created with.
 };
 
 } // namespace anim

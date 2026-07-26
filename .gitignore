@@ -33,6 +33,7 @@
 
 # Build directories
 build/
+build-*/
 out/
 cmake-build-*/
 
@@ -62,6 +63,10 @@ Testing/
 docs/doxygen/
 docs/build/
 docs/sphinx/api/
+
+# Dear ImGui writes its window layout next to the working directory when the
+# curve_visualization example is run.
+imgui.ini
 
 # OS-specific files
 .DS_Store
