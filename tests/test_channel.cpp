@@ -648,13 +648,27 @@ TEST_CASE("Channel Evaluation Range", "[channel]") {
     }
 
     SECTION("evaluate_range with equal start and end times") {
+        // The count is what the caller asked for, so an empty range gives that
+        // many copies of the value at that time rather than a single one.
         auto result = ch.evaluate_range(1.0, 1.0, 5);
-        REQUIRE(result.size() == 1);
-        REQUIRE(result[0] == Catch::Approx(10.0));
+        REQUIRE(result.size() == 5);
+        for (double v : result) {
+            REQUIRE(v == Catch::Approx(10.0));
+        }
+    }
+
+    SECTION("evaluate_range with no samples") {
+        REQUIRE(ch.evaluate_range(0.0, 2.0, 0).empty());
     }
 
     SECTION("evaluate_range invalid arguments") {
         REQUIRE_THROWS_AS(ch.evaluate_range(2.0, 1.0, 5), std::invalid_argument);
+        REQUIRE_THROWS_AS(ch.evaluate_range(0.0, 2.0, -1), std::invalid_argument);
+
+        // A reversed range is rejected for every count, not only for the ones
+        // large enough to reach the sampling loop.
+        REQUIRE_THROWS_AS(ch.evaluate_range(2.0, 1.0, 0), std::invalid_argument);
+        REQUIRE_THROWS_AS(ch.evaluate_range(2.0, 1.0, 1), std::invalid_argument);
     }
 
     SECTION("evaluate_range_by_rate") {

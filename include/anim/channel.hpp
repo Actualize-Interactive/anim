@@ -161,8 +161,13 @@ public:
      * The range is closed: the first sample is at @p start_time and the last is
      * at @p end_time, so the spacing is (end_time - start_time) / (num_samples - 1).
      * Use evaluate_range_by_rate() to sample at a fixed rate instead.
-     * @return A vector of @p num_samples values, or a single value if
-     *         @p num_samples is 1 or less.
+     *
+     * Exactly @p num_samples values are returned, including when @p start_time
+     * and @p end_time are equal, in which case they are all the value at that
+     * time.
+     * @return A vector of @p num_samples values; empty if @p num_samples is 0.
+     * @throws std::invalid_argument if @p num_samples is negative, or if
+     *         @p start_time is after @p end_time.
      */
     std::vector<double> evaluate_range(double start_time, double end_time, int num_samples) const;
     /**

@@ -275,7 +275,7 @@ void Animation::set_length(double length) {
     m_end_time = m_start_time + length;
 }
 
-int Animation::num_samples(double sample_rate) const {
+size_t Animation::num_samples(double sample_rate) const {
     if (sample_rate <= 0.0) {
         throw std::invalid_argument("Sample rate must be positive");
     }
@@ -286,7 +286,7 @@ int Animation::num_samples(double sample_rate) const {
         // No span to divide, so the single sample at the start time.
         return 1;
     }
-    return static_cast<int>(detail::sample_count(length(), sample_rate));
+    return detail::sample_count(length(), sample_rate);
 }
 
 bool Animation::operator==(const Animation& other) const {

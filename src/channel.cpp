@@ -409,28 +409,36 @@ double Channel::evaluate(double time, double* prev_t) const {
 
 
 std::vector<double> Channel::evaluate_range(double start_time, double end_time, int num_samples) const {
-    if (num_samples <= 1) {
-        return {evaluate(start_time)};
+    // Validate before any early return, so a reversed range is rejected for
+    // every sample count rather than only for the ones that reach the loop.
+    if (num_samples < 0) {
+        throw std::invalid_argument("Sample count cannot be negative");
     }
     if (start_time > end_time) {
         throw std::invalid_argument("Start time must be less than or equal to end time");
     }
-    
-    // For equal times, just return the value at that time
-    if (start_time == end_time) {
+
+    if (num_samples == 0) {
+        return {};
+    }
+    // A single sample has no spacing to compute, and the step below would be a
+    // division by zero.
+    if (num_samples == 1) {
         return {evaluate(start_time)};
     }
-    
+
     std::vector<double> result(num_samples);
+    // Zero when the range is empty, which is the right answer: the caller asked
+    // for num_samples values and every one of them is at start_time.
     double step = (end_time - start_time) / (num_samples - 1);
-    
-    double* prev_t = nullptr; 
+
+    double* prev_t = nullptr;
     for (int i = 0; i < num_samples; i++) {
         double time = start_time + i * step;
         result[i] = evaluate(time, prev_t);
         prev_t = &result[i]; // Update prev_t to point to the current value
     }
-    
+
     return result;
 }
 

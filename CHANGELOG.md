@@ -20,6 +20,13 @@ While the major version is `0`, breaking changes may land in a minor release.
   unchanged and still spans a closed range, or extend the end by one period.
   Affects `Channel::evaluate_range_by_rate`, `Channel::num_samples` and
   `Animation::num_samples`.
+- **Breaking:** `Animation::num_samples` returns `size_t`, matching
+  `Channel::num_samples`. The two counted the same thing in different types.
+- **Breaking:** `Channel::evaluate_range` now returns exactly the requested
+  number of samples in every case. It previously collapsed to a single sample
+  when `start_time` and `end_time` were equal, which silently broke callers
+  sizing a buffer from the count they passed in. An empty range now gives that
+  many copies of the value at that time.
 
 ### Fixed
 
@@ -29,6 +36,12 @@ While the major version is `0`, breaking changes may land in a minor release.
   range, compressing the spacing to fit: 1.05 seconds at 30 Hz came back as 33
   values 0.0328 apart rather than 30 Hz. Sample times are now derived from the
   sample index, so the spacing is exactly `1 / sample_rate` for any range.
+- `Channel::evaluate_range` validated its range only for sample counts large
+  enough to reach the sampling loop, so `evaluate_range(10, 0, 0)` returned a
+  value while `evaluate_range(10, 0, 2)` threw on the same reversed range. The
+  range is now checked first, for every count. A count of zero returns an empty
+  vector rather than one sample, and a negative count is rejected rather than
+  quietly treated as one sample.
 - The sample count is no longer inflated by floating-point error. It was
   computed with `ceil`, so a duration whose product with the rate landed a few
   ulps above a whole number, as 4.0 seconds at 30 Hz can, produced an extra
