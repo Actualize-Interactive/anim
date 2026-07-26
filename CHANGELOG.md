@@ -17,8 +17,20 @@ While the major version is `0`, breaking changes may land in a minor release.
   `std::out_of_range` on a miss, so the pointer return only invited dead null
   checks. Behavior on a miss is unchanged; callers replace `->` with `.` ([#52]).
 
+### Added
+
+- `Animation::sort_channels()`, sorting channels by name, and an overload
+  taking a comparator for any other ordering. Both are stable. Only the index
+  order changes: the channels themselves are not moved, so ids keep resolving
+  and references taken beforehand stay valid.
+
 ### Removed
 
+- **Breaking:** `Id`'s constructor is now private, so ids can only originate
+  from the library — obtain them from `Channel::id()`, or use `Id::invalid()`
+  for a sentinel. A fabricated id was never able to do anything a real one
+  could not, but because ids are handed out from one counter shared by every
+  `Animation`, a hand-made id could silently resolve to an unrelated channel.
 - The `glad` dependency. The examples now rely on the loader that Dear ImGui
   already bundles, and the handful of direct GL calls in
   `curve_visualization` are OpenGL 1.1 core, resolved by linking `OpenGL::GL`.

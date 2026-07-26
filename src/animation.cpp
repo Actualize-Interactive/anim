@@ -175,9 +175,26 @@ void Animation::reorder_channel(Id channel_id, size_t to_index) {
     reorder_channel(from_index, to_index);
 }
 
-void Animation::clear() { 
+void Animation::sort_channels() {
+    sort_channels([](const Channel& lhs, const Channel& rhs) {
+        return lhs.name() < rhs.name();
+    });
+}
+
+void Animation::sort_channels(const std::function<bool(const Channel&, const Channel&)>& comparator) {
+    // Reordering the owning pointers leaves the Channel objects themselves in
+    // place, so m_channel_map stays valid and so does anything the caller is
+    // already holding a reference to.
+    std::stable_sort(m_channels.begin(), m_channels.end(),
+                     [&comparator](const std::unique_ptr<Channel>& lhs,
+                                   const std::unique_ptr<Channel>& rhs) {
+                         return comparator(*lhs, *rhs);
+                     });
+}
+
+void Animation::clear() {
     m_channel_map.clear();
-    m_channels.clear(); 
+    m_channels.clear();
 }
 
 void Animation::remove_channel(size_t index) {

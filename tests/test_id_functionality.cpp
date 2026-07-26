@@ -88,8 +88,10 @@ TEST_CASE("Animation ID-based channel access", "[Animation][Id]") {
         REQUIRE_THROWS_AS(animation.channel(invalid_id), std::out_of_range);
         REQUIRE_THROWS_AS(animation[invalid_id], std::out_of_range);
         
-        // Try to access with a non-existent but valid ID
-        Id non_existent_id(999999);
+        // A genuine id from a different animation: valid, correctly formed, and
+        // simply not owned by this one.
+        Animation other_animation("other_animation");
+        Id non_existent_id = other_animation.create_channel("elsewhere").id();
         REQUIRE_THROWS_AS(animation.channel(non_existent_id), std::out_of_range);
         REQUIRE_THROWS_AS(animation[non_existent_id], std::out_of_range);
     }
@@ -202,8 +204,10 @@ TEST_CASE("Animation ID-based channel access with const support", "[Animation][I
         REQUIRE_THROWS_AS(animation.channel(invalid_id), std::out_of_range);
         REQUIRE_THROWS_AS(animation[invalid_id], std::out_of_range);
         
-        // Try to access with a non-existent but valid ID
-        Id non_existent_id(999999);
+        // A genuine id from a different animation: valid, correctly formed, and
+        // simply not owned by this one.
+        Animation other_animation("other_animation");
+        Id non_existent_id = other_animation.create_channel("elsewhere").id();
         REQUIRE_THROWS_AS(animation.channel(non_existent_id), std::out_of_range);
         REQUIRE_THROWS_AS(animation[non_existent_id], std::out_of_range);
     }
@@ -453,8 +457,9 @@ TEST_CASE("Edge cases and error conditions", "[Animation][Id]") {
         Channel& ch = animation.create_channel("test_channel");
         Id valid_id = ch.id();
         
-        // Try to remove with non-existent ID
-        Id non_existent_id(999999);
+        // A genuine id from a different animation: valid but not owned here.
+        Animation other_animation("other_animation");
+        Id non_existent_id = other_animation.create_channel("elsewhere").id();
         REQUIRE_THROWS_AS(animation.remove_channel(non_existent_id), std::out_of_range);
         
         // Original channel should still be accessible
@@ -495,49 +500,72 @@ TEST_CASE("Edge cases and error conditions", "[Animation][Id]") {
     }
 }
 
+TEST_CASE("Id cannot be minted outside the library", "[Id]") {
+    // Ids are handed out by Animation and stored by Channel; the constructor is
+    // private so a caller cannot fabricate one. Enforced at compile time rather
+    // than described in a comment.
+    static_assert(!std::is_constructible_v<Id, uint64_t>,
+                  "Id must not be constructible from a raw value by callers.");
+    static_assert(!std::is_default_constructible_v<Id>,
+                  "Id must not be default-constructible.");
+
+    // Copying an id you were given is still fine -- that is how callers pass
+    // them around and key containers with them.
+    static_assert(std::is_copy_constructible_v<Id>,
+                  "Id must remain copy-constructible.");
+    SUCCEED("Id construction is restricted to the library");
+}
+
 TEST_CASE("Id ordering and hashing", "[Id]") {
+    // Ids can only come from the library, so take real ones. They are handed
+    // out from a single increasing counter, so these are in ascending order.
+    Animation animation("id_semantics");
+    const Id first = animation.create_channel("first").id();
+    const Id second = animation.create_channel("second").id();
+    const Id third = animation.create_channel("third").id();
+
     SECTION("operator< gives a strict weak ordering") {
-        REQUIRE(Id(1) < Id(2));
-        REQUIRE_FALSE(Id(2) < Id(1));
-        REQUIRE_FALSE(Id(5) < Id(5)); // irreflexive
+        REQUIRE(first < second);
+        REQUIRE_FALSE(second < first);
+        REQUIRE_FALSE(first < first); // irreflexive
     }
 
     SECTION("Id is usable as a std::set key (relies on operator<)") {
         std::set<Id> ids;
-        ids.insert(Id(3));
-        ids.insert(Id(1));
-        ids.insert(Id(2));
-        ids.insert(Id(1)); // duplicate, must not grow the set
+        ids.insert(third);
+        ids.insert(first);
+        ids.insert(second);
+        ids.insert(first); // duplicate, must not grow the set
         REQUIRE(ids.size() == 3);
 
         // std::set iterates in ascending order
         auto it = ids.begin();
-        REQUIRE(it->id == 1); ++it;
-        REQUIRE(it->id == 2); ++it;
-        REQUIRE(it->id == 3);
+        REQUIRE(*it == first); ++it;
+        REQUIRE(*it == second); ++it;
+        REQUIRE(*it == third);
     }
 
     SECTION("std::hash<Id> enables use in unordered containers") {
         std::unordered_set<Id> ids;
-        ids.insert(Id(10));
-        ids.insert(Id(20));
-        ids.insert(Id(10)); // duplicate: same hash and equality
+        ids.insert(first);
+        ids.insert(second);
+        ids.insert(first); // duplicate: same hash and equality
         REQUIRE(ids.size() == 2);
-        REQUIRE(ids.count(Id(10)) == 1);
-        REQUIRE(ids.count(Id(99)) == 0);
+        REQUIRE(ids.count(first) == 1);
+        REQUIRE(ids.count(Id::invalid()) == 0);
 
         // Equal ids must hash equally
         std::hash<Id> hasher;
-        REQUIRE(hasher(Id(42)) == hasher(Id(42)));
+        REQUIRE(hasher(first) == hasher(first));
     }
 
     SECTION("explicit conversion and invalid() sentinel") {
-        Id id(12345);
-        REQUIRE(static_cast<uint64_t>(id) == 12345);
-        REQUIRE(id.is_valid());
+        REQUIRE(static_cast<uint64_t>(first) == first.id);
+        REQUIRE(first.is_valid());
 
         Id invalid = Id::invalid();
         REQUIRE_FALSE(invalid.is_valid());
         REQUIRE(invalid.id == static_cast<uint64_t>(-1));
+        REQUIRE(invalid != first);
     }
 }

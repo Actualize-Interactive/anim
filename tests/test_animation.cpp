@@ -1158,9 +1158,9 @@ TEST_CASE("Animation Id-based access error paths", "[Animation][Id]") {
     }
 
     SECTION("channel(Id) throws for a non-existent id") {
-        REQUIRE_THROWS_AS(anim.channel(Id(999999)), std::out_of_range);
+        REQUIRE_THROWS_AS(anim.channel(Id::invalid()), std::out_of_range);
         const Animation& canim = anim;
-        REQUIRE_THROWS_AS(canim.channel(Id(999999)), std::out_of_range);
+        REQUIRE_THROWS_AS(canim.channel(Id::invalid()), std::out_of_range);
     }
 
     SECTION("remove_channel(Id) removes the right channel") {
@@ -1173,12 +1173,12 @@ TEST_CASE("Animation Id-based access error paths", "[Animation][Id]") {
     }
 
     SECTION("remove_channel(Id) throws for a non-existent id") {
-        REQUIRE_THROWS_AS(anim.remove_channel(Id(999999)), std::out_of_range);
+        REQUIRE_THROWS_AS(anim.remove_channel(Id::invalid()), std::out_of_range);
         REQUIRE(anim.num_channels() == 2); // unchanged
     }
 
     SECTION("reorder_channel(Id) throws for a non-existent id") {
-        REQUIRE_THROWS_AS(anim.reorder_channel(Id(999999), 0), std::out_of_range);
+        REQUIRE_THROWS_AS(anim.reorder_channel(Id::invalid(), 0), std::out_of_range);
     }
 
     SECTION("reorder_channel(Id) throws for an out-of-range target index") {
@@ -1186,3 +1186,114 @@ TEST_CASE("Animation Id-based access error paths", "[Animation][Id]") {
     }
 }
 
+
+TEST_CASE("Animation::sort_channels", "[Animation]") {
+    Animation animation("sorting");
+
+    SECTION("sorts by name ascending") {
+        animation.create_channel("delta");
+        animation.create_channel("alpha");
+        animation.create_channel("charlie");
+        animation.create_channel("bravo");
+
+        animation.sort_channels();
+
+        REQUIRE(animation.channel_names() ==
+                std::vector<std::string>{"alpha", "bravo", "charlie", "delta"});
+    }
+
+    SECTION("is stable for channels sharing a name") {
+        // Distinguish the duplicates by keyframe count, which sorting must not
+        // reorder relative to each other.
+        Channel& first_dup = animation.create_channel("same");
+        first_dup.create_keyframe(0.0, 0.0);
+        animation.create_channel("zulu");
+        Channel& second_dup = animation.create_channel("same");
+        second_dup.create_keyframe(0.0, 0.0);
+        second_dup.create_keyframe(1.0, 1.0);
+
+        animation.sort_channels();
+
+        REQUIRE(animation.channel(0).name() == "same");
+        REQUIRE(animation.channel(1).name() == "same");
+        REQUIRE(animation.channel(2).name() == "zulu");
+        // Original relative order of the two "same" channels is preserved.
+        REQUIRE(animation.channel(0).num_keyframes() == 1);
+        REQUIRE(animation.channel(1).num_keyframes() == 2);
+    }
+
+    SECTION("accepts a custom comparator") {
+        animation.create_channel("alpha");
+        animation.create_channel("bravo");
+        animation.create_channel("charlie");
+
+        animation.sort_channels([](const Channel& lhs, const Channel& rhs) {
+            return lhs.name() > rhs.name(); // descending
+        });
+
+        REQUIRE(animation.channel_names() ==
+                std::vector<std::string>{"charlie", "bravo", "alpha"});
+    }
+
+    SECTION("a comparator may use any channel state, not just the name") {
+        Channel& few = animation.create_channel("few");
+        Channel& many = animation.create_channel("many");
+        few.create_keyframe(0.0, 0.0);
+        many.create_keyframe(0.0, 0.0);
+        many.create_keyframe(1.0, 1.0);
+        many.create_keyframe(2.0, 2.0);
+
+        animation.sort_channels([](const Channel& lhs, const Channel& rhs) {
+            return lhs.num_keyframes() > rhs.num_keyframes();
+        });
+
+        REQUIRE(animation.channel(0).name() == "many");
+        REQUIRE(animation.channel(1).name() == "few");
+    }
+
+    SECTION("ids, lookups and existing references survive the sort") {
+        Channel& zulu = animation.create_channel("zulu");
+        Channel& alpha = animation.create_channel("alpha");
+        const Id zulu_id = zulu.id();
+        const Id alpha_id = alpha.id();
+        zulu.create_keyframe(3.0, 7.0);
+
+        animation.sort_channels();
+
+        // Index order changed...
+        REQUIRE(animation.channel(0).name() == "alpha");
+        REQUIRE(animation.channel(1).name() == "zulu");
+
+        // ...but the channels themselves did not move, so ids still resolve to
+        // the same objects and references taken beforehand remain valid.
+        REQUIRE(&animation.channel(zulu_id) == &zulu);
+        REQUIRE(&animation.channel(alpha_id) == &alpha);
+        REQUIRE(zulu.id() == zulu_id);
+        REQUIRE(alpha.id() == alpha_id);
+        REQUIRE(zulu.num_keyframes() == 1);
+        REQUIRE(zulu.evaluate(3.0) == Catch::Approx(7.0));
+    }
+
+    SECTION("is a no-op on an empty animation") {
+        REQUIRE(animation.empty());
+        animation.sort_channels();
+        REQUIRE(animation.empty());
+        REQUIRE(animation.num_channels() == 0);
+    }
+
+    SECTION("is a no-op on a single channel") {
+        animation.create_channel("only");
+        animation.sort_channels();
+        REQUIRE(animation.num_channels() == 1);
+        REQUIRE(animation.channel(0).name() == "only");
+    }
+
+    SECTION("sorting an already sorted animation changes nothing") {
+        animation.create_channel("alpha");
+        animation.create_channel("bravo");
+        animation.sort_channels();
+        animation.sort_channels();
+        REQUIRE(animation.channel_names() ==
+                std::vector<std::string>{"alpha", "bravo"});
+    }
+}

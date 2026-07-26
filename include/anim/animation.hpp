@@ -105,6 +105,24 @@ public:
      */
     void reorder_channel(Id channel_id, size_t to_index);
 
+    /**
+     * @brief Sorts the channels by name, ascending.
+     *
+     * The sort is stable, so channels sharing a name keep their relative order.
+     * Only the index order changes: ids, names and keyframes are untouched, and
+     * because the channels themselves are not moved, references and pointers
+     * obtained before the sort — including those from channel(Id) — stay valid.
+     */
+    void sort_channels();
+
+    /**
+     * @brief Sorts the channels using a custom ordering.
+     * @param comparator A strict weak ordering; returns true when the first
+     *        channel should be placed before the second.
+     * @see sort_channels()
+     */
+    void sort_channels(const std::function<bool(const Channel&, const Channel&)>& comparator);
+
     /// @brief Removes all channels.
     void clear();
     /// @brief Removes the channel at @p index. @throws std::out_of_range if out of range.
