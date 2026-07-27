@@ -5,6 +5,7 @@
 #include "anim/handle_utils.hpp"
 #include "anim/id.hpp"
 #include "anim/extend.hpp"
+#include "anim/range_end.hpp"
 #include <vector>
 #include <algorithm>
 #include <optional>
@@ -157,17 +158,54 @@ public:
     double evaluate(double time, double* prev_t = nullptr) const;
     /**
      * @brief Evaluates @p num_samples evenly spaced values from @p start_time to @p end_time.
-     * @return A vector of sampled values.
+     *
+     * By default the range is half-open, as in evaluate_range_by_rate(): sample
+     * @c i is at <tt>start_time + i * (end_time - start_time) / num_samples</tt>,
+     * so the last sample is one step short of @p end_time and @p end_time itself
+     * is not sampled. Sampling 0 to 4 with 5 samples gives 0.0, 0.8, 1.6, 2.4
+     * and 3.2.
+     *
+     * Pass RangeEnd::Inclusive to divide the span by one less and land the last
+     * sample on @p end_time, giving 0.0, 1.0, 2.0, 3.0 and 4.0 for the same
+     * call. That is what plotting a curve or building a lookup table wants,
+     * where a sample is a point rather than the interval that follows it.
+     *
+     * Exactly @p num_samples values are returned, including when @p start_time
+     * and @p end_time are equal, in which case they are all the value at that
+     * time.
+     * @param range_end Whether @p end_time is sampled; half-open by default.
+     * @return A vector of @p num_samples values; empty if @p num_samples is 0.
+     * @throws std::invalid_argument if @p num_samples is negative, or if
+     *         @p start_time is after @p end_time.
      */
-    std::vector<double> evaluate_range(double start_time, double end_time, int num_samples) const;
+    std::vector<double> evaluate_range(double start_time, double end_time, int num_samples,
+                                       RangeEnd range_end = RangeEnd::Exclusive) const;
     /**
      * @brief Evaluates values from @p start_time to @p end_time at a fixed sample rate.
+     *
+     * Sample @c i is at <tt>start_time + i / sample_rate</tt>, so the spacing is
+     * exactly one sample period no matter what the range is.
+     *
+     * By default the range is half-open and @p end_time is not sampled, so a
+     * span of n periods gives n samples: 4 seconds at 30 Hz yields 120 values,
+     * the last at 3.9667, not 121 ending on 4.0. Pass RangeEnd::Inclusive for
+     * the closing sample, giving 121.
+     *
+     * The two differ only when the span is a whole number of periods, since that
+     * is the only case where a sample lands on @p end_time. A span that is not
+     * is rounded up either way, so the whole range is covered.
      * @param start_time First time to sample.
-     * @param end_time Last time to sample.
+     * @param end_time Upper bound of the range, sampled only if @p range_end
+     *        is RangeEnd::Inclusive.
      * @param sample_rate Samples per unit time; must be positive.
-     * @return A vector of sampled values.
+     * @param range_end Whether @p end_time is sampled; half-open by default.
+     * @return A vector of num_samples() values, or a single value if
+     *         @p start_time and @p end_time are equal.
+     * @throws std::invalid_argument if @p sample_rate is not positive, or if
+     *         @p start_time is after @p end_time.
      */
-    std::vector<double> evaluate_range_by_rate(double start_time, double end_time, double sample_rate) const;
+    std::vector<double> evaluate_range_by_rate(double start_time, double end_time, double sample_rate,
+                                               RangeEnd range_end = RangeEnd::Exclusive) const;
 
     /// @brief Time of the first keyframe (0 if empty).
     double start_time() const;
@@ -175,9 +213,6 @@ public:
     double end_time() const;
     /// @brief Duration spanned by the keyframes (end_time() - start_time()).
     double length() const;
-    /// @brief Number of samples that length() would produce at @p sample_rate.
-    size_t num_samples(double sample_rate) const;
-
     /// @brief Extend behavior for times before the first keyframe.
     Extend extend_start() const;
     /// @brief Extend behavior for times after the last keyframe.

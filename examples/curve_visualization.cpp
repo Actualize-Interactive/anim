@@ -395,14 +395,28 @@ int main() {
                         y_data.push_back(curve.evaluate(start_time));
                     }
                     else if (start_time < end_time) {
-                         for (double t = start_time; t <= end_time; t += eval_step) {
-                            x_data.push_back(t);
-                            y_data.push_back(curve.evaluate(t));
-                        }
-                        // Ensure the last point is plotted if not caught by the loop condition
-                        if (x_data.empty() || x_data.back() < end_time) {
-                             x_data.push_back(end_time);
-                             y_data.push_back(curve.evaluate(end_time));
+                        // A closed range, so the plotted line reaches the last
+                        // keyframe rather than stopping a step short of it. The
+                        // count-based overload is what guarantees that: sampling
+                        // by rate would only land on end_time when the span
+                        // happens to be a whole number of steps.
+                        const double duration = end_time - start_time;
+                        const int num_points =
+                            static_cast<int>(std::ceil(duration / eval_step)) + 1;
+                        y_data = curve.evaluate_range(start_time, end_time, num_points,
+                                                      anim::RangeEnd::Inclusive);
+
+                        // Sampling returns values only; the matching times come
+                        // from sample_times, which computes them from the index
+                        // rather than storing a second buffer alongside them.
+                        // The range is stated rather than implied: this plots a
+                        // curve over its own keyframe extent, which is not the
+                        // animation's timeline.
+                        const anim::SampleTimes times = anim::sample_times(
+                            start_time, end_time, num_points, anim::RangeEnd::Inclusive);
+                        x_data.reserve(times.size());
+                        for (size_t s = 0; s < times.size(); ++s) {
+                            x_data.push_back(times[s]);
                         }
                     }
                 }

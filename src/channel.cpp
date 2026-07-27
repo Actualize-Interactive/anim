@@ -1,5 +1,6 @@
 #include "anim/channel.hpp"
 #include "anim/bezier_utils.hpp"
+#include "sampling.hpp"
 
 namespace anim {
 
@@ -407,47 +408,71 @@ double Channel::evaluate(double time, double* prev_t) const {
 
 
 
-std::vector<double> Channel::evaluate_range(double start_time, double end_time, int num_samples) const {
-    if (num_samples <= 1) {
-        return {evaluate(start_time)};
+std::vector<double> Channel::evaluate_range(double start_time, double end_time, int num_samples,
+                                            RangeEnd range_end) const {
+    // Validate before any early return, so a reversed range is rejected for
+    // every sample count rather than only for the ones that reach the loop.
+    if (num_samples < 0) {
+        throw std::invalid_argument("Sample count cannot be negative");
     }
     if (start_time > end_time) {
         throw std::invalid_argument("Start time must be less than or equal to end time");
     }
-    
-    // For equal times, just return the value at that time
-    if (start_time == end_time) {
+
+    if (num_samples == 0) {
+        return {};
+    }
+    // A closed range with one sample has no spacing to derive, and the divisor
+    // below would be zero. The single sample is at start_time either way.
+    if (num_samples == 1 && range_end == RangeEnd::Inclusive) {
         return {evaluate(start_time)};
     }
-    
+
     std::vector<double> result(num_samples);
-    double step = (end_time - start_time) / (num_samples - 1);
-    
-    double* prev_t = nullptr; 
+    // A half-open range divides the span by the sample count, so the last
+    // sample sits one step short of end_time; a closed range divides by one
+    // less, so the last sample lands on it. The step is zero when the range is
+    // empty, which is the right answer -- the caller asked for num_samples
+    // values and every one of them is at start_time.
+    const int divisor = (range_end == RangeEnd::Inclusive) ? num_samples - 1 : num_samples;
+    double step = (end_time - start_time) / divisor;
+
+    double* prev_t = nullptr;
     for (int i = 0; i < num_samples; i++) {
         double time = start_time + i * step;
         result[i] = evaluate(time, prev_t);
         prev_t = &result[i]; // Update prev_t to point to the current value
     }
-    
+
     return result;
 }
 
-std::vector<double> Channel::evaluate_range_by_rate(double start_time, double end_time, double sample_rate) const {
+std::vector<double> Channel::evaluate_range_by_rate(double start_time, double end_time,
+                                                    double sample_rate, RangeEnd range_end) const {
     if (sample_rate <= 0.0) {
         throw std::invalid_argument("Sample rate must be positive");
     }
     if (start_time > end_time) {
         throw std::invalid_argument("Start time must be less than or equal to end time");
     }
-    
+
     // For equal times, just return the value at that time
     if (start_time == end_time) {
         return {evaluate(start_time)};
     }
-    
-    int num_samples = static_cast<int>(std::ceil((end_time - start_time) * sample_rate)) + 1;
-    return evaluate_range(start_time, end_time, num_samples);
+
+    const size_t count = detail::sample_count(end_time - start_time, sample_rate, range_end);
+
+    // Hand evaluate_range the span those samples actually cover rather than the
+    // requested one. The two differ when the range is not a whole number of
+    // sample periods, and passing the requested end_time would have
+    // evaluate_range divide it by the rounded count and so space the samples
+    // slightly closer than the rate asked for. The divisor evaluate_range will
+    // use is the count for a half-open range and one less for a closed one, so
+    // spanning exactly that many periods leaves it with a step of 1 / rate.
+    const size_t divisor = (range_end == RangeEnd::Inclusive) ? count - 1 : count;
+    const double covered_end = start_time + static_cast<double>(divisor) / sample_rate;
+    return evaluate_range(start_time, covered_end, static_cast<int>(count), range_end);
 }
 
 double Channel::start_time() const {
@@ -469,21 +494,6 @@ double Channel::length() const {
         return 0.0;
     }
     return end_time() - start_time();
-}
-
-size_t Channel::num_samples(double sample_rate) const
-{
-    if (sample_rate <= 0.0) {
-        throw std::invalid_argument("Sample rate must be positive");
-    }
-    
-    if (m_keyframes.empty()) {
-        return 0;
-    }
-    
-    double duration = end_time() - start_time();
-    return static_cast<size_t>(std::ceil(duration * sample_rate)) + 1; // +1 to include the start time
-    
 }
 
 Extend Channel::extend_start() const {

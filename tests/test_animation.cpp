@@ -328,32 +328,111 @@ TEST_CASE("Animation Sample Calculation", "[Animation]") {
     animation.create_channel("SampleChan");
 
     SECTION("Valid sample rate") {
-        // length = 1.0, sample_rate = 10.0
-        // samples = ceil(1.0 * 10.0) + 1 = 10 + 1 = 11
-        REQUIRE(animation.num_samples(10.0) == 11);
+        // The range is half-open, so the count is length * sample_rate rounded
+        // up: length = 1.0 at 10.0 gives 10 samples spanning [0.0, 1.0).
+        REQUIRE(animation.num_samples(10.0) == 10);
 
-        // length = 1.0, sample_rate = 1.0
-        // samples = ceil(1.0 * 1.0) + 1 = 1 + 1 = 2
-        REQUIRE(animation.num_samples(1.0) == 2);
+        // length = 1.0, sample_rate = 1.0 -> 1 sample, at the start time
+        REQUIRE(animation.num_samples(1.0) == 1);
 
         animation.set_end_time(0.9); // Length = 0.9
-        // samples = ceil(0.9 * 10.0) + 1 = ceil(9.0) + 1 = 9 + 1 = 10
-        REQUIRE(animation.num_samples(10.0) == 10);
-        
+        // 0.9 * 10.0 = 9 exactly, so 9 samples and no rounding up
+        REQUIRE(animation.num_samples(10.0) == 9);
+
         animation.set_end_time(0.95); // Length = 0.95
-        // samples = ceil(0.95 * 10.0) + 1 = ceil(9.5) + 1 = 10 + 1 = 11
-        REQUIRE(animation.num_samples(10.0) == 11);
+        // 0.95 * 10.0 = 9.5, rounded up so the whole span is covered
+        REQUIRE(animation.num_samples(10.0) == 10);
     }
-    
+
     SECTION("Zero length animation") {
         animation.set_end_time(0.0); // Length = 0.0
-        // samples = ceil(0.0 * 10.0) + 1 = 0 + 1 = 1
+        // No span to divide, so the single sample at the start time
         REQUIRE(animation.num_samples(10.0) == 1);
     }
 
     SECTION("Invalid sample rate") {
         REQUIRE_THROWS_AS(animation.num_samples(0.0), std::invalid_argument);
         REQUIRE_THROWS_AS(animation.num_samples(-10.0), std::invalid_argument);
+    }
+}
+
+TEST_CASE("Animation sample_times spans the animation's time base", "[Animation][sampling]") {
+    Animation animation("timed");
+    animation.set_start_time(1.0);
+    animation.set_end_time(5.0); // length 4.0
+
+    SECTION("Count-based times span start_time to end_time") {
+        auto times = animation.sample_times(4); // half-open: step 1.0
+        REQUIRE(times.size() == 4);
+        REQUIRE(times.front() == Catch::Approx(1.0));
+        REQUIRE(times.step() == Catch::Approx(1.0));
+        REQUIRE(times.back() == Catch::Approx(4.0)); // 5.0 is the edge, not a sample
+
+        auto closed = animation.sample_times(5, RangeEnd::Inclusive);
+        REQUIRE(closed.size() == 5);
+        REQUIRE(closed.back() == Catch::Approx(5.0));
+    }
+
+    SECTION("By-rate times agree with num_samples") {
+        animation.create_channel("c");
+        for (RangeEnd range_end : {RangeEnd::Exclusive, RangeEnd::Inclusive}) {
+            for (double rate : {1.0, 30.0}) {
+                auto times = animation.sample_times_by_rate(rate, range_end);
+                REQUIRE(times.size() == animation.num_samples(rate, range_end));
+                REQUIRE(times.front() == Catch::Approx(animation.start_time()));
+                REQUIRE(times.step() == Catch::Approx(1.0 / rate).margin(1e-12));
+            }
+        }
+        // 4 seconds at 30 Hz: 120 half-open, 121 closed, the extra one on the end.
+        REQUIRE(animation.sample_times_by_rate(30.0).size() == 120);
+        auto closed = animation.sample_times_by_rate(30.0, RangeEnd::Inclusive);
+        REQUIRE(closed.size() == 121);
+        REQUIRE(closed.back() == Catch::Approx(5.0));
+    }
+
+    SECTION("Every channel shares one time base") {
+        Channel& a = animation.create_channel("a");
+        Channel& b = animation.create_channel("b");
+        a.create_keyframe(1.0, 0.0, Point(), Point(), Function::Linear);
+        a.create_keyframe(5.0, 10.0, Point(), Point(), Function::Linear);
+        b.create_keyframe(2.0, 0.0, Point(), Point(), Function::Linear);
+        b.create_keyframe(4.0, 20.0, Point(), Point(), Function::Linear);
+
+        // The channels cover different spans, but baking both over the
+        // animation's range gives values that line up against the same times.
+        const size_t n = animation.num_samples(10.0);
+        auto times = animation.sample_times_by_rate(10.0);
+        auto a_values = a.evaluate_range(animation.start_time(), animation.end_time(),
+                                         static_cast<int>(n));
+        auto b_values = b.evaluate_range(animation.start_time(), animation.end_time(),
+                                         static_cast<int>(n));
+        REQUIRE(times.size() == n);
+        REQUIRE(a_values.size() == n);
+        REQUIRE(b_values.size() == n);
+        for (size_t i = 0; i < n; ++i) {
+            REQUIRE(a.evaluate(times[i]) == Catch::Approx(a_values[i]).margin(1e-12));
+            REQUIRE(b.evaluate(times[i]) == Catch::Approx(b_values[i]).margin(1e-12));
+        }
+    }
+
+    SECTION("No channels means no times, matching num_samples") {
+        REQUIRE(animation.num_samples(30.0) == 0);
+        REQUIRE(animation.sample_times_by_rate(30.0).empty());
+    }
+
+    SECTION("A zero-length animation gives the single sample at its start") {
+        animation.create_channel("c");
+        animation.set_end_time(1.0); // length 0
+        REQUIRE(animation.num_samples(30.0) == 1);
+        auto times = animation.sample_times_by_rate(30.0);
+        REQUIRE(times.size() == 1);
+        REQUIRE(times.front() == Catch::Approx(1.0));
+    }
+
+    SECTION("Invalid arguments") {
+        REQUIRE_THROWS_AS(animation.sample_times(-1), std::invalid_argument);
+        REQUIRE_THROWS_AS(animation.sample_times_by_rate(0.0), std::invalid_argument);
+        REQUIRE_THROWS_AS(animation.sample_times_by_rate(-1.0), std::invalid_argument);
     }
 }
 
@@ -507,12 +586,12 @@ TEST_CASE("Animation API Comprehensive Test", "[Animation]") {
         
         // Test zero length animation samples
         animation.create_channel("test_channel");
-        REQUIRE(animation.num_samples(30.0) == 1); // Zero length + 1 = 1 sample
-        
+        REQUIRE(animation.num_samples(30.0) == 1); // Zero length, single sample
+
         // Test normal timing
         animation.set_start_time(0.0);
         animation.set_end_time(1.0);
-        REQUIRE(animation.num_samples(30.0) == 31); // 1 second at 30fps + 1 = 31 samples
+        REQUIRE(animation.num_samples(30.0) == 30); // 1 second at 30fps = 30 samples
     }
     
     SECTION("Animation with no channels edge cases") {
@@ -529,7 +608,7 @@ TEST_CASE("Animation API Comprehensive Test", "[Animation]") {
         
         // After adding a channel, samples should be calculated
         animation.create_channel("new_channel");
-        REQUIRE(animation.num_samples(30.0) == 151); // 5 seconds at 30fps + 1 = 151 samples
+        REQUIRE(animation.num_samples(30.0) == 150); // 5 seconds at 30fps = 150 samples
     }
     
     SECTION("Animation const correctness") {

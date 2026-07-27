@@ -4,6 +4,7 @@
 #include <anim/channel.hpp>
 #include <anim/keyframe.hpp> // Required for Keyframe and Point
 #include <anim/handle_utils.hpp> // Required for GrabbedHandle enum
+#include <cmath>
 
 using namespace anim;
 
@@ -542,7 +543,6 @@ TEST_CASE("Channel Time Properties", "[channel]") {
         REQUIRE(ch.start_time() == 0.0);
         REQUIRE(ch.end_time() == 0.0);
         REQUIRE(ch.length() == 0.0);
-        REQUIRE(ch.num_samples(30.0) == 0);
     }
 
     SECTION("Single keyframe") {
@@ -552,7 +552,9 @@ TEST_CASE("Channel Time Properties", "[channel]") {
         REQUIRE(ch.start_time() == 2.5);
         REQUIRE(ch.end_time() == 2.5);
         REQUIRE(ch.length() == 0.0);
-        REQUIRE(ch.num_samples(30.0) == 1); // Single sample at the keyframe time
+        // A channel no longer counts its own samples: the range has to be
+        // stated, because a keyframe span and a timeline are not the same thing.
+        REQUIRE(sample_times_by_rate(ch.start_time(), ch.end_time(), 30.0).size() == 1);
     }    SECTION("Multiple keyframes") {
         Animation anim;
         auto& ch = anim.create_channel("ch");
@@ -564,9 +566,10 @@ TEST_CASE("Channel Time Properties", "[channel]") {
         REQUIRE(ch.end_time() == 5.0);
         REQUIRE(ch.length() == 4.0); // 5.0 - 1.0
         
-        // Duration is 4 seconds, at 30fps = 120 samples + 1 for endpoint
-        REQUIRE(ch.num_samples(30.0) == 121);
-        REQUIRE(ch.num_samples(1.0) == 5); // 4 seconds + 1 for endpoint
+        // Duration is 4 seconds; the range is half-open, so 30fps gives 120
+        // samples spanning [1.0, 5.0), the last at 4.9667.
+        REQUIRE(sample_times_by_rate(ch.start_time(), ch.end_time(), 30.0).size() == 120);
+        REQUIRE(sample_times_by_rate(ch.start_time(), ch.end_time(), 1.0).size() == 4);
     }
 }
 
@@ -629,8 +632,20 @@ TEST_CASE("Channel Evaluation Range", "[channel]") {
     ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::Linear);
     ch.create_keyframe(2.0, 20.0, Point(), Point(), Function::Linear);
 
-    SECTION("evaluate_range") {
+    SECTION("evaluate_range defaults to a half-open range") {
+        // Step is 2.0 / 5, so the samples are at 0.0, 0.4, 0.8, 1.2 and 1.6.
         auto result = ch.evaluate_range(0.0, 2.0, 5);
+        REQUIRE(result.size() == 5);
+        REQUIRE(result[0] == Catch::Approx(0.0));
+        REQUIRE(result[1] == Catch::Approx(4.0));
+        REQUIRE(result[2] == Catch::Approx(8.0));
+        REQUIRE(result[3] == Catch::Approx(12.0));
+        REQUIRE(result[4] == Catch::Approx(16.0));
+    }
+
+    SECTION("evaluate_range closed lands the last sample on the end") {
+        // Step is 2.0 / 4, so the samples are at 0.0, 0.5, 1.0, 1.5 and 2.0.
+        auto result = ch.evaluate_range(0.0, 2.0, 5, RangeEnd::Inclusive);
         REQUIRE(result.size() == 5);
         REQUIRE(result[0] == Catch::Approx(0.0));
         REQUIRE(result[1] == Catch::Approx(5.0));
@@ -646,18 +661,39 @@ TEST_CASE("Channel Evaluation Range", "[channel]") {
     }
 
     SECTION("evaluate_range with equal start and end times") {
+        // The count is what the caller asked for, so an empty range gives that
+        // many copies of the value at that time rather than a single one.
         auto result = ch.evaluate_range(1.0, 1.0, 5);
-        REQUIRE(result.size() == 1);
-        REQUIRE(result[0] == Catch::Approx(10.0));
+        REQUIRE(result.size() == 5);
+        for (double v : result) {
+            REQUIRE(v == Catch::Approx(10.0));
+        }
+    }
+
+    SECTION("evaluate_range with no samples") {
+        REQUIRE(ch.evaluate_range(0.0, 2.0, 0).empty());
     }
 
     SECTION("evaluate_range invalid arguments") {
         REQUIRE_THROWS_AS(ch.evaluate_range(2.0, 1.0, 5), std::invalid_argument);
+        REQUIRE_THROWS_AS(ch.evaluate_range(0.0, 2.0, -1), std::invalid_argument);
+
+        // A reversed range is rejected for every count, not only for the ones
+        // large enough to reach the sampling loop.
+        REQUIRE_THROWS_AS(ch.evaluate_range(2.0, 1.0, 0), std::invalid_argument);
+        REQUIRE_THROWS_AS(ch.evaluate_range(2.0, 1.0, 1), std::invalid_argument);
     }
 
     SECTION("evaluate_range_by_rate") {
         auto result = ch.evaluate_range_by_rate(0.0, 2.0, 1.0); // 1 sample per second
-        REQUIRE(result.size() == 3); // 0, 1, 2 seconds
+        REQUIRE(result.size() == 2); // 0, 1 -- the range is half-open, 2 is excluded
+        REQUIRE(result[0] == Catch::Approx(0.0));
+        REQUIRE(result[1] == Catch::Approx(10.0));
+    }
+
+    SECTION("evaluate_range_by_rate closed adds the closing sample") {
+        auto result = ch.evaluate_range_by_rate(0.0, 2.0, 1.0, RangeEnd::Inclusive);
+        REQUIRE(result.size() == 3); // 0, 1, 2
         REQUIRE(result[0] == Catch::Approx(0.0));
         REQUIRE(result[1] == Catch::Approx(10.0));
         REQUIRE(result[2] == Catch::Approx(20.0));
@@ -673,6 +709,256 @@ TEST_CASE("Channel Evaluation Range", "[channel]") {
         auto result = ch.evaluate_range_by_rate(1.0, 1.0, 30.0);
         REQUIRE(result.size() == 1);
         REQUIRE(result[0] == Catch::Approx(10.0));
+    }
+}
+
+TEST_CASE("Channel evaluate_range_by_rate samples a half-open range", "[channel][sampling]") {
+    // A linear ramp where value == time, so a sampled value reports the exact
+    // time it was taken at and the spacing can be asserted directly.
+    auto ramp = [](Animation& anim, double duration) -> Channel& {
+        Channel& ch = anim.create_channel("ramp");
+        ch.create_keyframe(0.0, 0.0, Point(), Point(), Function::Linear);
+        ch.create_keyframe(duration, duration, Point(), Point(), Function::Linear);
+        return ch;
+    };
+
+    SECTION("A whole number of periods gives exactly that many samples") {
+        Animation anim;
+        Channel& ch = ramp(anim, 4.0);
+
+        auto result = ch.evaluate_range_by_rate(0.0, 4.0, 30.0);
+        REQUIRE(result.size() == 120); // not 121: end_time is not sampled
+        REQUIRE(sample_times_by_rate(0.0, 4.0, 30.0).size() == result.size());
+    }
+
+    SECTION("Samples land exactly one period apart") {
+        Animation anim;
+        Channel& ch = ramp(anim, 4.0);
+
+        auto result = ch.evaluate_range_by_rate(0.0, 4.0, 30.0);
+        for (size_t i = 0; i < result.size(); ++i) {
+            REQUIRE(result[i] == Catch::Approx(static_cast<double>(i) / 30.0).margin(1e-12));
+        }
+        // The last sample is one period short of the end, never on it.
+        REQUIRE(result.back() == Catch::Approx(119.0 / 30.0).margin(1e-12));
+    }
+
+    SECTION("A partial period is rounded up so the span stays covered") {
+        Animation anim;
+        Channel& ch = ramp(anim, 2.0);
+
+        // 1.05 * 30 = 31.5 -> 32 samples, the last at 31/30 = 1.0333, still
+        // inside the requested range. Spacing stays exactly 1/30 throughout.
+        auto result = ch.evaluate_range_by_rate(0.0, 1.05, 30.0);
+        REQUIRE(result.size() == 32);
+        REQUIRE(result.back() == Catch::Approx(31.0 / 30.0).margin(1e-12));
+        REQUIRE(result.back() < 1.05);
+        for (size_t i = 1; i < result.size(); ++i) {
+            REQUIRE((result[i] - result[i - 1]) == Catch::Approx(1.0 / 30.0).margin(1e-12));
+        }
+    }
+
+    SECTION("A span offset from zero keeps the same count and spacing") {
+        Animation anim;
+        Channel& ch = ramp(anim, 10.0);
+
+        auto result = ch.evaluate_range_by_rate(1.0, 5.0, 30.0);
+        REQUIRE(result.size() == 120);
+        REQUIRE(result.front() == Catch::Approx(1.0).margin(1e-12));
+        REQUIRE(result.back() == Catch::Approx(1.0 + 119.0 / 30.0).margin(1e-12));
+    }
+
+    SECTION("A product that overshoots by rounding error does not add a sample") {
+        Animation anim;
+        // Just above 4.0, so duration * 30 lands a few ulps above 120. Rounding
+        // that up would produce a 121st sample covering a span of ~1e-15.
+        const double duration = std::nextafter(4.0, 5.0);
+        Channel& ch = ramp(anim, duration);
+
+        REQUIRE(duration * 30.0 > 120.0);
+        REQUIRE(ch.evaluate_range_by_rate(0.0, duration, 30.0).size() == 120);
+        REQUIRE(sample_times_by_rate(0.0, duration, 30.0).size() == 120);
+    }
+
+    SECTION("num_samples agrees with what evaluate_range_by_rate returns") {
+        for (double duration : {0.5, 1.0, 2.5, 4.0, 7.3}) {
+            for (double rate : {1.0, 24.0, 30.0, 60.0, 120.0}) {
+                Animation anim;
+                Channel& ch = ramp(anim, duration);
+                REQUIRE(sample_times_by_rate(0.0, duration, rate).size()
+                        == ch.evaluate_range_by_rate(0.0, duration, rate).size());
+            }
+        }
+    }
+
+    SECTION("A closed range adds the closing sample and keeps the spacing") {
+        Animation anim;
+        Channel& ch = ramp(anim, 4.0);
+
+        auto result = ch.evaluate_range_by_rate(0.0, 4.0, 30.0, RangeEnd::Inclusive);
+        REQUIRE(result.size() == 121); // the 120 half-open samples, plus 4.0
+        REQUIRE(sample_times_by_rate(0.0, 4.0, 30.0, RangeEnd::Inclusive).size()
+                == result.size());
+        REQUIRE(result.front() == Catch::Approx(0.0).margin(1e-9));
+        REQUIRE(result.back() == Catch::Approx(4.0).margin(1e-9));
+        for (size_t i = 1; i < result.size(); ++i) {
+            REQUIRE((result[i] - result[i - 1]) == Catch::Approx(1.0 / 30.0).margin(1e-9));
+        }
+    }
+
+    SECTION("The two ends agree when the span is not a whole number of periods") {
+        Animation anim;
+        Channel& ch = ramp(anim, 2.0);
+
+        // 1.05 * 30 = 31.5, so no sample lands on the end and asking for it
+        // changes nothing: the next one would be past the end either way.
+        auto open = ch.evaluate_range_by_rate(0.0, 1.05, 30.0);
+        auto closed = ch.evaluate_range_by_rate(0.0, 1.05, 30.0, RangeEnd::Inclusive);
+        REQUIRE(open.size() == closed.size());
+        REQUIRE(open.size() == 32);
+    }
+
+    SECTION("A span shorter than one period gives the single opening sample") {
+        Animation anim;
+        Channel& ch = ramp(anim, 2.0);
+
+        // 0.02 * 30 = 0.6, so only the sample at the start falls inside the
+        // range; the next period lands past the end for either range end.
+        REQUIRE(ch.evaluate_range_by_rate(0.0, 0.02, 30.0).size() == 1);
+        auto closed = ch.evaluate_range_by_rate(0.0, 0.02, 30.0, RangeEnd::Inclusive);
+        REQUIRE(closed.size() == 1);
+        REQUIRE(closed.front() == Catch::Approx(0.0).margin(1e-12));
+    }
+
+    SECTION("evaluate_range covers the closed range when asked") {
+        Animation anim;
+        Channel& ch = ramp(anim, 4.0);
+
+        auto result = ch.evaluate_range(0.0, 4.0, 121, RangeEnd::Inclusive);
+        REQUIRE(result.size() == 121);
+        REQUIRE(result.front() == Catch::Approx(0.0).margin(1e-12));
+        REQUIRE(result.back() == Catch::Approx(4.0).margin(1e-12));
+
+        // The default half-open call over the same range stops one step short.
+        auto open = ch.evaluate_range(0.0, 4.0, 121);
+        REQUIRE(open.size() == 121);
+        REQUIRE(open.back() < result.back());
+    }
+}
+
+TEST_CASE("sample_times reports where the samples were taken", "[channel][sampling]") {
+    // value == time, so the values a range returns are the times it sampled at.
+    // The comparison is close rather than exact: recovering the time through the
+    // linear interpolation rounds, so it pins where the samples were taken
+    // without pinning the last bit. The step rule itself is checked exactly,
+    // against the formula, further down.
+    auto ramp = [](Animation& anim, double from, double to) -> Channel& {
+        Channel& ch = anim.create_channel("ramp");
+        ch.create_keyframe(from, from, Point(), Point(), Function::Linear);
+        ch.create_keyframe(to, to, Point(), Point(), Function::Linear);
+        return ch;
+    };
+
+    static_assert(sizeof(SampleTimes) <= 2 * sizeof(double) + sizeof(size_t),
+                  "SampleTimes must stay a small value: a start, a step and a count.");
+
+    SECTION("Times match evaluate_range over the same range") {
+        Animation anim;
+        Channel& ch = ramp(anim, 1.0, 5.0);
+
+        for (RangeEnd range_end : {RangeEnd::Exclusive, RangeEnd::Inclusive}) {
+            for (int n : {1, 2, 7, 120}) {
+                auto values = ch.evaluate_range(ch.start_time(), ch.end_time(), n, range_end);
+                auto times = sample_times(ch.start_time(), ch.end_time(), n, range_end);
+                REQUIRE(times.size() == values.size());
+                for (size_t i = 0; i < values.size(); ++i) {
+                    REQUIRE(times[i] == Catch::Approx(values[i]).margin(1e-12));
+                }
+
+                // The step rule, pinned exactly: the span over the count for a
+                // half-open range, over one less for a closed one.
+                if (n > 1) {
+                    const double span = ch.end_time() - ch.start_time();
+                    const double expected_step =
+                        span / ((range_end == RangeEnd::Inclusive) ? (n - 1) : n);
+                    REQUIRE(times.step() == expected_step);
+                    REQUIRE(times.front() == ch.start_time());
+                    REQUIRE(times[n - 1] == ch.start_time() + (n - 1) * expected_step);
+                }
+            }
+        }
+    }
+
+    SECTION("By-rate times match evaluate_range_by_rate") {
+        Animation anim;
+        Channel& ch = ramp(anim, 0.0, 4.0);
+
+        for (RangeEnd range_end : {RangeEnd::Exclusive, RangeEnd::Inclusive}) {
+            for (double rate : {1.0, 24.0, 30.0}) {
+                auto values = ch.evaluate_range_by_rate(ch.start_time(), ch.end_time(),
+                                                        rate, range_end);
+                auto times = sample_times_by_rate(ch.start_time(), ch.end_time(),
+                                                  rate, range_end);
+                REQUIRE(times.size() == values.size());
+                for (size_t i = 0; i < values.size(); ++i) {
+                    REQUIRE(times[i] == Catch::Approx(values[i]).margin(1e-12));
+                }
+                // Spacing is one sample period, exactly, for either range end.
+                REQUIRE(times.step() == Catch::Approx(1.0 / rate).margin(1e-12));
+            }
+        }
+    }
+
+    SECTION("Free functions match evaluate_range over an arbitrary range") {
+        Animation anim;
+        Channel& ch = ramp(anim, -10.0, 10.0); // wider than the range sampled below
+
+        auto values = ch.evaluate_range(-2.5, 3.5, 9, RangeEnd::Inclusive);
+        auto times = sample_times(-2.5, 3.5, 9, RangeEnd::Inclusive);
+        REQUIRE(times.size() == values.size());
+        REQUIRE(times.back() == 3.5); // a closed range ends exactly on its end
+        for (size_t i = 0; i < values.size(); ++i) {
+            REQUIRE(times[i] == Catch::Approx(values[i]).margin(1e-12));
+        }
+
+        auto by_rate_values = ch.evaluate_range_by_rate(-2.5, 3.5, 30.0);
+        auto by_rate_times = sample_times_by_rate(-2.5, 3.5, 30.0);
+        REQUIRE(by_rate_times.size() == by_rate_values.size());
+        for (size_t i = 0; i < by_rate_values.size(); ++i) {
+            REQUIRE(by_rate_times[i] == Catch::Approx(by_rate_values[i]).margin(1e-12));
+        }
+    }
+
+    SECTION("Accessors") {
+        auto times = sample_times(0.0, 4.0, 5); // half-open: step 0.8
+        REQUIRE(times.size() == 5);
+        REQUIRE_FALSE(times.empty());
+        REQUIRE(times.step() == Catch::Approx(0.8));
+        REQUIRE(times.front() == Catch::Approx(0.0));
+        REQUIRE(times.back() == Catch::Approx(3.2));
+        REQUIRE(times.at(2) == Catch::Approx(1.6));
+        REQUIRE_THROWS_AS(times.at(5), std::out_of_range);
+        REQUIRE(times == sample_times(0.0, 4.0, 5));
+        REQUIRE(times != sample_times(0.0, 4.0, 5, RangeEnd::Inclusive));
+    }
+
+    SECTION("An empty channel spans nothing, so a rate yields one sample") {
+        Animation anim;
+        Channel& ch = anim.create_channel("empty");
+        // start_time() and end_time() are both 0 with no keyframes, so this is
+        // the degenerate empty range rather than a count of zero. Sampling a
+        // whole animation goes through Animation, which reports 0 channels.
+        REQUIRE(sample_times_by_rate(ch.start_time(), ch.end_time(), 30.0).size() == 1);
+    }
+
+    SECTION("Invalid arguments") {
+        Animation anim;
+        Channel& ch = ramp(anim, 0.0, 4.0);
+        REQUIRE_THROWS_AS(sample_times(0.0, 4.0, -1), std::invalid_argument);
+        REQUIRE_THROWS_AS(sample_times_by_rate(0.0, 4.0, 0.0), std::invalid_argument);
+        REQUIRE_THROWS_AS(sample_times_by_rate(0.0, 4.0, -1.0), std::invalid_argument);
+        REQUIRE_THROWS_AS(sample_times(2.0, 1.0, 5), std::invalid_argument);
+        REQUIRE_THROWS_AS(sample_times_by_rate(2.0, 1.0, 30.0), std::invalid_argument);
     }
 }
 
@@ -839,7 +1125,7 @@ TEST_CASE("Channel Complex Animation Scenario", "[channel]") {
             REQUIRE_NOTHROW(pos_x.evaluate_range_by_rate(0.0, 4.0, rate));
             
             auto values = pos_x.evaluate_range_by_rate(0.0, 4.0, rate);
-            size_t expected_samples = static_cast<size_t>(std::ceil(4.0 * rate)) + 1;
+            size_t expected_samples = static_cast<size_t>(std::ceil(4.0 * rate));
             REQUIRE(values.size() == expected_samples);
             
             // Verify all values are finite
@@ -981,15 +1267,16 @@ TEST_CASE("Channel API Comprehensive Test", "[channel]") {
         }
         
         auto values_by_rate = channel.evaluate_range_by_rate(0.0, 2.0, 1.0);
-        REQUIRE(values_by_rate.size() == 3); // 0, 1, 2 seconds at 1Hz
+        REQUIRE(values_by_rate.size() == 2); // 0 and 1 seconds at 1Hz; 2 is excluded
         
         // Test channel timing properties
         REQUIRE(channel.start_time() == 0.0);
         REQUIRE(channel.end_time() == 4.0);
         REQUIRE(channel.length() == 4.0);
         
-        // Test num_samples calculation
-        size_t num_samples = channel.num_samples(30.0);
+        // Test sample count over the channel's own span
+        size_t num_samples =
+            sample_times_by_rate(channel.start_time(), channel.end_time(), 30.0).size();
         REQUIRE(num_samples > 0);
         
         // Test keyframe removal
@@ -1035,9 +1322,9 @@ TEST_CASE("Channel API Comprehensive Test", "[channel]") {
         REQUIRE_THROWS_AS(channel.evaluate_range_by_rate(0.0, 2.0, -1.0), std::invalid_argument); // negative rate
         REQUIRE_THROWS_AS(channel.evaluate_range_by_rate(2.0, 1.0, 1.0), std::invalid_argument); // start > end
         
-        // Test num_samples error
-        REQUIRE_THROWS_AS(channel.num_samples(0.0), std::invalid_argument); // zero rate
-        REQUIRE_THROWS_AS(channel.num_samples(-1.0), std::invalid_argument); // negative rate
+        // Test sample-count error paths
+        REQUIRE_THROWS_AS(sample_times_by_rate(0.0, 4.0, 0.0), std::invalid_argument);
+        REQUIRE_THROWS_AS(sample_times_by_rate(0.0, 4.0, -1.0), std::invalid_argument);
     }
       SECTION("Channel emplace keyframe functionality") {
         Animation anim;

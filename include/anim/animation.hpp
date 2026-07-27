@@ -3,6 +3,7 @@
 
 #include "anim/channel.hpp"
 #include "anim/id.hpp"
+#include "anim/sample_times.hpp"
 #include <unordered_map>
 #include <memory>
 #include <vector>
@@ -159,11 +160,38 @@ public:
 
     /**
      * @brief Number of samples spanning the animation at @p sample_rate.
+     *
+     * The span is half-open by default, matching Channel::evaluate_range_by_rate():
+     * the result is length() * sample_rate rounded up, so 4 seconds at 30 Hz
+     * gives 120 rather than 121. Pass RangeEnd::Inclusive to count the closing
+     * sample. An animation with no channels gives 0; one with no length gives 1.
+     * Matches Channel::num_samples() in convention, return type and default.
      * @param sample_rate Samples per unit time; must be positive.
+     * @param range_end Whether the end time is counted; half-open by default.
      * @return Sample count (0 when there are no channels).
      * @throws std::invalid_argument if @p sample_rate is not positive.
      */
-    int num_samples(double sample_rate) const;
+    size_t num_samples(double sample_rate, RangeEnd range_end = RangeEnd::Exclusive) const;
+
+    /**
+     * @brief Times spanning the animation, for @p num_samples samples.
+     *
+     * The range runs from start_time() to end_time(), so every channel baked
+     * over that range with the same count shares these times: they describe the
+     * animation's time base rather than any one channel's. Nothing is allocated.
+     * @throws std::invalid_argument if @p num_samples is negative.
+     */
+    SampleTimes sample_times(int num_samples, RangeEnd range_end = RangeEnd::Exclusive) const;
+
+    /**
+     * @brief Times spanning the animation at @p sample_rate.
+     *
+     * Its size() is what num_samples() reports for the same arguments, so an
+     * animation with no channels gives no times. Nothing is allocated.
+     * @throws std::invalid_argument if @p sample_rate is not positive.
+     */
+    SampleTimes sample_times_by_rate(double sample_rate,
+                                     RangeEnd range_end = RangeEnd::Exclusive) const;
 
     /// @brief Equality across name, time range and channels.
     bool operator==(const Animation& other) const;

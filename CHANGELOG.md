@@ -8,6 +8,114 @@ While the major version is `0`, breaking changes may land in a minor release.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-26
+
+Sampling by rate now covers a half-open range: a span of n sample periods gives
+n samples, not n + 1, so a sample count is the product of duration and rate as
+callers expect. That is the convention frame- and audio-rate hosts use, where a
+sample covers the interval that follows it and the end of a range is an edge
+rather than a sample. Where the closing sample is wanted -- plotting a curve,
+building a lookup table, integrating numerically -- pass the new `RangeEnd`.
+
+Fixing the count also fixed the spacing: a range that was not a whole number of
+sample periods was previously not sampled at the requested rate at all.
+
+### Changed
+
+- **Breaking:** sampling by rate now covers a half-open range. `end_time` is no
+  longer sampled, so a span of n sample periods yields n samples rather than
+  n + 1: `evaluate_range_by_rate(0, 4, 30)` returns 120 values, the last at
+  3.9667, and `Animation::num_samples(30)` over a 4 second animation returns 120
+  rather than 121. This is the convention frame- and audio-rate hosts expect, and
+  it makes the sample count the product of duration and rate as callers assume.
+  Callers who want the closing sample can pass `RangeEnd::Inclusive`, described
+  below.
+- **Breaking:** `Animation::num_samples` returns `size_t` rather than `int`.
+- **Breaking:** `Channel::evaluate_range` samples a half-open range too, so both
+  range methods now share one convention. `evaluate_range(0, 4, 5)` gives 0.0,
+  0.8, 1.6, 2.4 and 3.2 rather than 0.0 through 4.0.
+- **Breaking:** `Channel::evaluate_range` now returns exactly the requested
+  number of samples in every case. It previously collapsed to a single sample
+  when `start_time` and `end_time` were equal, which silently broke callers
+  sizing a buffer from the count they passed in. An empty range now gives that
+  many copies of the value at that time.
+- The `curve_visualization` example plots from a single `evaluate_range` call
+  with `RangeEnd::Inclusive`, taking its x axis from `sample_times`, and no
+  longer accumulates `t += step` in a loop that then has to append the end point
+  so the plotted line reaches the last keyframe. The sampled points differ from
+  the accumulated version by at most 2e-12, and the last one now lands on the
+  end time exactly.
+
+### Added
+
+- `RangeEnd`, selecting whether a sampled range includes its end time, accepted
+  as a trailing argument by `Channel::evaluate_range`,
+  `Channel::evaluate_range_by_rate` and `Animation::num_samples`. It defaults to
+  `RangeEnd::Exclusive` everywhere, which treats a sample as covering the
+  interval that follows it, so the end of a range is an edge rather than a
+  sample.
+
+  `RangeEnd::Inclusive` treats samples as points on the curve instead, which is
+  what plotting a curve, building an interpolation lookup table, or integrating
+  numerically all need: without it the last point falls short of the end. For a
+  rate, the two differ only when the span is a whole number of sample periods,
+  because that is the only case where a sample lands on the end at all.
+- `SampleTimes`, and the `sample_times` / `sample_times_by_rate` methods and free
+  functions that build one, reporting the times a range of samples was taken at.
+  The `Animation` methods span the animation's time range, so every channel baked
+  over it shares a single time base regardless of where its own keyframes fall,
+  and their size matches what `Animation::num_samples` reports. The free
+  functions take an arbitrary range.
+
+  Sampling returns values without times because the times are fully described by
+  a start, a step and a count: materialising them would double the memory for no
+  information. `SampleTimes` holds those three numbers, computes a time from an
+  index, and measures as free — indexing it compiles to the same multiply and
+  add as writing the arithmetic out. What it removes is the need to restate that
+  arithmetic, whose divisor depends on the `RangeEnd` and so is easy to pair
+  with the wrong one.
+
+### Fixed
+
+- `Channel::evaluate_range_by_rate` did not sample at the requested rate when
+  the range was not a whole number of sample periods. It rounded the count up
+  and then handed it to `evaluate_range`, which spreads a count across a closed
+  range, compressing the spacing to fit: 1.05 seconds at 30 Hz came back as 33
+  values 0.0328 apart rather than 30 Hz. It now hands over the span the samples
+  actually cover rather than the requested end, so the spacing works out to
+  exactly `1 / sample_rate` for any range.
+- `Channel::evaluate_range` validated its range only for sample counts large
+  enough to reach the sampling loop, so `evaluate_range(10, 0, 0)` returned a
+  value while `evaluate_range(10, 0, 2)` threw on the same reversed range. The
+  range is now checked first, for every count. A count of zero returns an empty
+  vector rather than one sample, and a negative count is rejected rather than
+  quietly treated as one sample.
+- The sample count is no longer inflated by floating-point error. It was
+  computed with `ceil`, so a duration whose product with the rate landed a few
+  ulps above a whole number, as 4.0 seconds at 30 Hz can, produced an extra
+  sample spanning a fraction of a period.
+
+### Removed
+
+- **Breaking:** `Channel::num_samples`. It took a rate and silently counted over
+  the channel's keyframe extent, which is an editing concept: it is where a
+  curve's data happens to lie, not the range a host samples over. A channel
+  bound to a timeline was counted over the wrong span with nothing to indicate
+  it, and a channel holds no reference to the animation that owns it to answer
+  otherwise. Every other sampling entry point already names its range, so this
+  was the only one that guessed.
+
+  Count over a timeline with `Animation::num_samples` or
+  `Animation::sample_times_by_rate`, and over any other span with the free
+  `sample_times` functions. The direct replacement for the old behaviour is
+  `sample_times_by_rate(ch.start_time(), ch.end_time(), rate).size()`.
+  `Channel::start_time`, `end_time` and `length` are unchanged: keyframe extent
+  is still what an editor wants.
+- `CODE_OF_CONDUCT.md`. The Contributor Covenant sets out a moderation and
+  enforcement process that overstates how this project is run. `CONTRIBUTING.md`
+  covers how to take part, and security reports have their own private channel
+  in `SECURITY.md`.
+
 ## [0.3.0] - 2026-07-26
 
 Two breaking changes that tighten the public API: `Id` lookups return
@@ -144,7 +252,8 @@ Bézier handle constraints, sampling helpers, and the Catch2 test suite.
      in 0.2.0. History was rewritten between the v0.1.1 and v0.1.2 tags, so the
      compare links below are more reliable than a commit-by-commit listing. -->
 
-[Unreleased]: https://github.com/Actualize-Interactive/anim/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Actualize-Interactive/anim/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Actualize-Interactive/anim/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Actualize-Interactive/anim/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Actualize-Interactive/anim/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/Actualize-Interactive/anim/releases/tag/v0.1.2
