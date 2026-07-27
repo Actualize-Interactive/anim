@@ -8,6 +8,18 @@ While the major version is `0`, breaking changes may land in a minor release.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-26
+
+Sampling by rate now covers a half-open range: a span of n sample periods gives
+n samples, not n + 1, so a sample count is the product of duration and rate as
+callers expect. That is the convention frame- and audio-rate hosts use, where a
+sample covers the interval that follows it and the end of a range is an edge
+rather than a sample. Where the closing sample is wanted -- plotting a curve,
+building a lookup table, integrating numerically -- pass the new `RangeEnd`.
+
+Fixing the count also fixed the spacing: a range that was not a whole number of
+sample periods was previously not sampled at the requested rate at all.
+
 ### Changed
 
 - **Breaking:** sampling by rate now covers a half-open range. `end_time` is no
@@ -240,7 +252,8 @@ Bézier handle constraints, sampling helpers, and the Catch2 test suite.
      in 0.2.0. History was rewritten between the v0.1.1 and v0.1.2 tags, so the
      compare links below are more reliable than a commit-by-commit listing. -->
 
-[Unreleased]: https://github.com/Actualize-Interactive/anim/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Actualize-Interactive/anim/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Actualize-Interactive/anim/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Actualize-Interactive/anim/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Actualize-Interactive/anim/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/Actualize-Interactive/anim/releases/tag/v0.1.2
