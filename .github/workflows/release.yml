@@ -25,7 +25,7 @@ jobs:
         fetch-depth: 0
 
     - name: Setup cmake
-      uses: lukka/get-cmake@v4.4.0
+      uses: lukka/get-cmake@v4.4.1
       with:
         cmakeVersion: '4.4.0'
 
